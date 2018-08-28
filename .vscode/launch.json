@@ -6,17 +6,10 @@
     "configurations": [
         {
             "type": "node",
-            "request": "launch",
-            "name": "Nodemon",
-            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/nodemon",
-            "args": ["${workspaceRoot}/server.js"],
-            "restart": true,
-            "runtimeArgs": [
-              "--nolazy",
-              "--require",
-              "babel-register"
-            ],
-            "sourceMaps": true
-        },
+            "request": "attach",
+            "name": "Attach",
+            "port": 9229,
+            "restart": true
+        }
     ]
 }
