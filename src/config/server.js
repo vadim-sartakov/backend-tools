@@ -4,7 +4,7 @@ export const configureProcessing = app => {
     app.disable('x-powered-by');
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());    
-}
+};
 
 export const configureErrorHandlers = app => {
 
@@ -17,4 +17,4 @@ export const configureErrorHandlers = app => {
         res.status(500).send({ message: "Something went wrong", exception: err.message });
     });
     
-}
+};

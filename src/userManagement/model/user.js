@@ -17,6 +17,5 @@ const UserSchema = new Schema({
 });
 
 const User = mongoose.model("Users", UserSchema);
-console.log("Evaluating new User model");
 
 export default User;

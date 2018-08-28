@@ -5,6 +5,7 @@
   "main": "lib/server.js",
   "scripts": {
     "test": "jest --watch",
+    "eslint": "node_modules/.bin/eslint ./",
     "clean": "rimraf lib/",
     "build": "babel src/ --out-dir lib --copy-files --source-maps",
     "rebuild": "npm-run-all clean build",
