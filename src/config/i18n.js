@@ -1,4 +1,3 @@
-/* global __dirname */
 import i18n from 'i18n';
 
 const initialize = app => {

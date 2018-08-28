@@ -1,11 +1,14 @@
 import express from 'express';
+import dotenv from 'dotenv';
 import { configureProcessing, configureErrorHandlers } from './config/server';
 import initializeDatabase from './config/database';
 import initializeI18n from './config/i18n';
 import initializeUserManagement from './userManagement/config';
 
-const port = 8080;
-const app = express();
+dotenv.config({ path: `./.env${process.env.NODE_ENV === "test" ? "test" : ""}` });
+
+const port = process.env.PORT || 8080;
+export const app = express();
 
 configureProcessing(app);
 
@@ -16,7 +19,6 @@ initializeUserManagement(app);
 configureErrorHandlers(app);
 
 const server = app.listen(port, () => {
-    var host = server.address().address;
     var port = server.address().port;
-    console.log("App listening at http://%s:%s", host, port);
+    console.log("Server started at port %s", port);
 });
