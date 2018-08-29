@@ -10,26 +10,25 @@
     "clean": "rimraf lib/",
     "build": "babel src/ --ignore test.js,itest.js --out-dir lib/ --copy-files --source-maps",
     "rebuild": "npm-run-all clean build",
-    "debug": "nodemon ./src/server.js --ignore *.test.js --ignore *.itest.js --inspect --exec babel-node",
-    "start": "node lib/server.js"
+    "debug": "cross-env NODE_ENV=development nodemon src/server.js --ignore *.test.js --ignore *.itest.js --inspect --exec babel-node",
+    "start": "cross-env NODE_ENV=production node lib/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.3",
+    "cross-env": "^5.2.0",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "helmet": "^3.13.0",
     "i18n": "^0.8.3",
-    "mongoose": "^5.2.9",
-    "morgan": "^1.9.0"
+    "mongoose": "^5.2.9"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-jest": "^23.4.2",
     "babel-preset-latest": "^6.24.1",
-    "cross-env": "^5.2.0",
     "eslint": "^5.4.0",
     "jest": "^23.5.0",
     "nodemon": "^1.18.3",
