@@ -1,19 +1,20 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import { disconnectDatabase } from './config/database';
-import configureApp from './config/app';
+import app from './config/app';
+import { connectDatabase, disconnectDatabase } from './config/database';
 import User from './userManagement/model/user';
 import request from 'supertest';
 
-const app = express();
-configureApp(app);
-
 describe('Server integration tests', () => {
+
+    beforeAll(() => {
+        connectDatabase();
+    });
 
     const dropCollection = () => User.deleteMany({ });
     beforeEach(dropCollection);
 
-    afterAll(() => disconnectDatabase());
+    afterAll(() => { 
+        disconnectDatabase();
+    });
 
     it('Get user list', (done) => {
         request(app).get("/users")
@@ -22,16 +23,16 @@ describe('Server integration tests', () => {
 
     it('Add new user', (done) => {
 
-        var newLocation;
         request(app).post("/users")
             .send({ username: "user 1" })
             .expect(201)
-            .end((err, res) => {
-                newLocation = res.headers.location;
-            });
-
-        request(app).get("/users")
-            .expect(200, [ { _id: newLocation, username: "user 1" } ], done);
+            .then(res => {
+                const newLocation = res.headers.location;
+                const regex = /.+\/(.+)/g;
+                const id = regex.exec(newLocation)[1];
+                request(app).get("/users")
+                    .expect(200, [ { _id: id, username: "user 1" } ], done);
+            });        
 
     });
 

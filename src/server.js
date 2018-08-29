@@ -1,9 +1,7 @@
-import express from 'express';
-import configureApp from './config/app';
+import app from './config/app';
+import { connectDatabase } from './config/database';
 
-export const app = express();
-
-configureApp(app);
+connectDatabase();
 
 const port = process.env.PORT || 8080;
 const server = app.listen(port, () => {

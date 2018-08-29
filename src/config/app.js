@@ -1,16 +1,18 @@
 import dotenv from 'dotenv';
+import express from 'express';
 import { configureProcessing, configureErrorHandlers } from '../config/server';
-import { connectDatabase } from '../config/database';
 import initializeI18n from '../config/i18n';
 import initializeUserManagement from '../userManagement/config';
 
-dotenv.config({ path: `./.env.${process.env.NODE_ENV || ""}` });
+const app = express();
 
-const configureApp = app => {
+export const configureApp = app => {
+
+    const env = process.env.NODE_ENV;
+    dotenv.config({ path: `./.env${(env && `.${env}`) || ""}` });
 
     configureProcessing(app);
 
-    connectDatabase();
     initializeI18n(app);
     initializeUserManagement(app);
 
@@ -18,4 +20,6 @@ const configureApp = app => {
 
 };
 
-export default configureApp;
+configureApp(app);
+
+export default app;
