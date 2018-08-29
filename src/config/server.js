@@ -1,7 +1,9 @@
+import helmet from 'helmet';
 import bodyParser from 'body-parser';
 
 export const configureProcessing = app => {
     app.disable('x-powered-by');
+    app.use(helmet());
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());    
 };

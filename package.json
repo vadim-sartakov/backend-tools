@@ -7,7 +7,9 @@
     "unit-test": "jest --watch \".+(\\.test)\\.js\"",
     "it-test": "cross-env NODE_ENV=test jest \".+(\\.itest)\\.js\" --detectOpenHandles",
     "eslint": "node_modules/.bin/eslint ./",
-    "build": "npm-run-all rimraf lib/ babel src/ --out-dir lib --copy-files --source-maps",
+    "clean": "rimraf lib/",
+    "build": "babel src/ --ignore test.js,itest.js --out-dir lib/ --copy-files --source-maps",
+    "rebuild": "npm-run-all clean build",
     "debug": "nodemon ./src/server.js --ignore *.test.js --ignore *.itest.js --inspect --exec babel-node",
     "start": "node lib/server.js"
   },
@@ -18,6 +20,7 @@
     "body-parser": "^1.18.3",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
+    "helmet": "^3.13.0",
     "i18n": "^0.8.3",
     "mongoose": "^5.2.9",
     "morgan": "^1.9.0"
