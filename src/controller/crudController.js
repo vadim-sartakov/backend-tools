@@ -1,5 +1,3 @@
-import logger from '../config/logger';
-
 export const errorHandler = (res, next) => err => {
     if (err.name === 'ValidationError') {
         res.status(400).json({ message: err.message, errors: err.errors });
@@ -13,7 +11,6 @@ export const errorHandler = (res, next) => err => {
 };
 
 export const getAll = (model, projection) => (req, res, next) => {
-    logger.log('info', 'requested all entries');
     model.find({ }, projection || "")
         .then(instance => res.json(instance))
         .catch(errorHandler(res, next));
