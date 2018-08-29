@@ -25,7 +25,7 @@ export const getOne = model => (req, res, next) => {
 export const addOne = Model => (req, res, next) => {
     const newInstance = new Model(req.body);
     newInstance.save()
-        .then(instance => res.status(201).json(instance))
+        .then(instance => res.status(201).location(`${req.originalUrl}/${instance._id}`).json(instance))
         .catch(errorHandler(res, next));
 };
 
