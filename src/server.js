@@ -1,4 +1,5 @@
 import app from './config/app';
+import logger from './config/logger';
 import { connectDatabase } from './config/database';
 
 connectDatabase();
@@ -6,5 +7,5 @@ connectDatabase();
 const port = process.env.PORT || 8080;
 const server = app.listen(port, () => {
     var port = server.address().port;
-    console.log("Server started at port %s", port);
+    logger.log("info", `Server started at port ${port}`);
 });
