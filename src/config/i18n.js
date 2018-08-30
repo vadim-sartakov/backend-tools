@@ -1,12 +1,10 @@
 import i18n from 'i18n';
 
-const initialize = app => {
-    i18n.configure({
-        locales:['en', 'ru'],
-        directory: __dirname + '/../locales',
-        defaultLocale: 'en'
-    });
-    app.use(i18n.init);
-};
+i18n.configure({
+    locales:['en', 'ru'],
+    directory: __dirname + '/../locales',
+    defaultLocale: 'en',
+    objectNotation: true
+});
 
-export default initialize;
+export default i18n.init;

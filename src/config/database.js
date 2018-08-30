@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
-import logger from './logger';
+import createLogger from './logger';
+
+const logger = createLogger("mongoose");
 
 export const connectDatabase = () => {
 
