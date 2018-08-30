@@ -1,15 +1,17 @@
 import User from '../model/user';
-import { routeMap, bindRoutes, getAll } from '../../controller/crudController';
-import registerController from '../controller/registerController';
+import Role from '../model/role';
+import { routeMap, bindRoutes, getAll, getOne } from '../../controller/crudController';
 
 const initialize = app => {
 
-    const path = "/users";
-    const routes = routeMap(path, User);
+    const routes = routeMap("/users", User);
 
-    routes[path].get = getAll(User, "username");
+    routes.getAll = getAll(() => User.find({}, "username"));
+    routes.getOne = getOne(req => User.findById(req.params.id)
+            .populate({ path: "roles", model: "Role", select: "key" })
+    );
     bindRoutes(app, routes);
-    registerController(app);
+    bindRoutes(app, routeMap("/roles", Role));
 
 };
 

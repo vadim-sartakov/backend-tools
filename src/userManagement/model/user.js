@@ -1,21 +1,23 @@
 import mongoose, { Schema } from "mongoose";
 
-const UserSchema = new Schema({
+const userSchema = new Schema({
     username: {
         type: String,
         required: "Username required"
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    status: {
+    password: {
         type: String,
-        enum: ["created", "blocked"],
-        default: "created"
-    }
+        required: "Password required"
+    },
+    blocked: {
+        type: Boolean,
+        default: false
+    },
+    roles: [{ type: Schema.Types.ObjectId, ref: 'User' }]
+}, {
+    timestamps: true
 });
 
-const User = mongoose.model("Users", UserSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;
