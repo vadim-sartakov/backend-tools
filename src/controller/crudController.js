@@ -22,10 +22,12 @@ export const getOne = model => (req, res, next) => {
         .catch(errorHandler(res, next));
 };
 
+export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
+
 export const addOne = Model => (req, res, next) => {
     const newInstance = new Model(req.body);
     newInstance.save()
-        .then(instance => res.status(201).location(`${req.originalUrl}/${instance._id}`).json(instance))
+        .then(instance => res.status(201).location(getLocation(req, instance._id)).json(instance))
         .catch(errorHandler(res, next));
 };
 
