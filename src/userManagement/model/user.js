@@ -48,7 +48,7 @@ const userSchema = new Schema({
     }
 }, { timestamps: true });
 
-userSchema.plugin(uniqueValidator, { message: 'validation.user.unique' });
+userSchema.plugin(uniqueValidator/*, { message: 'validation.user.unique' }*/);
 const User = mongoose.model("User", userSchema);
 
 export default User;

@@ -1,9 +1,17 @@
-export const translateMessages = err => {
-
+export const translateMessages = (req, err) => {
+    Object.keys(err.errors).forEach(key => {
+        let errorKey = err.errors[key];
+        if (errorKey.kind === "unique") {
+            errorKey.message = req.__(`validation.unique.${req.originalUrl.replace("/", "")}.${errorKey.path}`);
+        } else {
+            errorKey.message = req.__(errorKey.message);
+        }
+    });
 };
 
 export const errorHandler = (req, res, next) => err => {
     if (err.name === 'ValidationError') {
+        translateMessages(req, err);
         res.status(400).json({ message: err.message, errors: err.errors });
     }
     // Not found

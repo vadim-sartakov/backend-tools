@@ -2,5 +2,28 @@
 	"http": {
 		"notFound": "Not found",
 		"internalError": "Internal server error"
+	},
+	"validation": {
+		"unique": {
+			"users": {
+				"username": "Username is busy",
+				"externalIds": {
+					"systemOne": "External code is not unique"
+				},
+				"email": "Email is not unique"
+			}
+		},
+		"user": {
+			"emails": {
+				"email": {
+					"match": "Wrong email format"
+				}
+			},
+			"externalIds": {
+				"systemOne": {
+					"match": "Wrong code format"
+				}
+			}
+		}
 	}
 }
