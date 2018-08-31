@@ -6,8 +6,8 @@ const initialize = app => {
 
     const routes = routeMap("/users", User);
 
-    routes.getAll = getAll(() => User.find({}, "username"));
-    routes.getOne = getOne(req => User.findById(req.params.id)
+    routes.getAll = getAll(User, () => User.find({}, "username"));
+    routes.getOne = getOne(User, req => User.findById(req.params.id)
             .populate({ path: "roles", model: "Role", select: "key" })
     );
     bindRoutes(app, routes);

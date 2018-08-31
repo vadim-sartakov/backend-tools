@@ -3,26 +3,29 @@
 		"notFound": "Not found",
 		"internalError": "Internal server error"
 	},
-	"validation": {
-		"unique": {
-			"users": {
-				"username": "Username is busy",
-				"externalIds": {
-					"systemOne": "External code is not unique"
-				},
-				"email": "Email is not unique"
+	"User": {
+		"externalIds": {
+			"systemOne": {
+				"validation": {
+					"match": "Code should consist of digits",
+					"unique": "Code is already assigned"
+				}
 			}
 		},
-		"user": {
-			"emails": {
-				"email": {
-					"match": "Wrong email format"
-				}
-			},
-			"externalIds": {
-				"systemOne": {
-					"match": "Wrong code format"
-				}
+		"username": {
+			"validation": {
+				"unique": "Username is already registered"
+			}
+		},
+		"email": {
+			"validation": {
+				"match": "Wrong email format",
+				"unique": "Email is already registered"
+			}
+		},
+		"roles": {
+			"validation": {
+				"length": "At least one role has to be assigned"
 			}
 		}
 	}

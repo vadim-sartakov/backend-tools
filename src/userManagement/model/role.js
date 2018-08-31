@@ -7,14 +7,14 @@ export const MODERATOR = "MODERATOR";
 const roleSchema = new Schema({
     key: {
         type: String,
-        match: [/^[A-Z_]+$/, "validation.role.key.match"],
+        match: [/^[A-Z_]+$/, "{PATH}.validation.match"],
         unique: true,
-        required: "validation.role.key.required"
+        required: "{PATH}.validation.required"
     },
     description: String
 });
 
-roleSchema.plugin(uniqueValidator, { message: 'validation.role.unique' });
+roleSchema.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 const Role = mongoose.model("Role", roleSchema);
 
 export default Role;

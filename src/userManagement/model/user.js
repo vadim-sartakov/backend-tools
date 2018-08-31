@@ -7,11 +7,11 @@ const userSchema = new Schema({
     username: {
         type: String,
         unique: true,
-        required: "validation.user.username.required",
+        required: "{PATH}.validation.required",
     },
     password: {
         type: String,
-        required: "validation.user.password.required"
+        required: "{PATH}.validation.required"
     },
     blocked: {
         type: Boolean,
@@ -19,36 +19,35 @@ const userSchema = new Schema({
     },
     roles: {
         type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-        validate: [notEmptyArray, "validation.user.roles.length"]
+        validate: [notEmptyArray, "{PATH}.validation.array.length"]
     },
     emails: {
         type: [ {
             email: {
                 type: String,
-                match: [/^.+@.+$/, "validation.user.emails.email.match"],
-                required: "validation.user.emails.email.required",
+                match: [/^.+@.+\..+$/, "{PATH}.validation.match"],
+                required: "{PATH}.validation.required",
                 unique: true,
                 lowercase: true
             },
             confirmedAt: Date
         } ],
-        validate: [notEmptyArray, "validation.user.emails.length"]
+        validate: [notEmptyArray, "{PATH}.validation.length"]
     },
     externalIds: {
         systemOne: {
             type: String,
-            required: "validation.user.externalIds.systemOne.required",
-            match: [/^\d+$/, "validation.user.externalIds.systemOne.match"],
+            required: "{PATH}.validation.required",
+            match: [/^\d+$/, "{PATH}.validation.match"],
             unique: true
         }, 
         systemTwo: {
-            type: String,
-            unique: true
+            type: String
         }
     }
 }, { timestamps: true });
 
-userSchema.plugin(uniqueValidator/*, { message: 'validation.user.unique' }*/);
+userSchema.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 const User = mongoose.model("User", userSchema);
 
 export default User;
