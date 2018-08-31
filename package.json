@@ -27,6 +27,7 @@
     "i18n": "^0.8.3",
     "lodash": "^4.17.10",
     "mongoose": "^5.2.9",
+    "mongoose-unique-validator": "^2.0.1",
     "winston": "^3.0.0"
   },
   "devDependencies": {
@@ -45,6 +46,8 @@
     "presets": [
       "latest"
     ],
-    "plugins": ["transform-object-rest-spread"]
+    "plugins": [
+      "transform-object-rest-spread"
+    ]
   }
 }

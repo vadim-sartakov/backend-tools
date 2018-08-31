@@ -1,4 +1,8 @@
-export const errorHandler = (res, next) => err => {
+export const translateMessages = err => {
+
+};
+
+export const errorHandler = (req, res, next) => err => {
     if (err.name === 'ValidationError') {
         res.status(400).json({ message: err.message, errors: err.errors });
     }
@@ -13,13 +17,13 @@ export const errorHandler = (res, next) => err => {
 export const getAll = query => (req, res, next) => {
     query(req)
         .then(instance => res.json(instance))
-        .catch(errorHandler(res, next));
+        .catch(errorHandler(req, res, next));
 };
 
 export const getOne = query => (req, res, next) => {
     query(req)
         .then(instance => instance ? res.json(instance) : next())
-        .catch(errorHandler(res, next));
+        .catch(errorHandler(req, res, next));
 };
 
 export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
@@ -27,19 +31,19 @@ export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${r
 export const addOne = query => (req, res, next) => {
     query(req)
         .then(instance => res.status(201).location(getLocation(req, instance._id)).json(instance))
-        .catch(errorHandler(res, next));
+        .catch(errorHandler(req, res, next));
 };
 
 export const deleteOne = query => (req, res, next) => {
     query(req)
         .then(instance => instance ? res.status(204).send() : next())
-        .catch(errorHandler(res, next));
+        .catch(errorHandler(req, res, next));
 };
 
 export const updateOne = query => (req, res, next) => {
     query(req)
         .then(() => res.status(204).send())
-        .catch(errorHandler(res, next));
+        .catch(errorHandler(req, res, next));
 };
 
 export const bindRoutes = (app, routes) => {
@@ -57,6 +61,6 @@ export const routeMap = (path, Model) => ({
     getAll: getAll(() => Model.find({ })),
     addOne: addOne(req => new Model(req.body).save()),
     getOne: getOne(req => Model.findById(req.params.id)),
-    updateOne: updateOne(req => Model.findByIdAndUpdate(req.params.id, req.body)),
+    updateOne: updateOne(req => Model.findByIdAndUpdate(req.params.id, req.body, { runValidators: true, context: 'query' })),
     deleteOne: deleteOne(req => Model.findByIdAndDelete(req.params.id))
 });
