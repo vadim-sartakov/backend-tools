@@ -20,6 +20,7 @@
     "body-parser": "^1.18.3",
     "cookie-parser": "^1.4.3",
     "cross-env": "^5.2.0",
+    "debug": "^3.1.0",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "helmet": "^3.13.0",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-jest": "^23.4.2",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-latest": "^6.24.1",
     "eslint": "^5.4.0",
     "jest": "^23.5.0",
@@ -42,6 +44,7 @@
   "babel": {
     "presets": [
       "latest"
-    ]
+    ],
+    "plugins": ["transform-object-rest-spread"]
   }
 }

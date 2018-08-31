@@ -1,7 +1,11 @@
 import fs from 'fs';
+import createDebug from 'debug';
 import winston from 'winston';
 
 export const logDirectory = "./log";
+
+// Force debug parameter parsing as it was read from file.
+createDebug.enable(process.env.DEBUG);
 
 export const createLogger = labelName => {
     
@@ -27,8 +31,9 @@ export const createLogger = labelName => {
         transports.push(FileTransport);
     }
 
+    const debug = createDebug(labelName);
     const logger = winston.createLogger({
-        level: process.env.LOG_LEVEL || "debug",
+        level: (debug.enabled && "debug") || "info",
         transports
     });
 
