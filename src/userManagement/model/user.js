@@ -3,6 +3,17 @@ import uniqueValidator from 'mongoose-unique-validator';
 
 const notEmptyArray = value => value.length > 0;
 
+const emailSchema = new Schema({
+    email: {
+        type: String,
+        match: [/^.+@.+\..+$/, "{PATH}.validation.match"],
+        required: "{PATH}.validation.required",
+        unique: true,
+        lowercase: true
+    },
+    confirmedAt: Date
+},{ _id : false });
+
 const userSchema = new Schema({
     username: {
         type: String,
@@ -22,16 +33,7 @@ const userSchema = new Schema({
         validate: [notEmptyArray, "{PATH}.validation.array.length"]
     },
     emails: {
-        type: [ {
-            email: {
-                type: String,
-                match: [/^.+@.+\..+$/, "{PATH}.validation.match"],
-                required: "{PATH}.validation.required",
-                unique: true,
-                lowercase: true
-            },
-            confirmedAt: Date
-        } ],
+        type: [emailSchema],
         validate: [notEmptyArray, "{PATH}.validation.length"]
     },
     externalIds: {
@@ -44,9 +46,16 @@ const userSchema = new Schema({
         systemTwo: {
             type: String
         }
+    },
+    fieldOne: {
+        type: String
+    },
+    fieldTwo: {
+        type: String
     }
 }, { timestamps: true });
 
+userSchema.index({ fieldOne: 1, fieldTwo: 1 }, { unique: true });
 userSchema.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 const User = mongoose.model("User", userSchema);
 

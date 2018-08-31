@@ -45,8 +45,10 @@ export const deleteOne = (modelName, query) => (req, res, next) => {
 };
 
 export const updateOne = (modelName, query) => (req, res, next) => {
-    query(req, res, next)
-        .then(() => res.status(204).send())
+    query(req)
+        .then((err) => {
+            res.status(204).send()
+        })
         .catch(errorHandler(modelName, req, res, next));
 };
 
@@ -66,7 +68,8 @@ export const routeMap = (path, Model) => ({
     getAll: getAll(Model, () => Model.find({ })),
     addOne: addOne(Model, req => new Model(req.body).save()),
     getOne: getOne(Model, req => Model.findById(req.params.id)),
-    updateOne: updateOne(Model, (req, res, next) => {
+    updateOne: updateOne(Model, req => Model.findByIdAndUpdate(req.params.id, req.params.body, { runValidators: true, context: 'query' })),
+    /*updateOne: updateOne(Model, (req, res, next) => {
         return Model.findById(req.params.id)
             .then(instance => {
                 if (!instance) next();
@@ -74,6 +77,6 @@ export const routeMap = (path, Model) => ({
                 return instance.save();
             });
         
-    }),
+    }),*/
     deleteOne: deleteOne(Model, req => Model.findByIdAndDelete(req.params.id))
 });

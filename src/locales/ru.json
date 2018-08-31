@@ -27,6 +27,16 @@
 			"validation": {
 				"length": "Должна быть назначена хотя бы одна роль"
 			}
+		},
+		"fieldOne": {
+			"validation": {
+				"unique": "User.fieldOne.validation.unique"
+			}
+		},
+		"fieldTwo": {
+			"validation": {
+				"unique": "User.fieldTwo.validation.unique"
+			}
 		}
 	}
 }
