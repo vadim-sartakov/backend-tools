@@ -12,7 +12,7 @@ const emailSchema = new Schema({
         lowercase: true
     },
     confirmedAt: Date
-},{ _id : false });
+});
 
 const userSchema = new Schema({
     username: {

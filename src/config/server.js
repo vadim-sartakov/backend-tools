@@ -7,9 +7,9 @@ export const configureMiddlewares = app => {
     app.disable('x-powered-by');
     app.use(helmet());
     app.use(cookieParser());
+    app.use(i18n);
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(bodyParser.json());
-    app.use(i18n);
 };
 
 export const configureErrorHandlers = app => {
