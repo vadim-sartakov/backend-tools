@@ -38,5 +38,13 @@
 				"unique": "User.fieldTwo.validation.unique"
 			}
 		}
+	},
+	"Role": {
+		"key": {
+			"validation": {
+				"required": "Role.key.validation.required",
+				"match": "Role.key.validation.match"
+			}
+		}
 	}
 }

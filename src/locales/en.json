@@ -8,7 +8,8 @@
 			"systemOne": {
 				"validation": {
 					"match": "Code should consist of digits",
-					"unique": "Code is already assigned"
+					"unique": "Code is already assigned",
+					"required": "User.externalIds.systemOne.validation.required"
 				}
 			}
 		},
@@ -26,6 +27,16 @@
 		"roles": {
 			"validation": {
 				"length": "At least one role has to be assigned"
+			}
+		},
+		"password": {
+			"validation": {
+				"required": "User.password.validation.required"
+			}
+		},
+		"emails": {
+			"validation": {
+				"length": "User.emails.validation.length"
 			}
 		}
 	}
