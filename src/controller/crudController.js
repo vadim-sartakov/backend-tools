@@ -1,3 +1,5 @@
+import { Router } from "express";
+
 export const translateMessages = (Model, req, err) => {
     Object.keys(err.errors).forEach(key => {
         let errorKey = err.errors[key];
@@ -18,65 +20,111 @@ export const errorHandler = (Model, req, res, next) => err => {
     }
 };
 
-export const getAll = (modelName, query) => (req, res, next) => {
+export const getAll = query => (req, res, next) => {
     query(req)
         .then(instance => res.json(instance))
-        .catch(errorHandler(modelName, req, res, next));
+        .catch(next);
 };
 
-export const getOne = (modelName, query) => (req, res, next) => {
+export const getOne = query => (req, res, next) => {
     query(req)
         .then(instance => instance ? res.json(instance) : next())
-        .catch(errorHandler(modelName, req, res, next));
+        .catch(next);
+};
+
+export const addOne = query => (req, res, next) => {
+    query(req)
+        .then(instance => res.status(201).location(getLocation(req, instance._id)).json(instance))
+        .catch(next);
+};
+
+export const deleteOne = query => (req, res, next) => {
+    query(req)
+        .then(instance => instance ? res.status(204).send() : next)
+        .catch(next);
+};
+
+export const updateOne = query => (req, res, next) => {
+    query(req)
+        .then(instance => res.status(204).json(instance))
+        .catch(next);
+};
+
+export const createHandler = (modelName, query, onSuccess, onFail) => (req, res, next) => {
+    res.locals.modelName = modelName;
+    query(req).then(onSuccess(req, res)).catch(onFail || next);
 };
 
 export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
 
-export const addOne = (modelName, query) => (req, res, next) => {
-    query(req)
-        .then(instance => res.status(201).location(getLocation(req, instance._id)).json(instance))
-        .catch(errorHandler(modelName, req, res, next));
-};
+export const onGetAll = (req, res) => instance => res.json(instance);
+export const onAddOne = (req, res) => instance => res.status(201).location(getLocation(req, instance._id)).json(instance);
+export const onGetOne = (req, res, next) => instance => instance ? res.json(instance) : next;
+export const onUpdateOne = (req, res) => instance => res.status(204).json(instance);
+export const onDeleteOne = (req, res, next) => instance => instance ? res.status(204).send() : next;
 
-export const deleteOne = (modelName, query) => (req, res, next) => {
-    query(req)
-        .then(instance => instance ? res.status(204).send() : next())
-        .catch(errorHandler(modelName, req, res, next));
-};
-
-export const updateOne = (modelName, query) => (req, res, next) => {
-    query(req)
-        .then((err) => {
-            res.status(204).send()
-        })
-        .catch(errorHandler(modelName, req, res, next));
-};
-
-export const bindRoutes = (app, routes) => {
-    app.route(routes.path)
-        .get(routes.getAll)
-        .post(routes.addOne);
-    app.route(`${routes.path}/:id`)
-        .get(routes.getOne)
-        .put(routes.updateOne)
-        .delete(routes.deleteOne);
-};
-
-export const routeMap = (path, Model) => ({
-    path,
-    Model,
-    getAll: getAll(Model, () => Model.find({ })),
-    addOne: addOne(Model, req => new Model(req.body).save()),
-    getOne: getOne(Model, req => Model.findById(req.params.id)),
-    updateOne: updateOne(Model, req => Model.findByIdAndUpdate(req.params.id, req.params.body, { runValidators: true, context: 'query' })),
-    /*updateOne: updateOne(Model, (req, res, next) => {
-        return Model.findById(req.params.id)
-            .then(instance => {
-                if (!instance) next();
-                Object.keys(req.body).forEach(key => instance[key] = req.body[key]);
-                return instance.save();
-            });
-        
-    }),*/
-    deleteOne: deleteOne(Model, req => Model.findByIdAndDelete(req.params.id))
+export const createRouteMap = Model => ({
+    getAll: createHandler(Model.modelName, () => Model.find({ }), onGetAll),
+    addOne: createHandler(req => new Model(req.body).save()),
+    getOne: createHandler(req => Model.findById(req.params.id)),
+    updateOne: createHandler(req => Model.findByIdAndUpdate(req.params.id, req.params.body, { runValidators: true, context: 'query' })),
+    deleteOne: createHandler(req => Model.findByIdAndDelete(req.params.id))
 });
+
+export class HandlerFactory {
+    
+    constructor(query, onSuccess, onFail) {
+        this.query = query;
+        this.onSuccess = onSuccess;
+        this.onFail = onFail;
+    }
+
+    get handler() {
+        const { query, onSuccess, onFail } = this;
+        const handler = (req, res, next) => {
+            res.locals.modelName = modelName;
+            query(req).then(onSuccess(req, res)).catch(onFail || next);
+        };
+        return handler;
+    }
+
+}
+
+export class CrudRouter {
+
+    constructor(Model) {
+        this.Model = Model;
+        this.routeMap = createRouteMap();
+    }
+
+    createRouteMap() {
+        const { Model } = this;
+        return ({
+            getAll: createHandler(Model.modelName, () => Model.find({ }), onGetAll),
+            addOne: createHandler(req => new Model(req.body).save()),
+            getOne: createHandler(req => Model.findById(req.params.id)),
+            updateOne: createHandler(req => Model.findByIdAndUpdate(req.params.id, req.params.body, { runValidators: true, context: 'query' })),
+            deleteOne: createHandler(req => Model.findByIdAndDelete(req.params.id))
+        });
+    }
+
+    get router() {
+
+        const { routeMap } = this;
+        const router = Router();
+
+        router.route("/")
+            .get(routeMap.getAll)
+            .post(routeMap.addOne);
+        router.route("/:id")
+            .get(routeMap.getOne)
+            .put(routeMap.updateOne)
+            .delete(routeMap.deleteOne);
+
+        return router;
+
+    }
+
+}
+
+export default CrudRouter;

@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
+import uniqueValidator from 'mongoose-unique-validator';
 import createLogger from './logger';
 
 const logger = createLogger("mongoose");
+mongoose.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 
 export const connectDatabase = () => {
 

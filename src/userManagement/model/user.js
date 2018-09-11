@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import uniqueValidator from 'mongoose-unique-validator';
 
 const notEmptyArray = value => value.length > 0;
 
@@ -56,7 +55,6 @@ const userSchema = new Schema({
 }, { timestamps: true });
 
 userSchema.index({ fieldOne: 1, fieldTwo: 1 }, { unique: true });
-userSchema.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 const User = mongoose.model("User", userSchema);
 
 export default User;
