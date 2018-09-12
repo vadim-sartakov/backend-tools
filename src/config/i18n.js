@@ -4,7 +4,8 @@ i18n.configure({
     locales:['en', 'ru'],
     directory: __dirname + '/../locales',
     defaultLocale: 'en',
-    objectNotation: true
+    objectNotation: true,
+    syncFiles: true
 });
 
 export default i18n.init;
