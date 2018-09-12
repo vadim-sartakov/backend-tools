@@ -4,8 +4,6 @@ import { getAll, getOne, crudRouter } from "../../controller/crudController";
 
 const initialize = app => {
 
-
-
     const userRouter = crudRouter(User, {
         getAll: getAll(() => User.find({}, "username")),
         getOne: getOne(req => User.findById(req.params.id).populate({ path: "roles", model: "Role", select: "key" }))

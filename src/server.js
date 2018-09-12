@@ -1,12 +1,12 @@
-import initEnv from './config/env';
-import createLogger from './config/logger';
 import { connectDatabase } from './config/database';
-import createApp from './config/app';
+import { createApp } from './config/app';
+import createLogger from './config/logger';
+import initializeUserManagement from '../userManagement/config';
 
-initEnv();
 connectDatabase();
-
-const app = createApp();
+const app = createApp(app => {
+    initializeUserManagement(app);
+});
 
 const logger = createLogger("server");
 const port = process.env.PORT || 8080;

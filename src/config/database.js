@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import uniqueValidator from 'mongoose-unique-validator';
 import createLogger from './logger';
 
+//mongoose.Error.messages.String.minlength
+
 mongoose.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
 
 export const connectDatabase = () => {

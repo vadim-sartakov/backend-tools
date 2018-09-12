@@ -73,7 +73,7 @@ export const bindRoutes = routeMap => {
         .put(routeMap.updateOne)
         .delete(routeMap.deleteOne);
 
-    router.route("/*").all(errorMiddleware);
+    router.route("/*").all(validationErrorMiddleware);
 
     return router;
 
@@ -84,14 +84,14 @@ export const modelSetMiddleware = modelName => (req, res, next) => {
     next();
 };
 
-export const errorMiddleware = (req, res, next) => {
+export const validationErrorMiddleware = (req, res, next) => {
     const { err } = res.locals;
     if (err.name === 'ValidationError') {
         translateMessages(err, req, res);
         res.status(400).json({ message: err.message, errors: err.errors });
-    } /*else if (err.name === 'CastError') { // Not found 
+    } else if (err.name === 'CastError') { // Not found 
         next();
-    }*/ else {
+    } else {
         next(err);
     }
 };

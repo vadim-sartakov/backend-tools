@@ -1,13 +1,15 @@
 import express from 'express';
+import initEnv from '../config/env';
 import { configureMiddlewares, configureErrorHandlers } from '../config/server';
-import initializeUserManagement from '../userManagement/config';
 
-const createApp = () => {
+initEnv();
+
+const createApp = middlewareCallback => {
 
     const app = express();
 
     configureMiddlewares(app);
-    initializeUserManagement(app);
+    middlewareCallback && middlewareCallback(app);
     configureErrorHandlers(app);
 
     return app;
