@@ -1,9 +1,9 @@
-import app from './config/app';
-import { connectDatabase, disconnectDatabase } from './config/database';
-import User from './userManagement/model/user';
+import app from '../config/app';
+import { connectDatabase, disconnectDatabase } from '../config/database';
+import User from '../userManagement/model/user';
 import request from 'supertest';
 
-describe('Server integration tests', () => {
+describe('Crud controller integration tests', () => {
 
     beforeAll(() => {
         connectDatabase();

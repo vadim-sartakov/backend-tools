@@ -8,7 +8,8 @@
 			"systemOne": {
 				"validation": {
 					"match": "Код должен состоять из цифр",
-					"unique": "Данный код уже зарегистрирован"
+					"unique": "Данный код уже зарегистрирован",
+					"required": "User.externalIds.systemOne.validation.required"
 				}
 			}
 		},
@@ -36,6 +37,11 @@
 		"fieldTwo": {
 			"validation": {
 				"unique": "User.fieldTwo.validation.unique"
+			}
+		},
+		"emails": {
+			"validation": {
+				"length": "User.emails.validation.length"
 			}
 		}
 	},

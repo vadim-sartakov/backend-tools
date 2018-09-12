@@ -1,10 +1,12 @@
-import app from './config/app';
+import initEnv from './config/env';
 import createLogger from './config/logger';
 import { connectDatabase } from './config/database';
+import createApp from './config/app';
 
-process.env.LOG_LEVEL = process.env.LOG_LEVEL || "info";
-
+initEnv();
 connectDatabase();
+
+const app = createApp();
 
 const logger = createLogger("server");
 const port = process.env.PORT || 8080;

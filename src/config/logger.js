@@ -4,9 +4,6 @@ import winston from 'winston';
 
 export const logDirectory = "./log";
 
-// Force debug parameter parsing as it was read from file.
-createDebug.enable(process.env.DEBUG);
-
 export const createLogger = labelName => {
     
     if (!fs.existsSync(logDirectory)) {

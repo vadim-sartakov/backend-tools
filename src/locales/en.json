@@ -9,7 +9,7 @@
 				"validation": {
 					"match": "Code should consist of digits",
 					"unique": "Code is already assigned",
-					"required": "User.externalIds.systemOne.validation.required"
+					"required": "Code is required"
 				}
 			}
 		},
@@ -31,12 +31,12 @@
 		},
 		"password": {
 			"validation": {
-				"required": "User.password.validation.required"
+				"required": "Password is required"
 			}
 		},
 		"emails": {
 			"validation": {
-				"length": "User.emails.validation.length"
+				"length": "Email is required"
 			}
 		}
 	}

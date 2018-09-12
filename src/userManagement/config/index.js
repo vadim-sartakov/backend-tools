@@ -1,15 +1,17 @@
 import User from '../model/user';
 import Role from '../model/role';
-import { crudRouter } from "../../controller/crudController";
+import { getAll, getOne, crudRouter } from "../../controller/crudController";
 
 const initialize = app => {
 
-    const router = crudRouter(User, {
-        getAll: () => User.find({}, "username"),
-        getOne: req => User.findById(req.params.id).populate({ path: "roles", model: "Role", select: "key" })
+
+
+    const userRouter = crudRouter(User, {
+        getAll: getAll(() => User.find({}, "username")),
+        getOne: getOne(req => User.findById(req.params.id).populate({ path: "roles", model: "Role", select: "key" }))
     });
 
-    app.use("/users", router);
+    app.use("/users", userRouter);
     app.use("/roles", crudRouter(Role));
 
 };
