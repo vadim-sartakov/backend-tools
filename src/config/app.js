@@ -8,6 +8,7 @@ const createApp = middlewareCallback => {
 
     const app = express();
 
+    app.disable('x-powered-by');
     configureMiddlewares(app);
     middlewareCallback && middlewareCallback(app);
     configureErrorHandlers(app);

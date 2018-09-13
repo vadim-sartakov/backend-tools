@@ -1,10 +1,28 @@
 import { connectDatabase } from './config/database';
-import { createApp } from './config/app';
+import createApp from './config/app';
 import createLogger from './config/logger';
-import initializeUserManagement from '../userManagement/config';
+import configureI18n from './config/i18n';
+import initializeUserManagement from './userManagement/config';
+
+import httpEn from './locales/http/en';
+import httpRu from './locales/http/ru';
+
+import roleEn from './locales/model/role/en';
 
 connectDatabase();
 const app = createApp(app => {
+    configureI18n(app, {
+        preload: ["ru"],
+        resources: {
+            en: {
+                http: httpEn,
+                "model.role": roleEn
+            },
+            ru: {
+                http: httpRu
+            }
+        }
+    });
     initializeUserManagement(app);
 });
 

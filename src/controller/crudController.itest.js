@@ -2,6 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import request from 'supertest';
 import { connectDatabase } from '../config/database';
 import createApp from '../config/app';
+import configureI18n from '../config/i18n';
 import { crudRouter } from '../controller/crudController';
 
 const userSchema = new Schema({
@@ -22,6 +23,7 @@ const userSchema = new Schema({
 const User = mongoose.model("User", userSchema);
 
 const app = createApp(app => {
+    configureI18n(app);
     app.use("/users", crudRouter(User));
 });
 
