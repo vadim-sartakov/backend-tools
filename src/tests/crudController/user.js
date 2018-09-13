@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema } from "mongoose";
 
 const userSchema = new Schema({
     firstName: {
@@ -13,7 +13,7 @@ const userSchema = new Schema({
         type: String,
         lowercase: true
     }
-}, { versionKey: false });
+}, { versionKey: false, collection: "crud_test_users" });
 
 const User = mongoose.model("User", userSchema);
 export default User;
