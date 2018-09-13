@@ -5,29 +5,20 @@ import createLogger from './config/logger';
 import { crudRouter } from './controller/crudController';
 
 import generalMiddlewares from './middleware/general';
-import i18nMiddleware from './middleware/i18n';
+import { createI18n, createI18nMiddleware } from './middleware/i18n';
 import httpMiddlewares from './middleware/http';
 
-import httpEn from './locales/http/en';
 import httpRu from './locales/http/ru';
 import roleEn from './locales/model/role/en';
 
 connectDatabase();
 
+const i18n = createI18n();
+i18n.addResourceBundle("ru", "http", httpRu);
+
 const app = express();
 app.use(generalMiddlewares);
-app.use(i18nMiddleware({
-    preload: ["ru"],
-    resources: {
-        en: {
-            http: httpEn,
-            "model.role": roleEn
-        },
-        ru: {
-            http: httpRu
-        }
-    }
-}));
+app.use(createI18nMiddleware(i18n));
 //app.use("/users", crudRouter(User));
 app.use(httpMiddlewares);
 

@@ -5,14 +5,15 @@ import { connectDatabase, disconnectDatabase } from '../../config/database';
 import { crudRouter } from '../../controller/crudController';
 
 import generalMiddlewares from '../../middleware/general';
-import i18nMiddleware from '../../middleware/i18n';
+import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import httpMiddlewares from '../../middleware/http';
 
 import User from './user';
 
 const app = express();
+
 app.use(generalMiddlewares);
-app.use(i18nMiddleware());
+app.use(createI18nMiddleware(createI18n()));
 app.use("/users", crudRouter(User));
 app.use(httpMiddlewares);
 
