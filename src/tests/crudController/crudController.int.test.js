@@ -1,14 +1,20 @@
+import express from 'express';
 import request from 'supertest';
+import env from '../../config/env'; // eslint-disable-line no-unused-vars
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import createApp from '../../config/app';
-import configureI18n from '../../config/i18n';
 import { crudRouter } from '../../controller/crudController';
+
+import generalMiddlewares from '../../middleware/general';
+import i18nMiddleware from '../../middleware/i18n';
+import httpMiddlewares from '../../middleware/http';
+
 import User from './user';
 
-const app = createApp(app => {
-    configureI18n(app);
-    app.use("/users", crudRouter(User));
-});
+const app = express();
+app.use(generalMiddlewares);
+app.use(i18nMiddleware());
+app.use("/users", crudRouter(User));
+app.use(httpMiddlewares);
 
 describe('Crud controller integration tests', () => {
 

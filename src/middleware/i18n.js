@@ -1,8 +1,8 @@
 import i18next from 'i18next';
-import i18nmiddleware, { LanguageDetector } from 'i18next-express-middleware';
+import i18nMiddleware, { LanguageDetector } from 'i18next-express-middleware';
 import httpEn from '../locales/http/en';
 
-const configureI18n = (app, opts = { preload: [] }) => {
+const createI18nMiddleware = (opts = { preload: [] }) => {
 
     const enResources = (opts.resources && opts.resources.en) || {};
 
@@ -18,8 +18,9 @@ const configureI18n = (app, opts = { preload: [] }) => {
             ...opts.resources
         }
     });
-    app.use(i18nmiddleware.handle(i18n));
+    
+    return i18nMiddleware.handle(i18n);
 
 };
 
-export default configureI18n;
+export default createI18nMiddleware;
