@@ -16,16 +16,15 @@ export const createRouteMap = Model => ({
         req => Model.findByIdAndUpdate(
             req.params.id,
             req.body,
-            { runValidators: true, context: 'query' }
+            { runValidators: true, context: 'query', new: true }
         )
     ),
     deleteOne: deleteOne(req => Model.findByIdAndDelete(req.params.id))
 });
 
-export const getAll = query => (req, res, next) => {
-    query(req)
-        .then(instance => res.json(instance))
-        .catch(errorHandler(req, res, next));
+export const getAll = query => async (req, res, next) => {
+    const list = await query(req).catch(errorHandler(req, res, next));
+    res.json(list);
 };
 
 export const errorHandler = (req, res, next) => err => {
@@ -33,30 +32,26 @@ export const errorHandler = (req, res, next) => err => {
     next();
 };
 
-export const addOne = query => (req, res, next) => {
-    query(req)
-        .then(instance => res.status(201).location(getLocation(req, instance._id)).json(instance))
-        .catch(errorHandler(req, res, next));
+export const addOne = query => async (req, res, next) => {
+    const instance = await query(req).catch(errorHandler(req, res, next));
+    res.status(201).location(getLocation(req, instance._id)).json(instance);
 };
 
 export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
 
-export const getOne = query => (req, res, next) => {
-    query(req)
-        .then(instance => instance ? res.json(instance) : next())
-        .catch(errorHandler(req, res, next));
+export const getOne = query => async (req, res, next) => {
+    const instance = await query(req).catch(errorHandler(req, res, next));
+    instance ? res.json(instance) : next();
 };
 
-export const updateOne = query => (req, res, next) => {
-    query(req)
-        .then(instance => res.status(204).json(instance))
-        .catch(errorHandler(req, res, next));
+export const updateOne = query => async (req, res, next) => {
+    const instance = await query(req).catch(errorHandler(req, res, next));
+    instance ? res.status(200).json(instance) : next();
 };
 
-export const deleteOne = query => (req, res, next) => {
-    query(req)
-        .then(instance => instance ? res.status(204).send() : next)
-        .catch(errorHandler(req, res, next));
+export const deleteOne = query => async (req, res, next) => {
+    const instance = await query(req).catch(errorHandler(req, res, next));
+    instance ? res.status(204).send() : next();
 };
 
 export const bindRoutes = routeMap => {

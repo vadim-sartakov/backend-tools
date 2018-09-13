@@ -4,15 +4,7 @@ import createLogger from './logger';
 
 //mongoose.Error.messages.String.minlength
 
-const versionUpdatePlugin = (schema, options) => {
-    schema.pre("findOneAndUpdate", function(next) {
-        this._update.$inc = { __v: 1 };
-        next();
-    });
-};
-
 mongoose.plugin(uniqueValidator, { message: '{PATH}.validation.unique' });
-mongoose.plugin(versionUpdatePlugin);
 
 export const connectDatabase = () => {
 
