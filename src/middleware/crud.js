@@ -1,4 +1,4 @@
-export const crudValidationError = (err, req, res, next) => {
+const crudValidationMiddleware = (err, req, res, next) => {
     if (err.name === 'ValidationError') {
         translateMessages(err, req, res);
         res.status(400).json({ message: err.message, errors: err.errors });
@@ -12,6 +12,8 @@ export const crudValidationError = (err, req, res, next) => {
 export const translateMessages = (err, req, res) => {
     Object.keys(err.errors).forEach(key => {
         let errorKey = err.errors[key];
-        errorKey.message = req.__(`${res.locals.modelName}.${errorKey.message}`);
+        errorKey.message = req.t(`model.${res.locals.modelName}:${errorKey.message}`);
     });
 };
+
+export default crudValidationMiddleware;

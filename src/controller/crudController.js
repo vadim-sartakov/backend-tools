@@ -1,64 +1,10 @@
 import { Router } from "express";
 
-export const crudRouter = (Model, opts) => {
-    return bindRoutes({
-        ...createRouteMap(Model),
-        ...opts
-    });
-};
+const crudRouter = (Model, opts) => bindRoutes(createRouteMap(Model, opts));
 
-export const createRouteMap = Model => ({
-    Model,
-    getAll: getAll(() => Model.find({ })),
-    addOne: addOne(req => new Model(req.body).save()),
-    getOne: getOne(req => Model.findById(req.params.id)),
-    updateOne: updateOne(
-        req => Model.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { runValidators: true, context: 'query', new: true }
-        )
-    ),
-    deleteOne: deleteOne(req => Model.findByIdAndDelete(req.params.id))
-});
-
-export const getAll = query => async (req, res, next) => {
-    const list = await query(req).catch(errorHandler(req, res, next));
-    res.json(list);
-};
-
-export const errorHandler = (req, res, next) => err => {
-    res.locals.err = err;
-    next();
-};
-
-export const addOne = query => async (req, res, next) => {
-    const instance = await query(req).catch(errorHandler(req, res, next));
-    res.status(201).location(getLocation(req, instance._id)).json(instance);
-};
-
-export const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
-
-export const getOne = query => async (req, res, next) => {
-    const instance = await query(req).catch(errorHandler(req, res, next));
-    instance ? res.json(instance) : next();
-};
-
-export const updateOne = query => async (req, res, next) => {
-    const instance = await query(req).catch(errorHandler(req, res, next));
-    instance ? res.status(200).json(instance) : next();
-};
-
-export const deleteOne = query => async (req, res, next) => {
-    const instance = await query(req).catch(errorHandler(req, res, next));
-    instance ? res.status(204).send() : next();
-};
-
-export const bindRoutes = routeMap => {
+const bindRoutes = routeMap => {
 
     const router = Router();
-
-    router.route("/*").all(modelSetMiddleware(routeMap.Model.modelName));
 
     router.route("/")
         .get(routeMap.getAll)
@@ -68,32 +14,53 @@ export const bindRoutes = routeMap => {
         .put(routeMap.updateOne)
         .delete(routeMap.deleteOne);
 
-    router.route("/*").all(validationErrorMiddleware);
-
     return router;
 
 };
 
-export const modelSetMiddleware = modelName => (req, res, next) => {
-    res.locals.modelName = modelName;
-    next();
+const createRouteMap = (Model, opts = {}) => {
+
+    const defaults = {
+        getAll: {
+            query: () => Model.find({ }),
+            onSuccess: (req, res, next, list) => res.json(list)
+        },
+        addOne: {
+            query: req => new Model(req.body).save(),
+            onSuccess: (req, res, next, instance) => res.status(201).location(getLocation(req, instance._id)).json(instance)
+        },
+        getOne: {
+            query: req => Model.findById(req.params.id),
+            onSuccess: (req, res, next, instance) => instance ? res.json(instance) : next()
+        },
+        updateOne: {
+            query: req => Model.findByIdAndUpdate(
+                req.params.id,
+                req.body,
+                { runValidators: true, context: 'query', new: true }),
+            onSuccess: (req, res, next, instance) => instance ? res.status(200).json(instance) : next()
+        },
+        deleteOne: {
+            query: req => Model.findByIdAndDelete(req.params.id),
+            onSuccess: (req, res, next, instance) => instance ? res.status(204).send() : next()
+        }
+    };
+
+    const routeMap = Object.keys(defaults).reduce((prev, cur) => {
+        const query = opts[cur] || defaults[cur].query;
+        return {...prev, [cur]: getHandler(Model, query, defaults[cur].onSuccess)} ;
+    }, {});
+
+    return routeMap;
+
 };
 
-export const validationErrorMiddleware = (req, res, next) => {
-    const { err } = res.locals;
-    if (err.name === 'ValidationError') {
-        translateMessages(err, req, res);
-        res.status(400).json({ message: err.message, errors: err.errors });
-    } else if (err.name === 'CastError') { // Not found 
-        next();
-    } else {
-        next(err);
-    }
+const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
+
+const getHandler = (Model, query, onSuccess) => async (req, res, next) => {
+    res.locals.modelName = Model.modelName;
+    const result = await query(req, res).catch(next);
+    onSuccess(req, res, next, result);
 };
 
-export const translateMessages = (err, req, res) => {
-    Object.keys(err.errors).forEach(key => {
-        let errorKey = err.errors[key];
-        errorKey.message = req.__(`${res.locals.modelName}.${errorKey.message}`);
-    });
-};
+export default crudRouter;
