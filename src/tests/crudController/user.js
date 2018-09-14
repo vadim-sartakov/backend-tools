@@ -15,6 +15,10 @@ const userSchema = new Schema({
         type: String,
         lowercase: true,
         unique: true
+    },
+    phoneNumber: {
+        type: String,
+        unique: true
     }
 }, { versionKey: false, collection: "crud_test_users" });
 
@@ -25,13 +29,17 @@ export const userTranslations = {
     lastName: {
         name: "Last name",
         validation: {
-            required: "Last name required custom"
+            required: "Last name required custom",
+            match: "Last name is invalid custom"
         }
     },
     email: {
-        name: "Email",
+        name: "Email"
+    },
+    phoneNumber: {
+        name: "Phone number",
         validation: {
-            unique: "Email should be unique"
+            unique: "Phone number is not unique custom"
         }
     }
 };

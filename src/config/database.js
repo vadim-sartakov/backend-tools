@@ -2,27 +2,18 @@ import mongoose from 'mongoose';
 import uniqueValidator from 'mongoose-unique-validator';
 import createLogger from './logger';
 
+const transformDefaultMessages = () => {
+    const { messages } = mongoose.Error;
+    Object.keys(messages).forEach(group => {
+        messages[group] && Object.keys(messages[group]).forEach(message => {
+            messages[group][message] = `${group}-${message}-{PATH}-{MIN}-{MAX}-{MINLENGTH}-{MAXLENGTH}`;
+        });
+    });
+};
 
-/*general:
-   { default: 'Validator failed for path `{PATH}` with value `{VALUE}`',
-     required: 'Path `{PATH}` is required.' },
-  Number:
-   { min: 'Path `{PATH}` ({VALUE}) is less than minimum allowed value ({MIN}).',
-     max: 'Path `{PATH}` ({VALUE}) is more than maximum allowed value ({MAX}).' },
-  Date:
-   { min: 'Path `{PATH}` ({VALUE}) is before minimum allowed value ({MIN}).',
-     max: 'Path `{PATH}` ({VALUE}) is after maximum allowed value ({MAX}).' },
-  String:
-   { enum: '`{VALUE}` is not a valid enum value for path `{PATH}`.',
-     match: 'Path `{PATH}` is invalid ({VALUE}).',
-     minlength: 'Path `{PATH}` (`{VALUE}`) is shorter than the minimum allowed length ({MINLENGTH}).',
-     maxlength: 'Path `{PATH}` (`{VALUE}`) is longer than the maximum allowed length ({MAXLENGTH}).' } }*/
+transformDefaultMessages();
 
-mongoose.Error.messages.general.required = "{PATH}-required";
-
-mongoose.Error.messages.String.match = "{PATH}-match";
-
-mongoose.plugin(uniqueValidator, { message: '{PATH}-unique' });
+mongoose.plugin(uniqueValidator, { message: 'general-unique-{PATH}-{MIN}-{MAX}-{MINLENGTH}-{MAXLENGTH}' });
 
 export const connectDatabase = () => {
 

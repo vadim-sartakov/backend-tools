@@ -16,14 +16,15 @@ export const translateMessages = (err, req, res) => {
         const errorKey = err.errors[key];
         const messageParts = errorKey.message.split("-");
 
-        if (messageParts.length !== 2) return;
+        if (messageParts.length !== 7) return;
 
         const namespace = `model.${res.locals.modelName}`;
-        const [ field, validationType ] = messageParts;
-        const fieldName = req.t(`${namespace}:${field}.name`);
+        const [ group, type, path, min, max, minLength, maxLength ] = messageParts;
+        const fieldName = req.t(`${namespace}:${path}.name`);
         
         // Custom field message or general
-        errorKey.message = req.t([`${namespace}:${field}.validation.${validationType}`, `validation:${validationType}`], { fieldName });
+        errorKey.message = req.t([`${namespace}:${path}.validation.${type}`, `validation:${group}.${type}`],
+            { fieldName, min, max, minLength, maxLength });
 
     });
 

@@ -102,21 +102,45 @@ describe('Crud controller integration tests', () => {
         });
     });
 
-    describe('Validation', () => {
+    describe('Validation translation', () => {
         
         it('Add user with empty fields', async () => {
             const res = await request(app).post("/users").expect(400);
-            expect(res.body.errors).toBeDefined();
-            expect(res.body.errors.firstName).toBeDefined();
-            expect(res.body.errors.firstName.message).toMatch("First name is required");
-            expect(res.body.errors.lastName).toBeDefined();
-            expect(res.body.errors.lastName.message).toMatch("Last name required custom");
+            validateFields(
+                res,
+                { name: "firstName", value: "First name is required" },
+                { name: "lastName", value: "Last name required custom" }
+            );
         });
 
+        const validateFields = (res, ...fields) => {
+            const { errors } = res.body;
+            expect(errors).toBeDefined();
+            fields.forEach(field => {
+                expect(errors[field.name]).toBeDefined();
+                expect(errors[field.name].message).toMatch(field.value);
+            });
+        };
+
         it('Add user with wrong first name', async () => {
-            const res = await request(app).post("/users").send({ ...doc, firstName: "+=-!" }).expect(400);
-            expect(res.body.errors).toBeDefined();
-            expect(res.body.errors.firstName.message).toMatch("First name is invalid");
+            const res = await request(app).post("/users").send({ ...doc, firstName: "+=-!", lastName: "**/+" }).expect(400);
+            validateFields(
+                res,
+                { name: "firstName", value: "First name is invalid" },
+                { name: "lastName", value: "Last name is invalid custom" }
+            );
+        });
+
+        it('Add non-unique email', async () => {
+            const extendedDoc = { ...doc, email: "mail@mailbox.com", phoneNumber: "+123456" };
+            await request(app).post("/users").send(extendedDoc).expect(201);
+            const res = await request(app).post("/users").send(extendedDoc).expect(400);
+            validateFields(
+                res,
+                { name: "email", value: "Email is not unique" },
+                { name: "phoneNumber", value: "Phone number is not unique custom" }
+            );
+            await request(app).post("/users").send({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).expect(201);
         });
 
     });
