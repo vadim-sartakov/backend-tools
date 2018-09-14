@@ -20,7 +20,7 @@ const userSchema = new Schema({
         type: String,
         unique: true
     }
-}, { versionKey: false, collection: "crud_test_users" });
+}, { versionKey: false });
 
 export const userTranslations = {
     firstName: {
