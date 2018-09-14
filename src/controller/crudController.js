@@ -59,7 +59,12 @@ const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.orig
 
 const getHandler = (Model, query, onSuccess) => async (req, res, next) => {
     res.locals.modelName = Model.modelName;
-    const result = await query(req, res).catch(next);
+    let result;
+    try {
+        result = await query(req, res);
+    } catch(err) {
+        return next(err);
+    }
     onSuccess(req, res, next, result);
 };
 

@@ -4,12 +4,12 @@ const userSchema = new Schema({
     firstName: {
         type: String,
         required: true,
-        match: /\w+/
+        match: /^\w+$/
     },
     lastName: {
         type: String,
         required: true,
-        match: /\w+/
+        match: /^\w+$/
     },
     email: {
         type: String,
@@ -18,10 +18,20 @@ const userSchema = new Schema({
     }
 }, { versionKey: false, collection: "crud_test_users" });
 
-export const userLocale = {
+export const userTranslations = {
     firstName: {
+        name: "First name"
+    },
+    lastName: {
+        name: "Last name",
         validation: {
-            required: "Name is required"
+            required: "Last name required custom"
+        }
+    },
+    email: {
+        name: "Email",
+        validation: {
+            unique: "Email should be unique"
         }
     }
 };

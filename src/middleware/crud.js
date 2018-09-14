@@ -10,10 +10,23 @@ const crudValidationMiddleware = (err, req, res, next) => {
 };
 
 export const translateMessages = (err, req, res) => {
+
     Object.keys(err.errors).forEach(key => {
-        let errorKey = err.errors[key];
-        errorKey.message = req.t(`model.${res.locals.modelName}:${errorKey.message}`);
+
+        const errorKey = err.errors[key];
+        const messageParts = errorKey.message.split("-");
+
+        if (messageParts.length !== 2) return;
+
+        const namespace = `model.${res.locals.modelName}`;
+        const [ field, validationType ] = messageParts;
+        const fieldName = req.t(`${namespace}:${field}.name`);
+        
+        // Custom field message or general
+        errorKey.message = req.t([`${namespace}:${field}.validation.${validationType}`, `validation:${validationType}`], { fieldName });
+
     });
+
 };
 
 export default crudValidationMiddleware;

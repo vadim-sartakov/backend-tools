@@ -9,7 +9,6 @@ import { createI18n, createI18nMiddleware } from './middleware/i18n';
 import httpMiddlewares from './middleware/http';
 
 import httpRu from './locales/http/ru';
-import roleEn from './locales/model/role/en';
 
 connectDatabase();
 
@@ -17,6 +16,7 @@ const i18n = createI18n();
 i18n.addResourceBundle("ru", "http", httpRu);
 
 const app = express();
+app.disable('x-powered-by');
 app.use(generalMiddlewares);
 app.use(createI18nMiddleware(i18n));
 //app.use("/users", crudRouter(User));

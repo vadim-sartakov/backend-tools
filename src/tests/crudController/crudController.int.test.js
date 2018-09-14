@@ -9,17 +9,24 @@ import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import crudValidationMiddleware from '../../middleware/crud';
 import httpMiddlewares from '../../middleware/http';
 
-import User from './user';
+import User, { userTranslations } from './user';
 
 const app = express();
 
+const i18n = createI18n();
+i18n.addResourceBundle("en", "model.User", userTranslations);
+
 app.use(generalMiddlewares);
-app.use(createI18nMiddleware(createI18n()));
+app.use(createI18nMiddleware(i18n));
 app.use("/users", crudRouter(User));
 app.use(crudValidationMiddleware);
 app.use(httpMiddlewares);
 
 describe('Crud controller integration tests', () => {
+
+    const notFoundMessage = { message: 'Not found' };
+    const doc = { firstName: "Bill", lastName: "Gates" };
+    const diff = { firstName: "Steve" };
 
     beforeAll(() => {
         connectDatabase();
@@ -34,10 +41,6 @@ describe('Crud controller integration tests', () => {
     });
 
     describe('General', () => {
-
-        const notFoundMessage = { message: 'Not found' };
-        const doc = { firstName: "Bill", lastName: "Gates" };
-        const diff = { firstName: "Steve" };
 
         it('Get empty user list', async () => {
             await request(app).get("/users").expect(200, []);
@@ -100,6 +103,21 @@ describe('Crud controller integration tests', () => {
     });
 
     describe('Validation', () => {
+        
+        it('Add user with empty fields', async () => {
+            const res = await request(app).post("/users").expect(400);
+            expect(res.body.errors).toBeDefined();
+            expect(res.body.errors.firstName).toBeDefined();
+            expect(res.body.errors.firstName.message).toMatch("First name is required");
+            expect(res.body.errors.lastName).toBeDefined();
+            expect(res.body.errors.lastName.message).toMatch("Last name required custom");
+        });
+
+        it('Add user with wrong first name', async () => {
+            const res = await request(app).post("/users").send({ ...doc, firstName: "+=-!" }).expect(400);
+            expect(res.body.errors).toBeDefined();
+            expect(res.body.errors.firstName.message).toMatch("First name is invalid");
+        });
 
     });
 
