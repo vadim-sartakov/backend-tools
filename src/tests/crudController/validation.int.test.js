@@ -8,17 +8,17 @@ describe('Validation translation', () => {
     const doc = { firstName: "Bill", lastName: "Gates" };
 
     let conn;
-    beforeAll(() => {
-        conn = connectDatabase("crudValidationTests");
+    beforeAll(async () => {
+        conn = await connectDatabase("crudValidationTests");
     });
 
-    const dropCollection = () => User.deleteMany({ });
+    const dropCollection = async () => await User.deleteMany({ });
     beforeEach(dropCollection);
     afterEach(dropCollection);    
 
     afterAll(async () => { 
+        await conn.connection.dropDatabase();
         await disconnectDatabase();
-        await conn.connection.db.dropDatabase();
     });
 
     it('Add user with empty fields', async () => {

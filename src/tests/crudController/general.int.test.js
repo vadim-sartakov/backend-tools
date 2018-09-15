@@ -10,17 +10,17 @@ describe('General crud integration tests', () => {
     const diff = { firstName: "Steve" };
 
     let conn;
-    beforeAll(() => {
-        conn = connectDatabase("crudGeneralTests");
+    beforeAll(async () => {
+        conn = await connectDatabase("crudGeneralTests");
     });
 
-    const dropCollection = () => User.deleteMany({ });
+    const dropCollection = async () => await User.deleteMany({ });
     beforeEach(dropCollection);
     afterEach(dropCollection);    
 
     afterAll(async () => { 
+        await conn.connection.dropDatabase();
         await disconnectDatabase();
-        await conn.connection.db.dropDatabase();
     });
 
     it('Get empty user list', async () => {
