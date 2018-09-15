@@ -9,15 +9,21 @@ import httpMiddlewares from '../../middleware/http';
 
 import User, { userTranslations } from './user';
 
-const i18n = createI18n();
-i18n.addResourceBundle("en", "model.User", userTranslations);
+const createApp = crudOptions => {
 
-const app = express();
+    const app = express();
 
-app.use(generalMiddlewares);
-app.use(createI18nMiddleware(i18n));
-app.use("/users", crudRouter(User));
-app.use(crudValidationMiddleware);
-app.use(httpMiddlewares);
+    const i18n = createI18n();
+    i18n.addResourceBundle("en", "model.User", userTranslations);
 
-export default app;
+    app.use(generalMiddlewares);
+    app.use(createI18nMiddleware(i18n));
+    app.use("/users", crudRouter(User, crudOptions));
+    app.use(crudValidationMiddleware);
+    app.use(httpMiddlewares);
+
+    return app;
+
+};
+
+export default createApp;

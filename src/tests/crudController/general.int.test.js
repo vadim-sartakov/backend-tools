@@ -1,7 +1,9 @@
 import request from 'supertest';
-import app from './app';
+import createApp from './app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User from './user';
+
+const app = createApp();
 
 describe('General crud integration tests', () => {
 

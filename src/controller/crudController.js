@@ -1,17 +1,18 @@
 import { Router } from "express";
 
 /**
- * @callback QueryCallback
- * @param {*} req - express request
- * @param {*} res - express response
+ * 
+ * @callback SecurityCallback
+ * @param {Object} req - express request
+ * @param {Object} res - express response
  */
 
 /**
  * @callback OnSuccessCallback
- * @param {*} req - express request
- * @param {*} res - express response
- * @param {*} next - express next
- * @param {*} instance - query execution result
+ * @param {Object} req - express request
+ * @param {Object} res - express response
+ * @param {Object} next - express next
+ * @param {Function} instance - query execution result
  */
 
 /**
@@ -26,7 +27,7 @@ import { Router } from "express";
  */
 
 /**
- * @param {*} Model - mongoose model
+ * @param {Object} Model - mongoose model
  * @param {Options} opts - crud router options
  */
 const crudRouter = (Model, opts) => bindRoutes(createRouteMap(Model, opts));

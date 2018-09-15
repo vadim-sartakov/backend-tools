@@ -1,9 +1,11 @@
 import request from 'supertest';
-import app from './app';
+import createApp from './app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User from './user';
 
-describe('Validation translation', () => {
+const app = createApp();
+
+describe('Validation and translations', () => {
         
     const doc = { firstName: "Bill", lastName: "Gates" };
 
