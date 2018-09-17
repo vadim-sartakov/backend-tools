@@ -1,5 +1,7 @@
 import { Router } from "express";
+import querystring from "querystring";
 import qs from "qs";
+import LinkHeader from "http-link-header";
 import { createModelSetMiddleware } from "../middleware/crud";
 
 /**
@@ -25,6 +27,7 @@ import { createModelSetMiddleware } from "../middleware/crud";
 
 /**
  * @typedef {Object} Handler
+ * @property {boolean} disable
  * @property {SecurityCallback} securityCallback
  * @property {ProjectionCallback} projectionCallback
  * @property {PopulateCallback} populateCallback
@@ -55,40 +58,23 @@ import { createModelSetMiddleware } from "../middleware/crud";
  */
 
 /**
- * @typedef {Object} RouterBinderOption
- * @property {boolean} disabled
- */
-
-/**
- * @typedef {Object} RouterBinderOptions
- * @property {RouterBinderOption} getAll
- * @property {RouterBinderOption} addOne
- * @property {RouterBinderOption} getOne
- * @property {RouterBinderOption} updateOne
- * @property {RouterBinderOption} deleteOne
- */
-
-/**
  * @param {string} modelName - model name to use in i18n middlewares.
  * @param {Object} routeMap - 'Express' middleware set for each method.
- * @param {RouterBinderOptions} opts - bind options
  */
-const crudRouter = (modelName, routeMap, opts) => {
-
-    opts = opts || { getAll: {}, addOne: {}, getOne: {}, updateOne: {}, deleteOne: {}};
+const crudRouter = (modelName, routeMap) => {
 
     const router = Router();
 
     router.all("/*", createModelSetMiddleware(modelName));
 
     const rootRouter = router.route("/");
-    !opts.getAll.disable && rootRouter.get(routeMap.getAll);
-    !opts.addOne.disable && rootRouter.post(routeMap.addOne);
+    routeMap.getAll && rootRouter.get(routeMap.getAll);
+    routeMap.addOne && rootRouter.post(routeMap.addOne);
 
     const idRouter = router.route("/:id");
-    !opts.getOne.disable && idRouter.get(routeMap.getOne);
-    !opts.updateOne.disable && idRouter.put(routeMap.updateOne);
-    !opts.deleteOne.disable && idRouter.delete(routeMap.deleteOne);
+    routeMap.getOne && idRouter.get(routeMap.getOne);
+    routeMap.updateOne && idRouter.put(routeMap.updateOne);
+    routeMap.deleteOne && idRouter.delete(routeMap.deleteOne);
 
     return router;
 
@@ -105,62 +91,33 @@ export const createMongooseRouteMap = (Model, opts) => {
         defaultPageSize: 20
     };
 
-    const defaults = {
-        getAll: {
-            query: () => Model.find({ }),
-            onSuccess: (req, res, next, list) => res.json(list)
-        },
-        addOne: {
-            query: req => new Model(req.body).save(),
-            onSuccess: (req, res, next, instance) => res.status(201).location(getLocation(req, instance._id)).json(instance)
-        },
-        getOne: {
-            query: req => Model.findById(req.params.id),
-            onSuccess: (req, res, next, instance) => instance ? res.json(instance) : next()
-        },
-        updateOne: {
-            query: req => Model.findByIdAndUpdate(
-                req.params.id,
-                req.body,
-                { runValidators: true, context: 'query', new: true }),
-            onSuccess: (req, res, next, instance) => instance ? res.status(200).json(instance) : next()
-        },
-        deleteOne: {
-            query: req => Model.findByIdAndDelete(req.params.id),
-            onSuccess: (req, res, next, instance) => instance ? res.status(204).send() : next()
-        }
+    const routeMap = {
+        getAll: createGetAll(Model, opts),
+        addOne: createAddOne(Model, opts),
+        getOne: createGetOne(Model, opts),
+        updateOne: createUpdateOne(Model, opts),
+        deleteOne: createDeleteOne(Model, opts)
     };
-
-    const routeMap = Object.keys(defaults).reduce((prev, cur) => {
-        const query = opts[cur] || defaults[cur].query;
-        return {...prev, [cur]: getHandler(Model, query, defaults[cur].onSuccess)} ;
-    }, {});
 
     return routeMap;
 
 };
 
-const createGetAll = (Model, opts) => async (req, res, next) => {
+export const createGetAll = (Model, opts) => async (req, res, next) => {
 
     const delimeter = { delimeter: opts.delimeter || "," };
-    opts = getResultOptions(opts, "getAll");
-    const { securityCallback, projectionCallback, populateCallback, defaultPageSize } = opts;
+    const { projection, populate, condition } = getQueryValues(opts, opts.getAll, req, res);
 
     let { page, size, filter, sort } = req.query;
     page = page || 0;
-    size = size || defaultPageSize;
+    size = size || opts.defaultPageSize;
     filter = filter && qs(filter, delimeter);
     sort = sort && qs(sort, delimeter);
 
-    const security = securityCallback && projectionCallback(req, res);
-    const projection = projectionCallback && projectionCallback(req, res);
-    const populate = populateCallback && populateCallback(req, res);
-
-    const condition = [];
-    if (security) condition.push(security);
     if (filter) condition.push(filter);
 
-    const query = Model.find({ $and: condition })
+    const query = Model.find()
+        .where({ $and: condition })
         .skip(page * size)
         .limit(size);
 
@@ -169,54 +126,64 @@ const createGetAll = (Model, opts) => async (req, res, next) => {
     if (sort) query.sort(sort);
 
     const result = await query.exec().catch(next);
+    const itemCount = await Model.count(condition).catch(next);
 
-    // TODO: pass Link header
-    result && res.json(result);
+    if (!itemCount) return;
+
+    const link = new LinkHeader();
+    link.set(
+        { uri: `${getCurrentUrl}${querystring.stringify({ page: 0, size })}`, rel: "first" }, 
+        { uri: `${getCurrentUrl}${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" },
+        { uri: `${getCurrentUrl}${querystring.stringify({ page: Math.min(page + 1, itemCount), size })}`, rel: "next" },
+        { uri: `${getCurrentUrl}${querystring.stringify({ page: itemCount, size })}`, rel: "last" }
+    );
+
+    result && res.set("Link", link.toString()).json(result);
 
 };
 
-const prepareQuery = (opts, method) => {
+const getQueryValues = (opts, specificOpts, req, res) => {
 
-    opts = getResultOptions(opts, method);
-
-};
-
-const getResultOptions = (opts, method) => ({ ...opts, ...opts[method] });
-
-const createAddOne = (Model, opts) => async (req, res, next) => {
-
-    opts = getResultOptions(opts, "addOne");
-    const { projectionCallback } = opts;
+    opts = { ...opts, ...specificOpts };
+    const { securityCallback, projectionCallback, populateCallback } = opts;
+    const security = securityCallback && securityCallback(req, res);
     const projection = projectionCallback && projectionCallback(req, res);
+    const populate = populateCallback && populateCallback(req, res);
+
+    const condition = [];
+    if (security) condition.push(security);
+
+    return { security, projection, populate, condition };
+
+};
+
+export const createAddOne = (Model, opts) => async (req, res, next) => {
+
+    const { projection } = getQueryValues(opts, opts.addOne, req, res);
 
     const query = new Model(req.body).save();
     const instance = await query.exec(next).catch(next);
 
     if (!instance) return;
 
-    const updatedQuery = Model.findById(instance._id);
-    if (projection) updatedQuery.select(projection);
+    const createdQuery = Model.findById(instance._id);
+    if (projection) createdQuery.select(projection);
 
-    const updatedInstance = await updatedQuery.exec().catch(next);
-    if (!updatedInstance) return;
+    const createdInstance = await createdQuery.exec().catch(next);
+    if (!createdInstance) return;
 
-    instance && res.status(201).location(getLocation(req, updatedInstance._id)).json(updatedInstance);
+    instance && res.status(201).location(getLocation(req, createdInstance._id)).json(createdInstance);
 
 };
 
-const getLocation = (req, id) => `${req.protocol}://${req.get('host')}${req.originalUrl}/${id}`;
+export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
+export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-const createGetOne = (Model, opts) => async (req, res, next) => {
+export const createGetOne = (Model, opts) => async (req, res, next) => {
     
-    opts = getResultOptions(opts, "getOne");
-    const { securityCallback, projectionCallback, populateCallback } = opts;
+    const { projection, populate, condition } = getQueryValues(opts, opts.getOne, req, res);
 
-    const security = securityCallback && projectionCallback(req, res);
-    const projection = projectionCallback && projectionCallback(req, res);
-    const populate = populateCallback && populateCallback(req, res);
-
-    const condition = [{ _id: req.params.id }];
-    if (security) condition.push(security);
+    condition.push({ _id: req.params.id });
 
     const query = Model.findOne({ $and: condition });
     if (projection) query.select(projection);
@@ -227,10 +194,47 @@ const createGetOne = (Model, opts) => async (req, res, next) => {
 
 };
 
-const createUpdateOne = (Model, opts) => async (req, res, next) => {
+export const createUpdateOne = (Model, opts) => async (req, res, next) => {
 
-    opts = getResultOptions(opts, "updateOne");
+    const { projection, populate, condition } = getQueryValues(opts, opts.updateOne, req, res);
 
+    condition.push({ _id: req.params.id });
+
+    // Removing prohibited keys
+    if (projection) {
+        const inclusiveProjection = Object.keys(projection)[0] === 0 ? true : false;
+        Object.keys(res.body)
+            .filter(key => 
+                inclusiveProjection && !projection[key] ?
+                true : !inclusiveProjection && projection[key] ?
+                true : false)
+            .forEach(key => delete res.body[key]);        
+    }
+
+    const query = Model.findOneAndUpdate({ $and: condition }, req.body, { runValidators: true, context: 'query' });
+
+    const instance = await query.exec().catch(next);
+    if (!instance) return;
+
+    const updatedQuery = Model.findById(instance._id);
+    if (projection) updatedQuery.select(projection);
+    if (populate) updatedQuery.populate(populate);
+
+    const updatedInstance = await updatedQuery.exec().catch(next);
+    if (!updatedInstance) return;
+
+    updatedInstance ? res.status(200).json(updatedInstance) : next();
+
+};
+
+export const createDeleteOne = (Model, opts) => async (req, res, next) => {
+
+    const { condition } = getQueryValues(opts, opts.deleteOne, req, res);
+
+    condition.push({ _id: req.params.id });
+
+    const query = Model.findOneAndDelete({ $and: condition });
+    const result = await query.exec().catch(next);
 
 };
 
