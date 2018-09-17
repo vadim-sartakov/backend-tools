@@ -1,7 +1,7 @@
 import env from '../../config/env'; // eslint-disable-line no-unused-vars
 import { connectDatabase } from '../../config/database'; // eslint-disable-line no-unused-vars
 import express from 'express';
-import crudRouter from '../../controller/crudController';
+import crudRouter, { createMongooseRouteMap } from '../../controller/crudController';
 import generalMiddlewares from '../../middleware/general';
 import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import crudValidationMiddleware from '../../middleware/crud';
@@ -18,7 +18,7 @@ const createApp = crudOptions => {
 
     app.use(generalMiddlewares);
     app.use(createI18nMiddleware(i18n));
-    app.use("/users", crudRouter(User, crudOptions));
+    app.use("/users", crudRouter(User.modelName, createMongooseRouteMap(User, crudOptions)));
     app.use(crudValidationMiddleware);
     app.use(httpMiddlewares);
 

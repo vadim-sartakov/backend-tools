@@ -1,3 +1,8 @@
+export const createModelSetMiddleware = modelName => (req, res, next) => {
+    res.locals.modelName = modelName;
+    next();
+};
+
 const crudValidationMiddleware = (err, req, res, next) => {
     if (err.name === 'ValidationError') {
         translateMessages(err, req, res);
