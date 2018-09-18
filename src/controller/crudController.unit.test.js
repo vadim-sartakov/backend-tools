@@ -1,9 +1,15 @@
 import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+import mongoose, { Schema } from 'mongoose';
 import { createGetAll } from './crudController';
 
 chai.use(sinonChai);
+
+const schema = new Schema({ field: String });
+const Model = mongoose.model('Model', schema);
+const Query = Model.find();
+sinon.stub(Model, "find").returns(Query);
 
 class ReqMock {
     constructor(query) {
@@ -39,7 +45,19 @@ class MongooseModel {
 describe('Crud controller tests', () => {
 
     let req, res, next;
-    beforeEach(() => [req, res, next] = [new ReqMock(), new ResMock(), sinon.stub()]);
+    
+    const queryMethodsToStab = ["limit", "skip", "where", "select", "populate", "sort"/*, "exec", "count"*/];
+
+    beforeEach(() => {
+        queryMethodsToStab.forEach(method =>
+            /*(method === "exec" || method === "count") ?
+                sinon.stub(Query, method).resolves() :*/
+                sinon.stub(Query, method).returns(Query)           
+        );
+        [req, res, next] = [new ReqMock(), new ResMock(), sinon.stub()];
+    });
+
+    afterEach(() => queryMethodsToStab.forEach(method => Query[method].restore()));
 
     describe('Get all', () => {      
 
@@ -47,13 +65,14 @@ describe('Crud controller tests', () => {
 
             it('Empty response', async () => {
 
-                const modelInstance = new MongooseModel([], 0);
-                await createGetAll(modelInstance)(req, res, next);
+                sinon.stub(Query, "exec").resolves([]);
+                sinon.stub(Query, "count").resolves(0);
+                await createGetAll(Model)(req, res, next);
 
-                expect(modelInstance.select).not.been.called;
-                expect(modelInstance.where).been.calledWith({ $and: [] });
-                expect(modelInstance.skip).been.calledWith(0);
-                expect(modelInstance.limit).been.calledWith(20);
+                expect(Query.select).not.been.called;
+                expect(Query.where).been.calledWith({ $and: [] });
+                expect(Query.skip).been.calledWith(0);
+                expect(Query.limit).been.calledWith(20);
                 expect(res.set).been.calledWith("X-Total-Count", 0);
                 expect(res.set).been.calledWith("Link", 
                     "<http://localhost/?page=0&size=20>; rel=first, " +
