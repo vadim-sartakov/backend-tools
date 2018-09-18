@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { expect } from 'chai';
 import createApp from './app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User from './user';
@@ -10,7 +11,7 @@ describe('Validation and translations', () => {
     const doc = { firstName: "Bill", lastName: "Gates" };
 
     let conn;
-    beforeAll(async () => {
+    before(async () => {
         conn = await connectDatabase("crudValidationTests");
     });
 
@@ -18,7 +19,7 @@ describe('Validation and translations', () => {
     beforeEach(dropCollection);
     afterEach(dropCollection);    
 
-    afterAll(async () => { 
+    after(async () => { 
         await conn.connection.dropDatabase();
         await disconnectDatabase();
     });
@@ -35,7 +36,7 @@ describe('Validation and translations', () => {
 
     const validateFields = (res, errCount, ...fields) => {
         const { errors } = res.body;
-        expect(errors).toBeDefined();
+        expect(errors).not.to.be.undefined;
         expect(Object.keys(errors).length).toEqual(errCount);
         fields.forEach(field => {
             expect(errors[field.name]).toBeDefined();

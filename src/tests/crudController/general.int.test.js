@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { expect } from 'chai';
 import createApp from './app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User from './user';
@@ -12,7 +13,7 @@ describe('General crud integration tests', () => {
     const diff = { firstName: "Steve" };
 
     let conn;
-    beforeAll(async () => {
+    before(async () => {
         conn = await connectDatabase("crudGeneralTests");
     });
 
@@ -20,7 +21,7 @@ describe('General crud integration tests', () => {
     beforeEach(dropCollection);
     afterEach(dropCollection);    
 
-    afterAll(async () => { 
+    after(async () => { 
         await conn.connection.dropDatabase();
         await disconnectDatabase();
     });
@@ -47,7 +48,7 @@ describe('General crud integration tests', () => {
         const id = getIdFromLocation(res.headers.location);
         const instance = await User.findById(id);
 
-        expect({ ...instance._doc, _id: instance.id }).toEqual({ _id: id, ...doc }); 
+        expect({ ...instance._doc, _id: instance.id }).to.equal({ _id: id, ...doc }); 
 
     });
 
@@ -81,7 +82,7 @@ describe('General crud integration tests', () => {
     it('Delete user', async () => {
         const instance = await new User(doc).save();
         await request(app).delete(`/users/${instance.id}`).expect(204);
-        expect(await User.findById(instance.id)).toBeNull();        
+        expect(await User.findById(instance.id)).to.be.null();        
     });
 
 });

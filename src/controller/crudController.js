@@ -80,16 +80,16 @@ const crudRouter = (modelName, routeMap) => {
 
 };
 
+const defaultOpts = {
+    defaultPageSize: 20
+};
+
 /**
  * @param {Object} Model - mongoose model
  * @param {RouteMapOptions} opts - crud router options
  * @return {RouteMap}
  */
-export const createMongooseRouteMap = (Model, opts) => {
-
-    opts = opts || {
-        defaultPageSize: 20
-    };
+export const createRouteMap = (Model, opts = defaultOpts) => {
 
     const routeMap = {
         getAll: createGetAll(Model, opts),
@@ -103,7 +103,7 @@ export const createMongooseRouteMap = (Model, opts) => {
 
 };
 
-export const createGetAll = (Model, opts) => async (req, res, next) => {
+export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const delimeter = { delimeter: opts.delimeter || "," };
     const { projection, populate, condition } = getQueryValues(opts, opts.getAll, req, res);
@@ -126,19 +126,19 @@ export const createGetAll = (Model, opts) => async (req, res, next) => {
     if (sort) query.sort(sort);
 
     const result = await query.exec().catch(next);
-    const itemCount = await Model.count(condition).catch(next);
+    if (!result) return;
 
-    if (!itemCount) return;
+    const totalCount = await Model.count(condition).catch(next);
+
+    if (totalCount === undefined) return;
 
     const link = new LinkHeader();
-    link.set(
-        { uri: `${getCurrentUrl}${querystring.stringify({ page: 0, size })}`, rel: "first" }, 
-        { uri: `${getCurrentUrl}${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" },
-        { uri: `${getCurrentUrl}${querystring.stringify({ page: Math.min(page + 1, itemCount), size })}`, rel: "next" },
-        { uri: `${getCurrentUrl}${querystring.stringify({ page: itemCount, size })}`, rel: "last" }
-    );
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: 0, size })}`, rel: "first" }); 
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" });
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.min(page + 1, totalCount), size })}`, rel: "next" });
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.floor(totalCount / size), size })}`, rel: "last" });
 
-    result && res.set("Link", link.toString()).json(result);
+    result && res.set("X-Total-Count", totalCount) && res.set("Link", link.toString()).json(result);
 
 };
 
@@ -157,7 +157,7 @@ const getQueryValues = (opts, specificOpts, req, res) => {
 
 };
 
-export const createAddOne = (Model, opts) => async (req, res, next) => {
+export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const { projection } = getQueryValues(opts, opts.addOne, req, res);
 
@@ -179,7 +179,7 @@ export const createAddOne = (Model, opts) => async (req, res, next) => {
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-export const createGetOne = (Model, opts) => async (req, res, next) => {
+export const createGetOne = (Model, opts = defaultOpts) => async (req, res, next) => {
     
     const { projection, populate, condition } = getQueryValues(opts, opts.getOne, req, res);
 
@@ -194,7 +194,7 @@ export const createGetOne = (Model, opts) => async (req, res, next) => {
 
 };
 
-export const createUpdateOne = (Model, opts) => async (req, res, next) => {
+export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const { projection, populate, condition } = getQueryValues(opts, opts.updateOne, req, res);
 
@@ -227,7 +227,7 @@ export const createUpdateOne = (Model, opts) => async (req, res, next) => {
 
 };
 
-export const createDeleteOne = (Model, opts) => async (req, res, next) => {
+export const createDeleteOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const { condition } = getQueryValues(opts, opts.deleteOne, req, res);
 
