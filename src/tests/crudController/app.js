@@ -9,6 +9,8 @@ import httpMiddlewares from '../../middleware/http';
 
 import User, { userTranslations } from './user';
 
+let portCounter = 6000;
+
 const createApp = crudOptions => {
 
     const app = express();
@@ -22,7 +24,7 @@ const createApp = crudOptions => {
     app.use(crudValidationMiddleware);
     app.use(httpMiddlewares);
 
-    const server = app.listen(process.env.PORT);
+    const server = app.listen(portCounter++);
 
     return server;
 

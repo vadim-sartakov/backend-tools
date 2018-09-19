@@ -116,8 +116,8 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     const { delimiter, defaultPageSize } = opts;
 
     let { page, size, filter, sort } = req.query;
-    page = page || 0;
-    size = size || defaultPageSize;
+    page = (page && page * 1) || 0;
+    size = (size && size * 1) || defaultPageSize;
     filter = filter && qs.parse(filter, { delimiter });
     sort = sort && qs.parse(sort, { delimiter });
 
@@ -141,11 +141,12 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
 
     if (totalCount === undefined) return;
     
+    const totalPages = Math.ceil(totalCount / size);
     const link = new LinkHeader();
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: 0, size })}`, rel: "first" }); 
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" });
-    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.min(page + 1, totalCount), size })}`, rel: "next" });
-    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.floor(totalCount / size), size })}`, rel: "last" });
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.min(page + 1, totalCount, totalPages - 1), size })}`, rel: "next" });
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: (totalPages - 1), size })}`, rel: "last" });
 
     result && res.set("X-Total-Count", totalCount) && res.set("Link", link.toString()).json(result);
 
@@ -183,7 +184,7 @@ export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next
 };
 
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
-export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;
 
 export const createGetOne = (Model, opts = defaultOpts) => async (req, res, next) => {
     
