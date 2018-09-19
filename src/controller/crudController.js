@@ -141,12 +141,15 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
 
     if (totalCount === undefined) return;
     
-    const totalPages = Math.ceil(totalCount / size);
+    const lastPage = Math.ceil(totalCount / size) - 1;
+    const prev = Math.max(page - 1, 0);
+    const nextPage = Math.min(page + 1, totalCount, lastPage);
+
     const link = new LinkHeader();
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: 0, size })}`, rel: "first" }); 
-    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" });
-    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.min(page + 1, totalCount, totalPages - 1), size })}`, rel: "next" });
-    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: (totalPages - 1), size })}`, rel: "last" });
+    page > 0 && link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: prev, size })}`, rel: "previous" });
+    page < lastPage && link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: nextPage, size })}`, rel: "next" });
+    link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: lastPage, size })}`, rel: "last" });
 
     result && res.set("X-Total-Count", totalCount) && res.set("Link", link.toString()).json(result);
 
