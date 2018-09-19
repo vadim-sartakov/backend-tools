@@ -128,10 +128,11 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     const result = await query.exec().catch(next);
     if (!result) return;
 
-    const totalCount = await Model.count(condition).catch(next);
+    const countQuery = Model.count().where({ $and: condition });
+    const totalCount = await countQuery.exec().catch(next);
 
     if (totalCount === undefined) return;
-
+    
     const link = new LinkHeader();
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: 0, size })}`, rel: "first" }); 
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: Math.max(page - 1, 0), size })}`, rel: "previous" });
