@@ -81,7 +81,8 @@ const crudRouter = (modelName, routeMap) => {
 };
 
 const defaultOpts = {
-    defaultPageSize: 20
+    defaultPageSize: 20,
+    delimiter: ","
 };
 
 /**
@@ -103,24 +104,30 @@ export const createRouteMap = (Model, opts = defaultOpts) => {
 
 };
 
+/**
+ * @param {Object} Model 
+ * @param {RouteMapOptions} opts 
+ */
 export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next) => {
 
-    const delimeter = { delimeter: opts.delimeter || "," };
+    opts = { ...defaultOpts, ...opts };
+
     const { projection, populate, condition } = getQueryValues(opts, opts.getAll, req, res);
+    const { delimiter, defaultPageSize } = opts;
 
     let { page, size, filter, sort } = req.query;
     page = page || 0;
-    size = size || opts.defaultPageSize;
-    filter = filter && qs(filter, delimeter);
-    sort = sort && qs(sort, delimeter);
+    size = size || defaultPageSize;
+    filter = filter && qs.parse(filter, { delimiter });
+    sort = sort && qs.parse(sort, { delimiter });
 
     if (filter) condition.push(filter);
 
     const query = Model.find()
-        .where({ $and: condition })
         .skip(page * size)
         .limit(size);
 
+    condition.length > 1 && query.where({ $and: condition });
     if (projection) query.select(projection);
     if (populate) query.populate(populate);
     if (sort) query.sort(sort);
@@ -128,7 +135,8 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     const result = await query.exec().catch(next);
     if (!result) return;
 
-    const countQuery = Model.count().where({ $and: condition });
+    const countQuery = Model.count();
+    condition.length > 1 && countQuery.where({ $and: condition });
     const totalCount = await countQuery.exec().catch(next);
 
     if (totalCount === undefined) return;
@@ -161,10 +169,7 @@ const getQueryValues = (opts, specificOpts, req, res) => {
 export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const { projection } = getQueryValues(opts, opts.addOne, req, res);
-
-    const query = new Model(req.body).save();
-    const instance = await query.exec(next).catch(next);
-
+    const instance = await new Model(req.body).save().catch(next);
     if (!instance) return;
 
     const createdQuery = Model.findById(instance._id);
@@ -173,7 +178,7 @@ export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next
     const createdInstance = await createdQuery.exec().catch(next);
     if (!createdInstance) return;
 
-    instance && res.status(201).location(getLocation(req, createdInstance._id)).json(createdInstance);
+    createdInstance && res.status(201).location(getLocation(req, createdInstance.id)).json(createdInstance);
 
 };
 
@@ -229,14 +234,12 @@ export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, n
 };
 
 export const createDeleteOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-
     const { condition } = getQueryValues(opts, opts.deleteOne, req, res);
-
     condition.push({ _id: req.params.id });
-
     const query = Model.findOneAndDelete({ $and: condition });
-    const result = await query.exec().catch(next);
-
+    condition && query.where({ $and: condition });
+    const instance = await query.exec().catch(next);
+    instance && res.status(204).send();
 };
 
 export default crudRouter;

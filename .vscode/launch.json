@@ -10,8 +10,6 @@
             "name": "Test current file",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
-                "--timeout",
-                "999999",
                 "--colors",
                 "--require",
                 "babel-core/register",
@@ -19,6 +17,9 @@
                 "babel-polyfill",
                 "${file}"
             ],
+            "env": {
+                "NODE_ENV": "test"
+            },
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
         },

@@ -35,12 +35,12 @@ class Query {
 }
 
 class Model {
-    constructor(opts = {}) {
-        this.find = sinon.stub().returns(opts.findQuery);
-        this.count = sinon.stub().returns(opts.countQuery);
-        this.findOne = sinon.stub().returns(opts.findOneQuery);
-        this.findOneAndUpdate = sinon.stub().returns(opts.findOneAndUpdateQuery);
-        this.findOneAndDelete = sinon.stub().returns(opts.findOneAndDeleteQuery);
+    constructor({ find, count, findOne, findOneAndUpdate, findOneAndDelete }) {
+        this.find = sinon.stub().returns(find);
+        this.count = sinon.stub().returns(count);
+        this.findOne = sinon.stub().returns(findOne);
+        this.findOneAndUpdate = sinon.stub().returns(findOneAndUpdate);
+        this.findOneAndDelete = sinon.stub().returns(findOneAndDelete);
     }
 }
 
@@ -51,19 +51,22 @@ describe('Crud controller tests', () => {
 
     describe('Get all', () => {      
 
-        describe('With default options', () => {
+        describe('Common flow with default options', () => {
 
             it('Empty response', async () => {
                 
-                const opts = { findQuery: new Query([]), countQuery: new Query(0) };
-                const modelInstance = new Model(opts);
+                const find = new Query([]);
+                const count = new Query(0);
+                const queries = { find, count };
+                const modelInstance = new Model(queries);
                 await createGetAll(modelInstance)(req, res, next);
 
-                expect(opts.findQuery.select).not.been.called;
-                expect(opts.findQuery.where).been.calledWith({ $and: [] });
-                expect(opts.findQuery.skip).been.calledWith(0);
-                expect(opts.findQuery.limit).been.calledWith(20);
-                expect(opts.countQuery.where).been.calledWith({ $and: [] });
+                expect(find.select).not.been.called;
+                expect(find.sort).not.been.called;
+                expect(find.where).been.calledWith({ $and: [] });
+                expect(find.skip).been.calledWith(0);
+                expect(find.limit).been.calledWith(20);
+                expect(count.where).been.calledWith({ $and: [] });
                 expect(res.set).been.calledWith("X-Total-Count", 0);
                 expect(res.set).been.calledWith("Link", 
                     "<http://localhost/?page=0&size=20>; rel=first, " +
@@ -80,15 +83,19 @@ describe('Crud controller tests', () => {
                 const entries = [];
                 for (let id = 0; id < 90; id++) entries.push({ id });
                 
-                const opts = { findQuery: new Query(entries), countQuery: new Query(90) };
-                const modelInstance = new Model(opts);
+                const find = new Query(entries);
+                const count = new Query(90);
+                const queries = { find, count };
+
+                const modelInstance = new Model(queries);
                 await createGetAll(modelInstance)(req, res, next);
 
-                expect(opts.findQuery.select).not.been.called;
-                expect(opts.findQuery.where).been.calledWith({ $and: [] });
-                expect(opts.findQuery.skip).been.calledWith(0);
-                expect(opts.findQuery.limit).been.calledWith(20);
-                expect(opts.countQuery.where).been.calledWith({ $and: [] });
+                expect(find.select).not.been.called;
+                expect(find.sort).not.been.called;
+                expect(find.where).been.calledWith({ $and: [] });
+                expect(find.skip).been.calledWith(0);
+                expect(find.limit).been.calledWith(20);
+                expect(count.where).been.calledWith({ $and: [] });
                 expect(res.set).been.calledWith("X-Total-Count", 90);
                 expect(res.set).been.calledWith("Link", 
                     "<http://localhost/?page=0&size=20>; rel=first, " +
@@ -101,24 +108,43 @@ describe('Crud controller tests', () => {
 
             });
 
-            const testException = async modelInstance => {
+            it('Error on select', async () => {
+                const queries = { find: new Query([], "error"), count: new Query(0) };
+                const modelInstance = new Model(queries);
                 await createGetAll(modelInstance)(req, res, next);
                 expect(next).been.called;
                 expect(res.json).not.been.called;
-            };
-
-            it('Error on select', async () => {
-                const opts = { findQuery: new Query([], "error"), countQuery: new Query(0) };
-                const modelInstance = new Model(opts);
-                await testException(modelInstance);
             });
 
             it('Error on count', async () => {
-                const opts = { findQuery: new Query([]), countQuery: new Query(0, "error") };
-                const modelInstance = new Model(opts);
-                await testException(modelInstance);
+                const queries = { find: new Query([]), count: new Query(0, "error") };
+                const modelInstance = new Model(queries);
+                await createGetAll(modelInstance)(req, res, next);
+                expect(next).been.called;
+                expect(res.json).not.been.called;
             });
 
+        });
+
+        describe('With specified options', () => {
+
+            it('Custom security', async () => {
+                const queries = { find: new Query([]), count: new Query(0) };
+                const modelInstance = new Model(queries);
+                const getAll = createGetAll(modelInstance, { securityCallback: () => ({ field: "value" }) });
+                await getAll(req, res, next);
+                expect(queries.find.where).been.calledWith({ $and: [ { field: "value" } ] });
+            });
+
+            it('Custom security and filter', async () => {
+                req.query = { filter: "number=1,string=test" };
+                const queries = { find: new Query([]), count: new Query(0) };
+                const modelInstance = new Model(queries);
+                const getAll = createGetAll(modelInstance, { securityCallback: () => ({ field: "value" }) });
+                await getAll(req, res, next);
+                expect(queries.find.where).been.calledWith({ $and: [ { field: "value" }, { number: "1", string: "test" } ] });
+            });
+            
         });
 
     });

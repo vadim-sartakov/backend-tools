@@ -22,6 +22,7 @@ describe('Validation and translations', () => {
     after(async () => { 
         await conn.connection.dropDatabase();
         await disconnectDatabase();
+        app.close();
     });
 
     it('Add user with empty fields', async () => {
@@ -37,10 +38,10 @@ describe('Validation and translations', () => {
     const validateFields = (res, errCount, ...fields) => {
         const { errors } = res.body;
         expect(errors).not.to.be.undefined;
-        expect(Object.keys(errors).length).toEqual(errCount);
+        expect(Object.keys(errors).length).to.equal(errCount);
         fields.forEach(field => {
-            expect(errors[field.name]).toBeDefined();
-            expect(errors[field.name].message).toMatch(field.value);
+            expect(errors[field.name]).not.to.be.undefined;
+            expect(errors[field.name].message).to.equal(field.value);
         });
     };
 
