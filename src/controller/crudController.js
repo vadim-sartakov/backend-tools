@@ -112,7 +112,7 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
 
     opts = { ...defaultOpts, ...opts };
 
-    const { projection, populate, condition } = getQueryValues(opts, opts.getAll, req, res);
+    const { projection, populate, conditions } = getQueryValues(opts, opts.getAll, req, res);
     const { delimiter, defaultPageSize } = opts;
 
     let { page, size, filter, sort } = req.query;
@@ -121,13 +121,17 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     filter = filter && qs.parse(filter, { delimiter });
     sort = sort && qs.parse(sort, { delimiter });
 
-    if (filter) condition.push(filter);
+    if (filter) conditions.push(filter);
+
+    const condition = 
+            (conditions.length === 1 && conditions[0]) ||
+            (conditions.length > 1 && { $and: conditions });
 
     const query = Model.find()
         .skip(page * size)
         .limit(size);
 
-    condition.length > 1 && query.where({ $and: condition });
+    condition && query.where({ $and: conditions });
     if (projection) query.select(projection);
     if (populate) query.populate(populate);
     if (sort) query.sort(sort);
@@ -136,7 +140,7 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     if (!result) return;
 
     const countQuery = Model.count();
-    condition.length > 1 && countQuery.where({ $and: condition });
+    condition && countQuery.where({ $and: condition });
     const totalCount = await countQuery.exec().catch(next);
 
     if (totalCount === undefined) return;
