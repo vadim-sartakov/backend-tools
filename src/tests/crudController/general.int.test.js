@@ -29,20 +29,31 @@ describe('General crud integration tests', () => {
 
     describe('Get all', () => {
 
+        const expectedLinks = ({ first, prev, next, last, size }) => 
+                `<http://127.0.0.1:${process.env.PORT}/users?page=${first}&size=${size}>; rel=first, ` +
+                `<http://127.0.0.1:${process.env.PORT}/users?page=${prev}&size=${size}>; rel=previous, ` +
+                `<http://127.0.0.1:${process.env.PORT}/users?page=${next}&size=${size}>; rel=next, ` +
+                `<http://127.0.0.1:${process.env.PORT}/users?page=${last}&size=${size}>; rel=last`;
+
         it('Get empty user list', async () => {
             const res = await request(app).get("/users").expect(200, []);
-            expect(res.get("Link")).to.equal(
-                    `<http://127.0.0.1:${process.env.PORT}/users?page=0&size=20>; rel=first, ` +
-                    `<http://127.0.0.1:${process.env.PORT}/users?page=0&size=20>; rel=previous, ` +
-                    `<http://127.0.0.1:${process.env.PORT}/users?page=0&size=20>; rel=next, ` +
-                    `<http://127.0.0.1:${process.env.PORT}/users?page=0&size=20>; rel=last`);
+            expect(res.get("Link")).to.equal(expectedLinks({ first: 0, prev: 0, next: 0, last: 0, size: 20 }));
             expect(res.get("X-Total-Count")).to.equal("0");
         });
 
-        it('Get user list of 1 entry', async () => {
-            const instance = await new User(doc).save();
-            await request(app).get("/users")
-                .expect(200, [{ _id: instance.id, ...doc }]).send();
+        describe('Long list', () => {
+
+            before(async () => {
+                for(let i = 0; i < 20; i++)
+                    await new User({ ...doc, number: i, email: `mail${i}@mail.co`, phoneNumber: i }).save();
+            });
+
+            it('Get user list of 50 entries', async () => {
+                const res = await request(app).get("/users").expect(200).send();
+                expect(res.get("Link")).to.equal(expectedLinks({ first: 0, prev: 0, next: 1, last: 3, size: 5 }));
+                expect(res.get("X-Total-Count")).to.equal("20");
+            });
+
         });
 
     });

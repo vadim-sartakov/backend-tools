@@ -11,6 +11,7 @@ const userSchema = new Schema({
         required: true,
         match: /^\w+$/
     },
+    number: Number,
     email: {
         type: String,
         lowercase: true,
