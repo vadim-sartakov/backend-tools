@@ -15,10 +15,11 @@ export const populateDatabase = async (count, startDate) => {
     const departmentInstance = await new Department(department).save();
 
     let createdAt = startDate;
+    const users = [];
     for(let i = 0; i < count; i++) {
         createdAt = new Date(createdAt);
         createdAt.setDate(createdAt.getDate() + 1);
-        await new User({
+        users.push({
             ...bill,
             number: i,
             email: `mail${i}@mail.com`,
@@ -26,7 +27,9 @@ export const populateDatabase = async (count, startDate) => {
             createdAt,
             roles: [ adminInstance, moderatorInstance ],
             department: departmentInstance
-        }).save();
+        });
     }
+
+    await User.insertMany(users);
 
 };

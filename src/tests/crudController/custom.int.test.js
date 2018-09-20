@@ -4,6 +4,7 @@ import createApp from './config/app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User, { userFilter } from './model/user';
 import Role from './model/user';
+import { populateDatabase } from './utils';
 
 describe('With custom callbacks provided', () => {
 
@@ -14,6 +15,7 @@ describe('With custom callbacks provided', () => {
             securityCallback: userFilter
         });
         conn = await connectDatabase("crudCustomOptsTests");
+        await populateDatabase(12, new Date());
     });
 
     after(async () => { 
