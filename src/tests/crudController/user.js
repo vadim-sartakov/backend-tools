@@ -20,7 +20,8 @@ const userSchema = new Schema({
     phoneNumber: {
         type: String,
         unique: true
-    }
+    },
+    createdAt: Date
 }, { versionKey: false });
 
 export const userTranslations = {

@@ -13,12 +13,24 @@ describe('Get all bulk tests', () => {
 
     const doc = { firstName: "Bill", lastName: "Gates" };
     const entryCount = 42;
+    const startDate = new Date();
 
     let conn;
     before(async () => {
         conn = await connectDatabase("bulkGetAll");
-        for(let i = 0; i < entryCount; i++)
-            await new User({ ...doc, number: i, email: `mail${i}@mail.com`, phoneNumber: i }).save();
+        let createdAt = startDate;
+        for(let i = 0; i < entryCount; i++) {
+            createdAt = new Date(createdAt);
+            createdAt.setDate(createdAt.getDate() + 1);
+            await new User({ 
+                ...doc,
+                number: i,
+                email: `mail${i}@mail.com`,
+                phoneNumber: i,
+                createdAt
+            }).save();
+        }
+            
     });
 
     after(async () => { 
@@ -69,7 +81,12 @@ describe('Get all bulk tests', () => {
         });
 
         it('Date range', async () => {
-
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 5);
+            const res = await request(app).get("/users")
+                    .query(qs.stringify({ filter: { createdAt: { $gt: startDate, $lt: endDate } } }))
+                    .expect(200).send();
+            expect(res.get("X-Total-Count")).to.equal("4");
         });
 
     });

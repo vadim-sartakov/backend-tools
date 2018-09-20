@@ -1,6 +1,5 @@
 import { Router } from "express";
 import querystring from "querystring";
-import qs from "qs";
 import LinkHeader from "http-link-header";
 import { createModelSetMiddleware } from "../middleware/crud";
 
@@ -39,7 +38,6 @@ import { createModelSetMiddleware } from "../middleware/crud";
  * @property {ProjectionCallback} projectionCallback
  * @property {PopulateCallback} populateCallback
  * @property {number} defaultPageSize
- * @property {string} delimeter - filter and sorting delimeter
  * @property {Handler} getAll
  * @property {Handler} addOne
  * @property {Handler} getOne
@@ -104,7 +102,13 @@ export const createRouteMap = (Model, opts = defaultOpts) => {
 
 };
 
-const normalizeConditions = conditions => (conditions.length === 1 && conditions[0]) || (conditions.length > 1 && { $and: conditions });
+const normalizeConditions = conditions => {
+    if (conditions.length === 1) {
+        return conditions[0];
+    } else if (conditions.length > 1) {
+        return { $and: conditions };
+    }
+};
 
 /**
  * @param {Object} Model 
@@ -115,13 +119,11 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     opts = { ...defaultOpts, ...opts };
 
     const { projection, populate, conditions } = getQueryValues(opts, opts.getAll, req, res);
-    const { delimiter, defaultPageSize } = opts;
+    const { defaultPageSize } = opts;
 
     let { page, size, filter, sort } = req.query;
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
-    filter = filter && qs.parse(filter, { delimiter });
-    sort = sort && qs.parse(sort, { delimiter });
 
     if (filter) conditions.push(filter);
 
