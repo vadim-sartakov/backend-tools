@@ -13,12 +13,12 @@ describe('Get all bulk tests', () => {
 
     const doc = { firstName: "Bill", lastName: "Gates" };
     const entryCount = 42;
-    const startDate = new Date();
+    const now = new Date();
 
     let conn;
     before(async () => {
         conn = await connectDatabase("bulkGetAll");
-        let createdAt = startDate;
+        let createdAt = now;
         for(let i = 0; i < entryCount; i++) {
             createdAt = new Date(createdAt);
             createdAt.setDate(createdAt.getDate() + 1);
@@ -81,12 +81,37 @@ describe('Get all bulk tests', () => {
         });
 
         it('Date range', async () => {
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 5);
+            const startDate = new Date(now);
+            const endDate = new Date(now);
+            startDate.setDate(startDate.getDate() + 5);
+            endDate.setDate(endDate.getDate() + 10);
             const res = await request(app).get("/users")
                     .query(qs.stringify({ filter: { createdAt: { $gt: startDate, $lt: endDate } } }))
                     .expect(200).send();
             expect(res.get("X-Total-Count")).to.equal("4");
+        });
+
+        it('Date before', async () => {
+            const endDate = new Date(now);
+            endDate.setDate(endDate.getDate() + 10);
+            const res = await request(app).get("/users")
+                    .query(qs.stringify({ filter: { createdAt: { $lt: endDate } } }))
+                    .expect(200).send();
+            expect(res.get("X-Total-Count")).to.equal("9");
+        });
+
+        it('Number great or equals', async () => {
+            const res = await request(app).get("/users")
+                    .query(qs.stringify({ filter: { number: { $gte: 12 } } }))
+                    .expect(200).send();
+            expect(res.get("X-Total-Count")).to.equal("30");
+        });
+
+        it('Or condition', async () => {
+            const res = await request(app).get("/users")
+                    .query(qs.stringify({ filter: { $or: [ { number: 12 }, { email: "mail1@mail.com" } ] } }))
+                    .expect(200).send();
+            expect(res.get("X-Total-Count")).to.equal("2");
         });
 
     });
