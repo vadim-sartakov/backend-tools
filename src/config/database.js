@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import uniqueValidator from 'mongoose-unique-validator';
+import autopopulatePlugin from 'mongoose-autopopulate';
 import createLogger from './logger';
 
 const transformDefaultMessages = () => {
@@ -13,7 +14,12 @@ const transformDefaultMessages = () => {
 
 transformDefaultMessages();
 
+export const autopopulate = function(opts) {
+    return (this._fields && this._fields[opts.path]) || true;
+};
+
 mongoose.plugin(uniqueValidator, { message: 'general-unique-{PATH}-{MIN}-{MAX}-{MINLENGTH}-{MAXLENGTH}' });
+mongoose.plugin(autopopulatePlugin);
 
 export const connectDatabase = database => {
 

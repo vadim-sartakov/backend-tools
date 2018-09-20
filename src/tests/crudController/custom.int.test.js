@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import createApp from './config/app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import User, { userFilter } from './model/user';
-import Role from './model/user';
 import { populateDatabase } from './utils';
 
 describe('With custom callbacks provided', () => {
@@ -16,6 +15,17 @@ describe('With custom callbacks provided', () => {
         });
         conn = await connectDatabase("crudCustomOptsTests");
         await populateDatabase(12, new Date());
+    });
+
+    it('Population', async () => {
+
+        const res = await User.find()
+            .limit(20)
+            //.select("-department")
+            .exec();
+
+        expect(res.length).to.be.greaterThan(0);
+
     });
 
     after(async () => { 

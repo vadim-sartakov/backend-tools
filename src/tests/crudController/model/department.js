@@ -5,6 +5,6 @@ const departmentSchema = new Schema({
     address: String
 });
 
-const Department = mongoose.model("Group", departmentSchema);
+const Department = mongoose.model("Department", departmentSchema);
 export const department = { name: "Department name", description: "Department address" };
 export default Department;
