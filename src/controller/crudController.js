@@ -104,6 +104,8 @@ export const createRouteMap = (Model, opts = defaultOpts) => {
 
 };
 
+const normalizeConditions = conditions => (conditions.length === 1 && conditions[0]) || (conditions.length > 1 && { $and: conditions });
+
 /**
  * @param {Object} Model 
  * @param {RouteMapOptions} opts 
@@ -123,15 +125,13 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
 
     if (filter) conditions.push(filter);
 
-    const condition = 
-            (conditions.length === 1 && conditions[0]) ||
-            (conditions.length > 1 && { $and: conditions });
+    const condition = normalizeConditions(conditions);
 
     const query = Model.find()
         .skip(page * size)
         .limit(size);
 
-    condition && query.where({ $and: conditions });
+    condition && query.where(condition);
     if (projection) query.select(projection);
     if (populate) query.populate(populate);
     if (sort) query.sort(sort);
@@ -140,12 +140,12 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     if (!result) return;
 
     const countQuery = Model.count();
-    condition && countQuery.where({ $and: condition });
+    condition && countQuery.where(condition);
     const totalCount = await countQuery.exec().catch(next);
 
     if (totalCount === undefined) return;
     
-    const lastPage = Math.ceil(totalCount / size) - 1;
+    const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
     const prev = Math.max(page - 1, 0);
     const nextPage = Math.min(page + 1, totalCount, lastPage);
 
@@ -167,10 +167,10 @@ const getQueryValues = (opts, specificOpts, req, res) => {
     const projection = projectionCallback && projectionCallback(req, res);
     const populate = populateCallback && populateCallback(req, res);
 
-    const condition = [];
-    if (security) condition.push(security);
+    const conditions = [];
+    if (security) conditions.push(security);
 
-    return { security, projection, populate, condition };
+    return { security, projection, populate, conditions };
 
 };
 
@@ -195,11 +195,12 @@ export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.b
 
 export const createGetOne = (Model, opts = defaultOpts) => async (req, res, next) => {
     
-    const { projection, populate, condition } = getQueryValues(opts, opts.getOne, req, res);
+    const { projection, populate, conditions } = getQueryValues(opts, opts.getOne, req, res);
 
-    condition.push({ _id: req.params.id });
+    conditions.push({ _id: req.params.id });
+    const condition = normalizeConditions(conditions);
 
-    const query = Model.findOne({ $and: condition });
+    const query = Model.findOne(condition);
     if (projection) query.select(projection);
     if (populate) query.populate(populate);
     const instance = await query.exec().catch(next);
@@ -210,9 +211,10 @@ export const createGetOne = (Model, opts = defaultOpts) => async (req, res, next
 
 export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
-    const { projection, populate, condition } = getQueryValues(opts, opts.updateOne, req, res);
+    const { projection, populate, conditions } = getQueryValues(opts, opts.updateOne, req, res);
 
-    condition.push({ _id: req.params.id });
+    conditions.push({ _id: req.params.id });
+    const condition = normalizeConditions(conditions);
 
     // Removing prohibited keys
     if (projection) {
@@ -225,7 +227,7 @@ export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, n
             .forEach(key => delete res.body[key]);        
     }
 
-    const query = Model.findOneAndUpdate({ $and: condition }, req.body, { runValidators: true, context: 'query' });
+    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query' });
 
     const instance = await query.exec().catch(next);
     if (!instance) return;
@@ -242,10 +244,11 @@ export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, n
 };
 
 export const createDeleteOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-    const { condition } = getQueryValues(opts, opts.deleteOne, req, res);
-    condition.push({ _id: req.params.id });
-    const query = Model.findOneAndDelete({ $and: condition });
-    condition && query.where({ $and: condition });
+    const { conditions } = getQueryValues(opts, opts.deleteOne, req, res);
+    conditions.push({ _id: req.params.id });
+    const condition = normalizeConditions(conditions);
+    const query = Model.findOneAndDelete(condition);
+    query.where(condition);
     const instance = await query.exec().catch(next);
     instance && res.status(204).send();
 };

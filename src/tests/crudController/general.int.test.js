@@ -33,7 +33,7 @@ describe('General crud integration tests', () => {
 
         it('Get empty user list', async () => {
             const res = await request(app).get("/users").expect(200, []);
-            expect(res.get("Link")).to.equal(expectedLinks({ first: 0, prev: 0, next: 0, last: 0, size: 20, port }));
+            expect(res.get("Link")).to.equal(expectedLinks({ first: 0, last: 0, size: 20, port }));
             expect(res.get("X-Total-Count")).to.equal("0");
         });
 
