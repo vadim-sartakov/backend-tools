@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { expect } from 'chai';
-import createApp from './app';
+import createApp from './config/app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from './user';
+import User from './model/user';
 import { expectedLinks } from './utils';
 
 const app = createApp();
@@ -11,7 +11,7 @@ const port = app.address().port;
 describe('General crud integration tests', () => {
 
     const notFoundMessage = { message: 'Not found' };
-    const doc = { firstName: "Bill", lastName: "Gates" };
+    const doc = { firstName: "Bill", lastName: "Gates", roles: [] };
     const diff = { firstName: "Steve" };
 
     let conn;

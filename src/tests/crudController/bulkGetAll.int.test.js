@@ -1,36 +1,22 @@
 import request from 'supertest';
 import { expect } from 'chai';
 import qs from 'qs';
-import createApp from './app';
+import createApp from './config/app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from './user';
-import { expectedLinks } from './utils';
+import { expectedLinks, populateDatabase } from './utils';
 
 const app = createApp();
 const port = app.address().port;
 
 describe('Get all bulk tests', () => {
 
-    const doc = { firstName: "Bill", lastName: "Gates" };
     const entryCount = 42;
     const now = new Date();
 
     let conn;
     before(async () => {
-        conn = await connectDatabase("bulkGetAll");
-        let createdAt = now;
-        for(let i = 0; i < entryCount; i++) {
-            createdAt = new Date(createdAt);
-            createdAt.setDate(createdAt.getDate() + 1);
-            await new User({ 
-                ...doc,
-                number: i,
-                email: `mail${i}@mail.com`,
-                phoneNumber: i,
-                createdAt
-            }).save();
-        }
-            
+        conn = await connectDatabase("crudBulkGetAll");
+        await populateDatabase(entryCount, now);            
     });
 
     after(async () => { 
@@ -112,6 +98,17 @@ describe('Get all bulk tests', () => {
                     .query(qs.stringify({ filter: { $or: [ { number: 12 }, { email: "mail1@mail.com" } ] } }))
                     .expect(200).send();
             expect(res.get("X-Total-Count")).to.equal("2");
+        });
+
+    });
+
+    describe('Sorting', () => {
+
+        it ('Desc number', async () => {
+            const res = await request(app).get("/users")
+                .query(qs.stringify({ sort: { number: -1 } }))
+                .expect(200).send();
+            expect(res.body[0].number).to.equal(41);
         });
 
     });

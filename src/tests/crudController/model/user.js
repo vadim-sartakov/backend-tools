@@ -21,7 +21,9 @@ const userSchema = new Schema({
         type: String,
         unique: true
     },
-    createdAt: Date
+    createdAt: Date,
+    roles: [{ type: Schema.Types.ObjectId, ref: "Role" }],
+    department: { type: Schema.Types.ObjectId, ref: "Department" }
 }, { versionKey: false });
 
 export const userTranslations = {
@@ -47,4 +49,5 @@ export const userTranslations = {
 };
 
 const User = mongoose.model("User", userSchema);
+export const bill = { firstName: "Bill", lastName: "Gates" };
 export default User;
