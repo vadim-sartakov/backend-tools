@@ -50,4 +50,12 @@ export const userTranslations = {
 
 const User = mongoose.model("User", userSchema);
 export const bill = { firstName: "Bill", lastName: "Gates" };
+
+export const filter = (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && { number: 5 };
+
+export const projection = {
+    list: () => "firstName lastName department",
+    entry: (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && "-phoneNumber"
+};
+
 export default User;

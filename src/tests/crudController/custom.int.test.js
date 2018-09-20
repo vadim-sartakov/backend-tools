@@ -2,19 +2,17 @@ import request from 'supertest';
 import { expect } from 'chai';
 import createApp from './config/app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from './model/user';
+import User, { userFilter } from './model/user';
 import Role from './model/user';
-
-/*const app = createApp({ 
-    securityCallback: () => ({ number: 5 }),
-
-    populateCallback: () => [{ path: 'roles', select: '-description' }, 'groups']
-});*/
 
 describe('With custom callbacks provided', () => {
 
-    /*let conn;
+    let user, app, conn;
     before(async () => {
+        user = { roles: [ "USER" ] };
+        app = createApp(user, { 
+            securityCallback: userFilter
+        });
         conn = await connectDatabase("crudCustomOptsTests");
     });
 
@@ -22,6 +20,6 @@ describe('With custom callbacks provided', () => {
         await conn.connection.dropDatabase();
         await disconnectDatabase();
         app.close();
-    });*/
+    });
 
 });

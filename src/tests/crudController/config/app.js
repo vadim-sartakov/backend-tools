@@ -11,7 +11,7 @@ import User, { userTranslations } from '../model/user';
 
 let portCounter = 6000;
 
-const createApp = crudOptions => {
+const createApp = (user, crudOptions) => {
 
     const app = express();
 
@@ -20,6 +20,10 @@ const createApp = crudOptions => {
 
     app.use(generalMiddlewares);
     app.use(createI18nMiddleware(i18n));
+    app.use((req, res, next) => {
+        res.locals.user = user;
+        next();
+    });
     app.use("/users", crudRouter(User.modelName, createRouteMap(User, crudOptions)));
     app.use(crudValidationMiddleware);
     app.use(httpMiddlewares);
