@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { expect } from 'chai';
-import createApp from './config/app';
+import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User, { userFilter } from './model/user';
-import { populateDatabase } from './utils';
+import User, { userFilter } from '../model/user';
+import { populateDatabase } from '../utils';
 
 describe('With custom callbacks provided', () => {
 

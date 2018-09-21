@@ -1,13 +1,13 @@
-import env from '../../../config/env'; // eslint-disable-line no-unused-vars
-import { connectDatabase } from '../../../config/database'; // eslint-disable-line no-unused-vars
+import env from '../config/env'; // eslint-disable-line no-unused-vars
+import { connectDatabase } from '../config/database'; // eslint-disable-line no-unused-vars
 import express from 'express';
-import crudRouter, { createRouteMap } from '../../../controller/crudController';
-import generalMiddlewares from '../../../middleware/general';
-import { createI18n, createI18nMiddleware } from '../../../middleware/i18n';
-import crudValidationMiddleware from '../../../middleware/crud';
-import httpMiddlewares from '../../../middleware/http';
+import crudRouter, { createRouteMap } from '../controller/crudController';
+import generalMiddlewares from '../middleware/general';
+import { createI18n, createI18nMiddleware } from '../middleware/i18n';
+import crudValidationMiddleware from '../middleware/crud';
+import httpMiddlewares from '../middleware/http';
 
-import User, { userTranslations } from '../model/user';
+import User, { userTranslations } from './model/user';
 
 let portCounter = 6000;
 

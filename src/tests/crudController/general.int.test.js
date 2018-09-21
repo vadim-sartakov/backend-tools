@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { expect } from 'chai';
-import createApp from './config/app';
+import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from './model/user';
-import { expectedLinks } from './utils';
+import User from '../model/user';
+import { expectedLinks } from '../utils';
 
 const app = createApp();
 const port = app.address().port;

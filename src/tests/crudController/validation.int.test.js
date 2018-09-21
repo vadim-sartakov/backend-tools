@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { expect } from 'chai';
-import createApp from './config/app';
+import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from './model/user';
+import User from '../model/user';
 
 const app = createApp();
 
