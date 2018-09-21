@@ -2,7 +2,7 @@ import request from 'supertest';
 import { expect } from 'chai';
 import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User, { userFilter } from '../model/user';
+import { userFilter } from '../model/user';
 import { populateDatabase } from '../utils';
 
 describe('With custom callbacks provided', () => {
@@ -17,7 +17,7 @@ describe('With custom callbacks provided', () => {
         await populateDatabase(12, new Date());
     });
 
-    it('Population', async () => {
+    /*it('Population', async () => {
 
         const res = await User.find()
             .limit(20)
@@ -26,7 +26,7 @@ describe('With custom callbacks provided', () => {
 
         expect(res.length).to.be.greaterThan(0);
 
-    });
+    });*/
 
     after(async () => { 
         await conn.connection.dropDatabase();

@@ -4,17 +4,19 @@ import qs from 'qs';
 import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
 import { expectedLinks, populateDatabase } from '../utils';
+import { loadModels } from "../model/loader";
 
-const app = createApp();
-const port = app.address().port;
+loadModels();
 
 describe('Get all bulk tests', () => {
 
     const entryCount = 42;
     const now = new Date();
 
-    let conn;
+    let app, port, conn;
     before(async () => {
+        app = createApp();
+        port = app.address().port;
         conn = await connectDatabase("crudBulkGetAll");
         await populateDatabase(entryCount, now);            
     });

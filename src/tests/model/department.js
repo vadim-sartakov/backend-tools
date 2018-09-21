@@ -1,10 +1,11 @@
-import mongoose, { Schema } from "mongoose";
+import { Schema } from "mongoose";
+import { addSchema } from "./loader";
 
 const departmentSchema = new Schema({
     name: String,
     address: String
 });
 
-const Department = mongoose.model("Department", departmentSchema);
+addSchema("Department", departmentSchema);
+
 export const department = { name: "Department name", description: "Department address" };
-export default Department;

@@ -1,11 +1,12 @@
-import mongoose, { Schema } from "mongoose";
+import { Schema } from "mongoose";
+import { addSchema } from "./loader";
 
 const roleSchema = new Schema({
     key: String,
     description: String
 });
 
-const Role = mongoose.model("Role", roleSchema);
-export const admin = new Role({ key: "ADMIN", description: "Admin description" });
-export const moderator = new Role({ key: "MODERATOR", description: "Moderator description" });
-export default Role;
+addSchema("Role", roleSchema);
+
+export const admin = { key: "ADMIN", description: "Admin description" };
+export const moderator = { key: "MODERATOR", description: "Moderator description" };

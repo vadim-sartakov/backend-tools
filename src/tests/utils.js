@@ -1,6 +1,7 @@
-import User, { bill } from './model/user';
-import Role, { admin, moderator } from './model/role';
-import Department, { department } from './model/department';
+import mongoose from 'mongoose';
+import { bill } from './model/user';
+import { admin, moderator } from './model/role';
+import { department } from './model/department';
 
 export const expectedLinks = ({ first, prev, next, last, size, port }) => 
         `<http://127.0.0.1:${port}/users?page=${first}&size=${size}>; rel=first, ` +
@@ -9,6 +10,10 @@ export const expectedLinks = ({ first, prev, next, last, size, port }) =>
         `<http://127.0.0.1:${port}/users?page=${last}&size=${size}>; rel=last`;
 
 export const populateDatabase = async (count, startDate) => {
+
+    const User = mongoose.model("User");
+    const Role = mongoose.model("Role");
+    const Department = mongoose.model("Department");
 
     const adminInstance = await new Role(admin).save();
     const moderatorInstance = await new Role(moderator).save();

@@ -1,17 +1,21 @@
 import request from 'supertest';
+import mongoose from 'mongoose';
 import { expect } from 'chai';
 import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from '../model/user';
+import { loadModels } from "../model/loader";
 
-const app = createApp();
+loadModels();
+
+const User = mongoose.model("User");
 
 describe('Validation and translations', () => {
         
     const doc = { firstName: "Bill", lastName: "Gates" };
 
-    let conn;
+    let app, conn;
     before(async () => {
+        app = createApp();
         conn = await connectDatabase("crudValidationTests");
     });
 

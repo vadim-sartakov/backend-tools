@@ -1,10 +1,9 @@
-import mongoose, { Schema } from "mongoose";
+import { Schema } from "mongoose";
+import { addSchema } from "./loader";
+import { roleSchema } from "./role"; // eslint-disable-line no-unused-vars
+import { departmentSchema } from "./department"; // eslint-disable-line no-unused-vars
 
-const securitySchema = new Schema({
-    roles: [{ type: Schema.Types.ObjectId, ref: "Role" }]
-});
-
-const userSchema = new Schema({
+export const userSchema = new Schema({
     firstName: {
         type: String,
         required: true,
@@ -52,14 +51,12 @@ export const userTranslations = {
     }
 };
 
-const User = mongoose.model("User", userSchema);
-export const bill = { firstName: "Bill", lastName: "Gates" };
+addSchema("User", userSchema);
 
+export const bill = { firstName: "Bill", lastName: "Gates" };
 export const filter = (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && { number: 5 };
 
 export const projection = {
     list: () => "firstName lastName department",
     entry: (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && "-phoneNumber"
 };
-
-export default User;

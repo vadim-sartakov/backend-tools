@@ -1,12 +1,14 @@
+import mongoose from 'mongoose';
 import request from 'supertest';
 import { expect } from 'chai';
 import createApp from '../app';
 import { connectDatabase, disconnectDatabase } from '../../config/database';
-import User from '../model/user';
 import { expectedLinks } from '../utils';
+import { loadModels } from "../model/loader";
 
-const app = createApp();
-const port = app.address().port;
+loadModels();
+
+const User = mongoose.model("User");
 
 describe('General crud integration tests', () => {
 
@@ -14,8 +16,10 @@ describe('General crud integration tests', () => {
     const doc = { firstName: "Bill", lastName: "Gates", roles: [] };
     const diff = { firstName: "Steve" };
 
-    let conn;
+    let app, port, conn;
     before(async () => {
+        app = createApp();
+        port = app.address().port;
         conn = await connectDatabase("crudGeneralTests");
     });
 

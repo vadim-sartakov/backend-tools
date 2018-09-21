@@ -1,18 +1,19 @@
 import env from '../config/env'; // eslint-disable-line no-unused-vars
 import { connectDatabase } from '../config/database'; // eslint-disable-line no-unused-vars
+import mongoose from 'mongoose';
 import express from 'express';
 import crudRouter, { createRouteMap } from '../controller/crudController';
 import generalMiddlewares from '../middleware/general';
 import { createI18n, createI18nMiddleware } from '../middleware/i18n';
 import crudValidationMiddleware from '../middleware/crud';
 import httpMiddlewares from '../middleware/http';
-
-import User, { userTranslations } from './model/user';
+import { userTranslations } from './model/user';
 
 let portCounter = 6000;
 
 const createApp = (user, crudOptions) => {
 
+    const User = mongoose.model("User");
     const app = express();
 
     const i18n = createI18n();
