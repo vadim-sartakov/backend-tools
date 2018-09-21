@@ -15,7 +15,7 @@ const User = mongoose.model("User");
 describe("Autopopulate plugin", () => {
 
     before(async () => {
-        await mongoose.connect(`${process.env.DB_URL}/autopopulateTest`, { useNewUrlParser: true });
+        await mongoose.connect(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
         await populateDatabase(1, new Date());
     });
     after(async () => {
