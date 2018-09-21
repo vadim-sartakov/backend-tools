@@ -1,3 +1,4 @@
+import env from './config/env';  // eslint-disable-line no-unused-vars
 import express from 'express';
 import { connectDatabase } from './config/database';
 import createLogger from './config/logger';
