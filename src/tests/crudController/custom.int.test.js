@@ -21,7 +21,7 @@ describe('With custom callbacks provided', () => {
 
         const res = await User.find()
             .limit(20)
-            //.select("-department")
+            //.select("firstName lastName")
             .exec();
 
         expect(res.length).to.be.greaterThan(0);

@@ -1,5 +1,8 @@
 import mongoose, { Schema } from "mongoose";
-import { autopopulate } from '../../../config/database';
+
+const securitySchema = new Schema({
+    roles: [{ type: Schema.Types.ObjectId, ref: "Role" }]
+});
 
 const userSchema = new Schema({
     firstName: {
@@ -23,8 +26,8 @@ const userSchema = new Schema({
         unique: true
     },
     createdAt: Date,
-    roles: [{ type: Schema.Types.ObjectId, ref: "Role", autopopulate }],
-    department: { type: Schema.Types.ObjectId, ref: "Department", autopopulate }
+    roles: [{ type: Schema.Types.ObjectId, ref: "Role" }],
+    department: { type: Schema.Types.ObjectId, ref: "Department" }
 }, { versionKey: false });
 
 export const userTranslations = {
