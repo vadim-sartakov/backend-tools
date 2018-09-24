@@ -1,26 +1,38 @@
-import mongoose from 'mongoose';
-import request from 'supertest';
-import { expect } from 'chai';
-import createApp from '../app';
-import { connectDatabase, disconnectDatabase } from '../../config/database';
-import { expectedLinks } from '../utils';
+import env from "../../config/env"; // eslint-disable-line no-unused-vars
+import express from "express";
+import mongoose from "mongoose";
+import request from "supertest";
+import { expect } from "chai";
+import i18n from "../../plugin/i18n";
+import generalMiddlewares from "../../middleware/general";
+import httpMiddlewares from "../../middleware/http";
+import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
+import crudRouter from "../../controller/crudController";
+import { getNextPort, expectedLinks } from "../utils";
 import { loadModels } from "../model/loader";
+
+mongoose.plugin(i18n);
 
 loadModels();
 
 const User = mongoose.model("User");
 
-describe('General crud integration tests', () => {
+describe("General crud integration tests", () => {
 
-    const notFoundMessage = { message: 'Not found' };
+    const notFoundMessage = { message: "Not found" };
     const doc = { firstName: "Bill", lastName: "Gates", roles: [] };
     const diff = { firstName: "Steve" };
 
-    let app, port, conn;
+    let server, port;
     before(async () => {
-        app = createApp();
-        port = app.address().port;
-        conn = await connectDatabase("crudGeneralTests");
+        const app = express();
+        app.use(generalMiddlewares);
+        app.use(createI18nMiddleware(createI18n()));
+        app.use("/users", crudRouter(User));
+        app.use(httpMiddlewares);
+        server = app.listen(getNextPort());
+        port = server.address().port;
+        await mongoose.connect(`${process.env.DB_URL}/crudGeneralTests`, { useNewUrlParser: true });
     });
 
     const dropCollection = async () => await User.deleteMany({ });
@@ -28,24 +40,24 @@ describe('General crud integration tests', () => {
     afterEach(dropCollection);    
 
     after(async () => { 
-        await conn.connection.dropDatabase();
-        await disconnectDatabase();
-        app.close();
+        await mongoose.connection.dropDatabase();
+        await mongoose.connection.close(true);
+        server.close();
     });
 
-    describe('Get all', () => {
+    describe("Get all", () => {
 
-        it('Get empty user list', async () => {
-            const res = await request(app).get("/users").expect(200, []);
+        it("Get empty user list", async () => {
+            const res = await request(server).get("/users").expect(200, []);
             expect(res.get("Link")).to.equal(expectedLinks({ first: 0, last: 0, size: 20, port }));
             expect(res.get("X-Total-Count")).to.equal("0");
         });
 
     });
 
-    describe('Add one', () => {
+    describe("Add one", () => {
 
-        it('Add new user', async () => {
+        it("Add new user", async () => {
 
             const getIdFromLocation = location => {
                 const regex = /.+\/(.+)/g;
@@ -53,7 +65,7 @@ describe('General crud integration tests', () => {
                 return id;
             };
 
-            const res = await request(app).post("/users").send(doc).expect(201);
+            const res = await request(server).post("/users").send(doc).expect(201);
             const id = getIdFromLocation(res.headers.location);
             const instance = await User.findById(id);
 
@@ -63,46 +75,46 @@ describe('General crud integration tests', () => {
 
     });
 
-    describe('Get one', () => {
+    describe("Get one", () => {
 
-        it('Get missing user', async () => {
-            await request(app).get('/users/123').expect(404, notFoundMessage);
+        it("Get missing user", async () => {
+            await request(server).get("/users/123").expect(404, notFoundMessage);
         });
 
-        it('Get one user', async () => {
+        it("Get one user", async () => {
             const instance = await new User(doc).save();
-            await request(app).get(`/users/${instance.id}`)
+            await request(server).get(`/users/${instance.id}`)
                     .expect(200, { ...doc, _id: instance.id }).send();
         });
 
     });
 
-    describe('Update one', () => {
+    describe("Update one", () => {
 
-        it('Update missing user', async () => {
-            await request(app).put(`/users/123`)
+        it("Update missing user", async () => {
+            await request(server).put(`/users/123`)
                 .send({ ...doc, ...diff })
                 .expect(404, notFoundMessage);
         });
 
-        it('Update user', async () => {      
+        it("Update user", async () => {      
             const newInstance = await new User(doc).save();
-            await request(app).put(`/users/${newInstance.id}`)
+            await request(server).put(`/users/${newInstance.id}`)
                 .send({ ...doc, ...diff })
                 .expect(200, { ...doc, _id: newInstance.id, ...diff });
         });
 
     });  
 
-    describe('Delete one', () => {
+    describe("Delete one", () => {
 
-        it('Delete missing user', async () => {
-            await request(app).delete('/users/123').expect(404, notFoundMessage);
+        it("Delete missing user", async () => {
+            await request(server).delete("/users/123").expect(404, notFoundMessage);
         });
 
-        it('Delete user', async () => {
+        it("Delete user", async () => {
             const instance = await new User(doc).save();
-            await request(app).delete(`/users/${instance.id}`).expect(204);
+            await request(server).delete(`/users/${instance.id}`).expect(204);
             expect(await User.findById(instance.id)).to.be.null;        
         });
 

@@ -1,10 +1,13 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
 import mongoose from "mongoose";
-import i18next from "i18next";
-import { expect } from "chai";
+import { createI18n } from '../../middleware/i18n';
+import chai, { expect } from "chai";
+import chaiAsPromised from "chai-as-promised";
 import i18nPlugin from "../../plugin/i18n";
 import { loadModels } from "../model/loader";
-import { userSchema } from "../model/user"; // eslint-disable-line no-unused-vars
+import { userTranslations } from "../model/user";
+
+chai.use(chaiAsPromised);
 
 mongoose.plugin(i18nPlugin);
 mongoose.set("debug", true);
@@ -12,6 +15,8 @@ mongoose.set("debug", true);
 loadModels();
 
 const User = mongoose.model("User");
+const i18n = createI18n();
+i18n.addResourceBundle("en", "model.User", userTranslations);
 
 describe("I18n plugin", () => {
 
@@ -23,11 +28,13 @@ describe("I18n plugin", () => {
         await mongoose.connection.close(true);
     });
 
-    it.skip("Validation error", async () => {
-        const user = new User({});
-        const errorPromise = user.validate();
-        const error = await errorPromise;
-        expect(error).to.be.ok;
+    const dropUsers = async () => await User.deleteMany({ });
+    beforeEach(dropUsers);
+    afterEach(dropUsers);
+
+    it("Validation error", async () => {
+        const user = new User({ });
+        await expect(user.save()).eventually.rejectedWith("User validation failed: lastName: `Last name` required custom, firstName: `First name` is required");
     });
 
 });

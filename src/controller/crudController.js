@@ -1,69 +1,11 @@
 import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
-import { createModelSetMiddleware } from "../middleware/crud";
 
-/**
- * @callback SecurityCallback
- * @param {Object} req - express request
- * @param {Object} res - express response
- * @return {Object} - condition object
- */
-
-/**
- * @callback ProjectionCallback
- * @param {Object} req - express request
- * @param {Object} res - express response
- * @return {Object} - projection object
- */
-
-/**
- * @callback PopulateCallback
- * @param {Object} req - express request
- * @param {Object} res - express response
- * @return {Array.<string>} - fields to populate.
- */
-
-/**
- * @typedef {Object} Handler
- * @property {boolean} disable
- * @property {SecurityCallback} securityCallback
- * @property {ProjectionCallback} projectionCallback
- * @property {PopulateCallback} populateCallback
- */
-
-/**
- * @typedef {Object} RouteMapOptions
- * @property {SecurityCallback} securityCallback
- * @property {ProjectionCallback} projectionCallback
- * @property {PopulateCallback} populateCallback
- * @property {number} defaultPageSize
- * @property {Handler} getAll
- * @property {Handler} addOne
- * @property {Handler} getOne
- * @property {Handler} updateOne
- * @property {Handler} deleteOne
- */
-
-/**
- * Set of express middlewares to handle the route.
- * @typedef {Object} RouteMap
- * @property {Function} getAll
- * @property {Function} addOne
- * @property {Function} getOne
- * @property {Function} updateOne
- * @property {Function} deleteOne
- */
-
-/**
- * @param {string} modelName - model name to use in i18n middlewares.
- * @param {Object} routeMap - 'Express' middleware set for each method.
- */
-const crudRouter = (modelName, routeMap) => {
+const crudRouter = (Model, opts) => {
 
     const router = Router();
-
-    router.all("/*", createModelSetMiddleware(modelName));
+    const routeMap = createRouteMap(Model, opts);
 
     const rootRouter = router.route("/");
     routeMap.getAll && rootRouter.get(routeMap.getAll);
@@ -83,12 +25,7 @@ const defaultOpts = {
     delimiter: ","
 };
 
-/**
- * @param {Object} Model - mongoose model
- * @param {RouteMapOptions} opts - crud router options
- * @return {RouteMap}
- */
-export const createRouteMap = (Model, opts = defaultOpts) => {
+const createRouteMap = (Model, opts = defaultOpts) => {
 
     const routeMap = {
         getAll: createGetAll(Model, opts),
@@ -179,7 +116,11 @@ const getQueryValues = (opts, specificOpts, req, res) => {
 export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next) => {
 
     const { projection } = getQueryValues(opts, opts.addOne, req, res);
-    const instance = await new Model(req.body).save().catch(next);
+
+    const document = new Model(req.body);
+    document.translateMessages(res.locals.i18n);
+
+    const instance = await document.save().catch(next);
     if (!instance) return;
 
     const createdQuery = Model.findById(instance._id);
@@ -229,7 +170,7 @@ export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, n
             .forEach(key => delete res.body[key]);        
     }
 
-    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query' });
+    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query', i18n: res.locals.i18n });
 
     const instance = await query.exec().catch(next);
     if (!instance) return;

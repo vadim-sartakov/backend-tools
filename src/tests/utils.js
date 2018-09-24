@@ -3,6 +3,10 @@ import { bill } from './model/user';
 import { admin, moderator } from './model/role';
 import { department } from './model/department';
 
+let portCounter = 6000;
+
+export const getNextPort = () => portCounter++;
+
 export const expectedLinks = ({ first, prev, next, last, size, port }) => 
         `<http://127.0.0.1:${port}/users?page=${first}&size=${size}>; rel=first, ` +
         `${prev !== undefined ? `<http://127.0.0.1:${port}/users?page=${prev}&size=${size}>; rel=previous, ` : ""}` +

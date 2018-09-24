@@ -11,7 +11,7 @@ import { userTranslations } from './model/user';
 
 let portCounter = 6000;
 
-const createApp = (user, crudOptions) => {
+const createApp = () => {
 
     const User = mongoose.model("User");
     const app = express();

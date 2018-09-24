@@ -33,8 +33,8 @@ export const userTranslations = {
     lastName: {
         name: "Last name",
         validation: {
-            required: "Last name required custom",
-            match: "Last name is invalid custom"
+            required: "`Last name` required custom",
+            match: "`Last name` is invalid custom"
         }
     },
     email: {
@@ -43,7 +43,7 @@ export const userTranslations = {
     phoneNumber: {
         name: "Phone number",
         validation: {
-            unique: "Phone number is not unique custom"
+            unique: "`Phone number` is not unique custom"
         }
     }
 };

@@ -1,20 +1,11 @@
 import mongoose from 'mongoose';
 import uniqueValidator from 'mongoose-unique-validator';
 import autopopulate from '../plugin/autopopulate';
+import i18n from '../plugin/i18n';
 import createLogger from './logger';
 
-const transformDefaultMessages = () => {
-    const { messages } = mongoose.Error;
-    Object.keys(messages).forEach(group => {
-        messages[group] && Object.keys(messages[group]).forEach(message => {
-            messages[group][message] = `${group}-${message}-{PATH}-{MIN}-{MAX}-{MINLENGTH}-{MAXLENGTH}`;
-        });
-    });
-};
-
-transformDefaultMessages();
-
-mongoose.plugin(uniqueValidator, { message: 'general-unique-{PATH}-{MIN}-{MAX}-{MINLENGTH}-{MAXLENGTH}' });
+mongoose.plugin(i18n);
+mongoose.plugin(uniqueValidator);
 mongoose.plugin(autopopulate);
 
 export const connectDatabase = database => {
