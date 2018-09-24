@@ -23,7 +23,7 @@ describe("I18n plugin", () => {
         await mongoose.connection.close(true);
     });
 
-    it("Validation error", async () => {
+    it.skip("Validation error", async () => {
         const user = new User({});
         const errorPromise = user.validate();
         const error = await errorPromise;

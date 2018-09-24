@@ -1,4 +1,4 @@
-import { eachPathRecursive } from '../plugin/utils'
+import { eachPathRecursive } from '../plugin/utils';
 
 const i18n = schema => {
 

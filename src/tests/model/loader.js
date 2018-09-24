@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
+import { userSchema } from "./user";
+import { roleSchema } from "./role";
+import { departmentSchema } from "./department";
 
-let schemas = {};
-
-export const addSchema = (name, schema) => schemas = { ...schemas, [name]: schema };
 export const loadModels = () => {
-    Object.keys(schemas).forEach(key => mongoose.model(key, schemas[key]));
+    mongoose.model("User", userSchema);
+    mongoose.model("Role", roleSchema);
+    mongoose.model("Department", departmentSchema);
 };

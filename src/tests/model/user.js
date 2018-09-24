@@ -1,7 +1,4 @@
 import { Schema } from "mongoose";
-import { addSchema } from "./loader";
-import { roleSchema } from "./role"; // eslint-disable-line no-unused-vars
-import { departmentSchema } from "./department"; // eslint-disable-line no-unused-vars
 
 export const userSchema = new Schema({
     firstName: {
@@ -50,8 +47,6 @@ export const userTranslations = {
         }
     }
 };
-
-addSchema("User", userSchema);
 
 export const bill = { firstName: "Bill", lastName: "Gates" };
 export const filter = (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && { number: 5 };
