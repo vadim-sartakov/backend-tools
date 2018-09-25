@@ -1,11 +1,13 @@
 import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
+import { createModelSetMiddleware } from "../middleware/crud";
 
 const crudRouter = (Model, opts) => {
 
     const router = Router();
     const routeMap = createRouteMap(Model, opts);
+    router.all("/*", createModelSetMiddleware(Model.modelName));
 
     const rootRouter = router.route("/");
     routeMap.getAll && rootRouter.get(routeMap.getAll);
@@ -117,10 +119,7 @@ export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next
 
     const { projection } = getQueryValues(opts, opts.addOne, req, res);
 
-    const document = new Model(req.body);
-    document.translateMessages(res.locals.i18n);
-
-    const instance = await document.save().catch(next);
+    const instance = await new Model(req.body).save().catch(next);
     if (!instance) return;
 
     const createdQuery = Model.findById(instance._id);
@@ -170,7 +169,7 @@ export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, n
             .forEach(key => delete res.body[key]);        
     }
 
-    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query', i18n: res.locals.i18n });
+    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query' });
 
     const instance = await query.exec().catch(next);
     if (!instance) return;

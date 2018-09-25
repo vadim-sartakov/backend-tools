@@ -1,41 +1,57 @@
-import request from 'supertest';
-import mongoose from 'mongoose';
-import { expect } from 'chai';
-import createApp from '../app';
-import { connectDatabase, disconnectDatabase } from '../../config/database';
+import env from "../../config/env"; // eslint-disable-line no-unused-vars
+import express from "express";
+import mongoose from "mongoose";
+import request from "supertest";
+import { expect } from "chai";
+import mongooseUniqueValidator from "mongoose-unique-validator";
+import generalMiddlewares from "../../middleware/general";
+import httpMiddlewares from "../../middleware/http";
+import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
+import crudValidationMiddleware from "../../middleware/crud";
+import crudRouter from "../../controller/crudController";
+import { getNextPort } from "../utils";
 import { loadModels } from "../model/loader";
+import { bill, userTranslations } from "../model/user";
+
+mongoose.plugin(mongooseUniqueValidator);
 
 loadModels();
 
 const User = mongoose.model("User");
+const i18n = createI18n();
+i18n.addResourceBundle("en", "model.User", userTranslations);
 
 describe('Validation and translations', () => {
-        
-    const doc = { firstName: "Bill", lastName: "Gates" };
 
-    let app, conn;
+    let server, con;
     before(async () => {
-        app = createApp();
-        conn = await connectDatabase("crudValidationTests");
+        const app = express();
+        app.use(generalMiddlewares);
+        app.use(createI18nMiddleware(i18n));
+        app.use("/users", crudRouter(User));
+        app.use(crudValidationMiddleware);
+        app.use(httpMiddlewares);
+        server = app.listen(getNextPort());
+        con = await mongoose.connect(`${process.env.DB_URL}/crudValidationTests`, { useNewUrlParser: true });
+    });
+
+    after(async () => { 
+        await con.connection.dropDatabase();
+        await con.connection.close(true);
+        server.close();
     });
 
     const dropCollection = async () => await User.deleteMany({ });
     beforeEach(dropCollection);
     afterEach(dropCollection);    
 
-    after(async () => { 
-        await conn.connection.dropDatabase();
-        await disconnectDatabase();
-        app.close();
-    });
-
     it('Add user with empty fields', async () => {
-        const res = await request(app).post("/users").expect(400);
+        const res = await request(server).post("/users").expect(400);
         validateFields(
             res,
             2,
-            { name: "firstName", value: "First name is required" },
-            { name: "lastName", value: "Last name required custom" }
+            { name: "firstName", value: "`First name` is required" },
+            { name: "lastName", value: "`Last name` is required custom" }
         );
     });
 
@@ -50,39 +66,39 @@ describe('Validation and translations', () => {
     };
 
     it('Add user with wrong first name', async () => {
-        const res = await request(app).post("/users").send({ ...doc, firstName: "+=-!", lastName: "**/+" }).expect(400);
+        const res = await request(server).post("/users").send({ ...bill, firstName: "+=-!", lastName: "**/+" }).expect(400);
         validateFields(
             res,
             2,
-            { name: "firstName", value: "First name is invalid" },
-            { name: "lastName", value: "Last name is invalid custom" }
+            { name: "firstName", value: "`First name` is invalid" },
+            { name: "lastName", value: "`Last name` is invalid custom" }
         );
     });
 
     it('Add non-unique email', async () => {
-        const extendedDoc = { ...doc, email: "mail@mailbox.com", phoneNumber: "+123456" };
-        await request(app).post("/users").send(extendedDoc).expect(201);
-        const res = await request(app).post("/users").send(extendedDoc).expect(400);
+        const extendedDoc = { ...bill, email: "mail@mailbox.com", phoneNumber: "+123456" };
+        await request(server).post("/users").send(extendedDoc).expect(201);
+        const res = await request(server).post("/users").send(extendedDoc).expect(400);
         validateFields(
             res,
             2,
-            { name: "email", value: "Email is not unique" },
-            { name: "phoneNumber", value: "Phone number is not unique custom" }
+            { name: "email", value: "`Email` is not unique" },
+            { name: "phoneNumber", value: "`Phone number` is not unique custom" }
         );
-        await request(app).post("/users").send({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).expect(201);
+        await request(server).post("/users").send({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).expect(201);
     });
 
     it('Update existing entry with wrong values', async () => {
-        const extendedDoc = { ...doc, email: "mail@mailbox.com", phoneNumber: "+123456" };
+        const extendedDoc = { ...bill, email: "mail@mailbox.com", phoneNumber: "+123456" };
         await new User(extendedDoc).save();
         const instance = await new User({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).save();
-        const res = await request(app).put(`/users/${instance.id}`).send({ ...extendedDoc, firstName: "/*+-" }).expect(400);
+        const res = await request(server).put(`/users/${instance.id}`).send({ ...extendedDoc, firstName: "/*+-" }).expect(400);
         validateFields(
             res,
             3,
-            { name: "firstName", value: "First name is invalid" },
-            { name: "email", value: "Email is not unique" },
-            { name: "phoneNumber", value: "Phone number is not unique custom" }
+            { name: "firstName", value: "`First name` is invalid" },
+            { name: "email", value: "`Email` is not unique" },
+            { name: "phoneNumber", value: "`Phone number` is not unique custom" }
         );
     });
 

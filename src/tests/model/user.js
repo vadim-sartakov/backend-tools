@@ -34,7 +34,7 @@ export const userTranslations = {
         name: "Last name",
         validation: {
             required: "`Last name` is required custom",
-            match: "`Last name` is invalid custom"
+            regexp: "`Last name` is invalid custom"
         }
     },
     email: {
@@ -48,7 +48,7 @@ export const userTranslations = {
     }
 };
 
-export const bill = { firstName: "Bill", lastName: "Gates" };
+export const bill = { firstName: "Bill", lastName: "Gates", roles: [] };
 export const filter = (req, res) => res.locals.user.roles.indexOf("USER") !== -1 && { number: 5 };
 
 export const projection = {

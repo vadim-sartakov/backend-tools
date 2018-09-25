@@ -14,13 +14,14 @@ const User = mongoose.model("User");
 
 describe("Autopopulate plugin", () => {
 
+    let con;
     before(async () => {
-        await mongoose.connect(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
+        con = await mongoose.connect(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
         await populateDatabase(1, new Date());
     });
     after(async () => {
-        await mongoose.connection.dropDatabase();
-        await mongoose.connection.close(true);
+        await con.connection.dropDatabase();
+        await con.connection.close(true);
     });
 
     it("Without select", async () => {

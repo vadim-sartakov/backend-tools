@@ -3,16 +3,16 @@ import express from "express";
 import mongoose from "mongoose";
 import request from "supertest";
 import { expect } from "chai";
-import i18n from "../../plugin/i18n";
 import generalMiddlewares from "../../middleware/general";
 import httpMiddlewares from "../../middleware/http";
 import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
+import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
 import { getNextPort, expectedLinks } from "../utils";
 import { loadModels } from "../model/loader";
+import { bill } from "../model/user";
 
-mongoose.plugin(i18n);
-
+mongoose.set("debug", true);
 loadModels();
 
 const User = mongoose.model("User");
@@ -20,19 +20,18 @@ const User = mongoose.model("User");
 describe("General crud integration tests", () => {
 
     const notFoundMessage = { message: "Not found" };
-    const doc = { firstName: "Bill", lastName: "Gates", roles: [] };
-    const diff = { firstName: "Steve" };
 
-    let server, port;
+    let server, port, con;
     before(async () => {
         const app = express();
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
         app.use("/users", crudRouter(User));
+        app.use(crudValidationMiddleware);
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
         port = server.address().port;
-        await mongoose.connect(`${process.env.DB_URL}/crudGeneralTests`, { useNewUrlParser: true });
+        con = await mongoose.connect(`${process.env.DB_URL}/crudGeneralTests`, { useNewUrlParser: true });
     });
 
     const dropCollection = async () => await User.deleteMany({ });
@@ -40,8 +39,8 @@ describe("General crud integration tests", () => {
     afterEach(dropCollection);    
 
     after(async () => { 
-        await mongoose.connection.dropDatabase();
-        await mongoose.connection.close(true);
+        await con.connection.dropDatabase();
+        await con.connection.close(true);
         server.close();
     });
 
@@ -65,11 +64,11 @@ describe("General crud integration tests", () => {
                 return id;
             };
 
-            const res = await request(server).post("/users").send(doc).expect(201);
+            const res = await request(server).post("/users").send(bill).expect(201);
             const id = getIdFromLocation(res.headers.location);
             const instance = await User.findById(id);
 
-            expect({ ...instance._doc, _id: instance.id }).to.deep.equal({ _id: id, ...doc }); 
+            expect({ ...instance._doc, _id: instance.id }).to.deep.equal({ _id: id, ...bill }); 
 
         });
 
@@ -82,26 +81,28 @@ describe("General crud integration tests", () => {
         });
 
         it("Get one user", async () => {
-            const instance = await new User(doc).save();
+            const instance = await new User(bill).save();
             await request(server).get(`/users/${instance.id}`)
-                    .expect(200, { ...doc, _id: instance.id }).send();
+                    .expect(200, { ...bill, _id: instance.id }).send();
         });
 
     });
 
     describe("Update one", () => {
 
+        const diff = { firstName: "Steve" };
+
         it("Update missing user", async () => {
             await request(server).put(`/users/123`)
-                .send({ ...doc, ...diff })
+                .send({ ...bill, ...diff })
                 .expect(404, notFoundMessage);
         });
 
         it("Update user", async () => {      
-            const newInstance = await new User(doc).save();
+            const newInstance = await new User(bill).save();
             await request(server).put(`/users/${newInstance.id}`)
-                .send({ ...doc, ...diff })
-                .expect(200, { ...doc, _id: newInstance.id, ...diff });
+                .send({ ...bill, ...diff })
+                .expect(200, { ...bill, _id: newInstance.id, ...diff });
         });
 
     });  
@@ -113,7 +114,7 @@ describe("General crud integration tests", () => {
         });
 
         it("Delete user", async () => {
-            const instance = await new User(doc).save();
+            const instance = await new User(bill).save();
             await request(server).delete(`/users/${instance.id}`).expect(204);
             expect(await User.findById(instance.id)).to.be.null;        
         });
