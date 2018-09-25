@@ -13,18 +13,20 @@ import { getNextPort } from "../utils";
 import { loadModels } from "../model/loader";
 import { bill, userTranslations } from "../model/user";
 
-mongoose.plugin(mongooseUniqueValidator);
-
-loadModels();
-
-const User = mongoose.model("User");
-const i18n = createI18n();
-i18n.addResourceBundle("en", "model.User", userTranslations);
+mongoose.set("debug", true);
 
 describe('Validation and translations', () => {
 
-    let server, con;
+    let server, connection, User, i18n;
     before(async () => {
+
+        i18n = createI18n();
+        i18n.addResourceBundle("en", "model.User", userTranslations);
+
+        connection = await mongoose.createConnection(`${process.env.DB_URL}/crudValidationTests`, { useNewUrlParser: true });
+        loadModels(connection, mongooseUniqueValidator);
+        User = connection.model("User");
+
         const app = express();
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(i18n));
@@ -32,12 +34,12 @@ describe('Validation and translations', () => {
         app.use(crudValidationMiddleware);
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
-        con = await mongoose.connect(`${process.env.DB_URL}/crudValidationTests`, { useNewUrlParser: true });
+
     });
 
     after(async () => { 
-        await con.connection.dropDatabase();
-        await con.connection.close(true);
+        await connection.dropDatabase();
+        await connection.close(true);
         server.close();
     });
 

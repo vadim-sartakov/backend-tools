@@ -13,17 +13,19 @@ import { getNextPort, expectedLinks, populateDatabase } from "../utils";
 import { loadModels } from "../model/loader";
 
 mongoose.set("debug", true);
-loadModels();
-
-const User = mongoose.model("User");
 
 describe('Get all bulk tests', () => {
 
     const entryCount = 42;
     const now = new Date();
 
-    let server, port, con;
+    let server, port, connection, User;
     before(async () => {
+
+        connection = await mongoose.createConnection(`${process.env.DB_URL}/crudBulkGetAll`, { useNewUrlParser: true });
+        loadModels(connection);
+        User = connection.model("User");
+
         const app = express();
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
@@ -32,13 +34,13 @@ describe('Get all bulk tests', () => {
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
         port = server.address().port;
-        con = await mongoose.connect(`${process.env.DB_URL}/crudBulkGetAll`, { useNewUrlParser: true });
-        await populateDatabase(entryCount, now);
+        await populateDatabase(connection, entryCount, now);
+
     });
 
     after(async () => { 
-        await con.connection.dropDatabase();
-        await con.connection.close(true);
+        await connection.dropDatabase();
+        await connection.close(true);
         server.close();
     });
 

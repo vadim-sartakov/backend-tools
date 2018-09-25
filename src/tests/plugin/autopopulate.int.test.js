@@ -5,23 +5,20 @@ import autopopulate from "../../plugin/autopopulate";
 import { populateDatabase } from "../utils";
 import { loadModels } from "../model/loader";
 
-mongoose.plugin(autopopulate);
 mongoose.set("debug", true);
-
-loadModels();
-
-const User = mongoose.model("User");
 
 describe("Autopopulate plugin", () => {
 
-    let con;
+    let connection, User;
     before(async () => {
-        con = await mongoose.connect(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
-        await populateDatabase(1, new Date());
+        connection = await mongoose.createConnection(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
+        loadModels(connection, autopopulate);
+        User = connection.model("User");
+        await populateDatabase(connection, 1, new Date());
     });
     after(async () => {
-        await con.connection.dropDatabase();
-        await con.connection.close(true);
+        await connection.dropDatabase();
+        await connection.close(true);
     });
 
     it("Without select", async () => {
