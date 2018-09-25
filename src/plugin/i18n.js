@@ -15,53 +15,42 @@ const translateHandler = ({ path, modelName, i18n, opts: { translatePath } }) =>
 
 };
 
-/*const translateMessages = (err, req, res) => {
+const translateMessages = ({ err, i18n, modelName, opts }) => {
 
     Object.keys(err.errors).forEach(key => {
 
         const errorKey = err.errors[key];
-        const messageParts = errorKey.message.split("-");
-
-        if (messageParts.length !== 7) return;
-
-        const namespace = `model.${res.locals.modelName}`;
-        const [ group, type, path, min, max, minLength, maxLength ] = messageParts;
-        const fieldName = req.t(`${namespace}:${path}.name`);
+        const namespace = `model.${modelName}`;
+        const { path, kind } = errorKey;
         
         // Custom field message or general
-        errorKey.message = req.t([`${namespace}:${path}.validation.${type}`, `validation:${group}.${type}`],
-            { fieldName, min, max, minLength, maxLength });
+        errorKey.message = i18n.t([`${namespace}:${path}.validation.${kind}`, `validation:${kind}`]);
+
+        if (opts.translatePath) {
+            const fieldName = i18n.t(`${namespace}:${path}.name`);
+            errorKey.message = errorKey.message.replace("{PATH}", fieldName);
+        }
 
     });
 
-};*/
+    err.message = i18n.t("validation:default");
+    return err;
+
+};
 
 const defaultOptions = { translatePath: true };
 
 const i18n = (schema, opts = defaultOptions) => {
-
-    let superValidate;
-    schema.post("init", function(doc) {
-        superValidate = doc.superValidate;
-    });
-
-    schema.methods.localizedValidate = function() {
-        superValidate();
+    schema.methods.localizedSave = async function(i18n) {
+        const { modelName } = this.constructor;
+        try {
+            await this.save();
+        } catch (err) {
+            if (err.name !== "ValidationError") throw err;
+            const translatedError = translateMessages({ err, i18n, modelName, opts });
+            throw translatedError;
+        }
     };
-
-    schema.pre("validate", function() {
-        //this.save(opts);
-        "".split("");
-    });
-
-    /*schema.methods.translateMessages = function(i18n) {
-        eachPathRecursive(schema, (path, schemaType) =>
-            schemaType.validators.forEach(translateHandler({ path, modelName: this.constructor.modelName, i18n, opts }))
-        );
-    };
-    schema.pre("findOneAndUpdate", function() {
-        
-    });*/
 };
 
 export default i18n;

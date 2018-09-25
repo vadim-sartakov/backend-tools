@@ -1,5 +1,5 @@
 export default {
-    default: 'Ошибка проверки `{PATH}` со значением `{VALUE}`',
+    default: 'Неверный объект',
     required: '`{PATH}` не заполнено',
     unique: '`{PATH}` не уникально',
     enum: '`{VALUE}` неверное значение перечисления `{PATH}`.',

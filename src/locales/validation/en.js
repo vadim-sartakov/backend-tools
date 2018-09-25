@@ -1,5 +1,5 @@
 export default {
-    default: 'Validation failed for field `{PATH}` with value `{VALUE}`',
+    default: 'Validation failed',
     required: '`{PATH}` is required',
     unique: '`{PATH}` is not unique',
     enum: '`{VALUE}` is not a valid enum value for path `{PATH}`.',

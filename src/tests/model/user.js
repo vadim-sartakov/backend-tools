@@ -33,7 +33,7 @@ export const userTranslations = {
     lastName: {
         name: "Last name",
         validation: {
-            required: "`Last name` required custom",
+            required: "`Last name` is required custom",
             match: "`Last name` is invalid custom"
         }
     },

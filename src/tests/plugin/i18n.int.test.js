@@ -3,10 +3,12 @@ import mongoose from "mongoose";
 import { createI18n } from '../../middleware/i18n';
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
+import chaiSubset from "chai-subset";
 import i18nPlugin from "../../plugin/i18n";
 import { loadModels } from "../model/loader";
 import { userTranslations } from "../model/user";
 
+chai.use(chaiSubset);
 chai.use(chaiAsPromised);
 
 mongoose.plugin(i18nPlugin);
@@ -34,7 +36,13 @@ describe("I18n plugin", () => {
 
     it("Validation error", async () => {
         const user = new User({ });
-        await expect(user.save()).eventually.rejectedWith("User validation failed: lastName: `Last name` required custom, firstName: `First name` is required");
+        await expect(user.localizedSave(i18n)).to.eventually.rejectedWith("Validation failed")
+            .and.containSubset({
+                errors: {
+                    firstName: { message: "`First name` is required" },
+                    lastName: { message: "`Last name` is required custom" }
+                }
+            });
     });
 
 });
