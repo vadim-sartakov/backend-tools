@@ -1,6 +1,6 @@
 import { Schema } from "mongoose";
 
-export const userSchema = new Schema({
+export const userSchema = () => new Schema({
     firstName: {
         type: String,
         required: true,
@@ -24,7 +24,23 @@ export const userSchema = new Schema({
     createdAt: Date,
     roles: [{ type: Schema.Types.ObjectId, ref: "Role" }],
     department: { type: Schema.Types.ObjectId, ref: "Department" }
-}, { versionKey: false });
+}, {
+    versionKey: false,
+    security: {
+        projection: user => {
+            const { roles } = user;
+            if (roles.indexOf("USER") !== -1) {
+                return "firstName lastName number";
+            }
+        },
+        filter: user => {
+            const { roles } = user;
+            if (roles.indexOf("USER") !== -1) {
+                return { number: 5 };
+            }
+        }
+    }
+});
 
 export const userTranslations = {
     firstName: {
