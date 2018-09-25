@@ -30,28 +30,52 @@ describe("Security plugin", () => {
 
     describe("Find", () => {
 
-        it("Without user", async () => {
+        it("Anonimous", async () => {
             const users = await User.find();
             expect(users.length).to.equal(entryCount);
         });
 
-        it("With user, no filter", async () => {
+        it("By admin", async () => {
+            const users = await User.find().setOptions({ admin });
+            expect(users.length).to.equal(entryCount);
+        });
+
+        it("By user, no filter", async () => {
             const users = await User.find().setOptions({ user });
             expect(users.length).to.equal(1);
             const userInstance = users[0];
             expect({ ...userInstance._doc, _id: userInstance.id }).to.deep.equal({ ...expectedUser, _id: userInstance.id });
         });
 
-        it("With user and filter to same user", async () => {
+        it("By user and filter to same user", async () => {
             const users = await User.find({ firstName: "Bill" }).setOptions({ user });
             expect(users.length).to.equal(1);
             const userInstance = users[0];
             expect({ ...userInstance._doc, _id: userInstance.id }).to.deep.equal({ ...expectedUser, _id: userInstance.id });
         });
 
-        it("With user and filter to different user", async () => {
+        it("By user and filter to different user", async () => {
             const users = await User.find({ firstName: "123" }).setOptions({ user });
             expect(users.length).to.be.equal(0);
+        });
+    
+    });
+
+    describe("Find one", () => {
+
+        it("By admin", async () => {
+            const userInstance = await User.findOne({ number: 6 }).setOptions({ admin });
+            expect(userInstance).to.be.ok;
+        });
+
+        it("By user and filter to same user", async () => {
+            const userInstance = await User.findOne({ number: 5 }).setOptions({ user });
+            expect(userInstance).to.be.ok;
+        });
+
+        it("By user and filter to different user", async () => {
+            const userInstance = await User.findOne({ number: 6 }).setOptions({ user });
+            expect(userInstance).not.to.be.ok;
         });
     
     });

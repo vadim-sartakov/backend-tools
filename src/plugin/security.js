@@ -11,7 +11,7 @@ const security = schema => {
         const projectionValue = projection(user);
         const filterValue = filter(user);
         projectionValue && this.select(projectionValue);
-        filterValue && this.where(filterValue);
+        filterValue && this.and(filterValue);
 
     }
 
