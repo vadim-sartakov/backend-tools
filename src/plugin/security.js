@@ -1,24 +1,45 @@
 const security = schema => {
 
-    function securityHandler() {
+    const getOptions = options => {
+        const { res, roles } = options;
+        if (!res) throw new Error("No response was specified");
+        const { user } = options.res.locals;
+        if (!user) throw new Error("No user found in response locals");
+        if (!roles) throw new Error("No roles was specified");
+        return { roles, user };
+    };
 
-        const securityOptions = schema.options.security || {};
+    function querySecurityHandler() {
+
+        const { roles, user } = getOptions(this.options);
+        user.roles.forEach(role => {
+            const { permissions } = roles[role] || { };
+            const { filter } = (permissions && permissions.model[this.model.modelName]) || { };
+            filter && this.or(filter);
+        });
+
+        /*const securityOptions = schema.options.security || {};
         const { projection, filter } = securityOptions;
-        const { user } = this.options;
 
         if (!user) return;
 
         const projectionValue = projection(user);
         const filterValue = filter(user);
         projectionValue && this.select(projectionValue);
-        filterValue && this.and(filterValue);
+        filterValue && this.and(filterValue);*/
 
     }
 
-    schema.pre("find", securityHandler);
-    schema.pre("findOne", securityHandler);
-    schema.pre("findOneAndUpdate", securityHandler);
-    schema.pre("findOneAndDelete", securityHandler);
+    function documentSecurityHandler() {
+        this.isNew;
+    }
+
+    schema.pre("save", documentSecurityHandler);
+
+    schema.pre("find", querySecurityHandler);
+    schema.pre("findOne", querySecurityHandler);
+    schema.pre("findOneAndUpdate", querySecurityHandler);
+    schema.pre("findOneAndDelete", querySecurityHandler);
 
 };
 
