@@ -1,32 +1,53 @@
+import AccessDeniedError from "../error/accessDenied";
+
+const ADMIN = "ADMIN";
+const ADMIN_READ = "ADMIN_READ";
+
 const security = schema => {
 
-    const getOptions = options => {
-        const { res, roles } = options;
+    const getUser = options => {
+        const { res } = options;
         if (!res) throw new Error("No response was specified");
         const { user } = options.res.locals;
         if (!user) throw new Error("No user found in response locals");
-        if (!roles) throw new Error("No roles was specified");
-        return { roles, user };
+        return user;
     };
 
     function querySecurityHandler() {
 
-        const { roles, user } = getOptions(this.options);
+        const user = getUser(this.options);
+        /*const resultPermissions = user.roles.reduce((prev, role) => {
+            
+            const { permissions } = roles[role] || { };
+            const curRead = permissions.model[this.model.modelName].read;
+            let { read } = (prev.read === true) || (role === ADMIN || role === ADMIN_READ) || curRead;
+
+            if (read !== true && typeof read === "object") {
+                read = ;
+            };
+
+            return { read };
+
+        }, {});
+        switch(this.operation) {
+            case "find":
+                if(!resultPermissions.read) throw new AccessDeniedError();
+                break;
+            case "update":
+                if(!resultPermissions.update) throw new AccessDeniedError();
+                break;
+            case "remove":
+                if(!resultPermissions.delete) throw new AccessDeniedError();
+                break;
+        }
         user.roles.forEach(role => {
             const { permissions } = roles[role] || { };
-            const { filter } = (permissions && permissions.model[this.model.modelName]) || { };
+            const { read } = (permissions && permissions.model[this.model.modelName]) || { };
+            if (typeof read === "object") {
+
+            }
             filter && this.or(filter);
-        });
-
-        /*const securityOptions = schema.options.security || {};
-        const { projection, filter } = securityOptions;
-
-        if (!user) return;
-
-        const projectionValue = projection(user);
-        const filterValue = filter(user);
-        projectionValue && this.select(projectionValue);
-        filterValue && this.and(filterValue);*/
+        });*/
 
     }
 

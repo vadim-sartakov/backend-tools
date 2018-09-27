@@ -9,53 +9,55 @@ mongoose.set("debug", true);
 
 describe("Security plugin", () => {
 
+    const ADMIN = "ADMIN";
+
+    const INVOICE_USER_CREATE = "INVOICE_USER_CREATE";
+    const INVOICE_USER_READ = "INVOICE_USER_READ";
+    const INVOICE_USER_UPDATE = "INVOICE_USER_UPDATE";
+    const INVOICE_USER_DELETE = "INVOICE_USER_DELETE";
+
+    const INVOICE_MODERATOR_CREATE = "INVOICE_MODERATOR_CREATE";
+    const INVOICE_MODERATOR_READ = "INVOICE_MODERATOR_READ";
+    const INVOICE_MODERATOR_UPDATE = "INVOICE_MODERATOR_UPDATE";
+    const INVOICE_MODERATOR_DELETE = "INVOICE_MODERATOR_DELETE";
+
     const entryCount = 20;
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
-    let connection, Department, res;
+    const where = user => ({ where: { department: user.department } });
+    const readProjection = "-amount";
+    const modifyProjection = "-number";
 
-    const adminRoleKey = "ADMIN";
-    const depOneRoleKey = "DEP_ONE";
-    const depTwoRoleKey = "DEP_TWO";
+    const invoiceSchema = new Schema({ number: Number, amount: Schema.Types.Decimal128, department: { type: Schema.Types.ObjectId, ref: "Department" } }, {
+        security: {
+            [INVOICE_USER_CREATE]: { create: { projection: modifyProjection } },
+            [INVOICE_USER_READ]: { read: { where, projection: readProjection } },
+            [INVOICE_USER_UPDATE]: { update: { where, projection: modifyProjection } },
+            [INVOICE_USER_DELETE]: { delete: { where, projection: readProjection } },
 
-    const roles = {
-        [depOneRoleKey]: {
-            description: "Department one users",
-            permissions: {
-                model: {
-                    Department: {
-                        filter: { number: 5 }
-                    },
-                    projection: {
-                        write: "name"
-                    }
-                }
-            }
-        },
-        [depTwoRoleKey]: {
-            description: "Department two users",
-            permissions: {
-                model: {
-                    Department: {
-                        filter: { number: 6 }
-                    },
-                    projection: "-address"
-                }
-            }
+            [INVOICE_MODERATOR_CREATE]: { create: true },
+            [INVOICE_MODERATOR_READ]: { read: true },
+            [INVOICE_MODERATOR_UPDATE]: { update: true },
+            [INVOICE_MODERATOR_DELETE]: { delete: true }
         }
-    };
+    });
 
-    const createDepartment = async (i) => await new Department({ name: `Department ${i}`, address: "Some address", number: i }).save();
+    let connection, Department, Invoice, res, depOne, depTwo;
+
+    const createDepartment = async number => await new Department({ name: `Department ${number}`, address: "Some address", number }).save();
+    const createInvoice = async (number, department) => await new Invoice({ number, amount: "10.23", department }).save();
     const populateDatabase = async () => {
-        for (let i = 0; i < entryCount; i++) {
-            await createDepartment(i);
-        }
+        depOne = await createDepartment(0);
+        depTwo = await createDepartment(1);
+        for (let i = 0; i < (entryCount / 2); i++) await createInvoice(i, depOne);
+        for (let i = (entryCount / 2); i < entryCount; i++) await createInvoice(i, depTwo);
     };
 
     before(async () => {
         connection = await mongoose.createConnection(`${process.env.DB_URL}/securityPluginTest`, { useNewUrlParser: true });
-        departmentSchema.plugin(security);
+        invoiceSchema.plugin(security);
         Department = connection.model("Department", departmentSchema);
+        Invoice = connection.model("Invoice", invoiceSchema);
         await populateDatabase();
     });
     after(async () => {
@@ -69,133 +71,152 @@ describe("Security plugin", () => {
 
     describe("Errors", () => {
 
-        it("Anonimous", async () => {
-            await expect(Department.find()).to.eventually.rejectedWith("No response was specified");
-            await expect(Department.find().setOptions({ res })).to.eventually.rejectedWith("No user found in response locals");
-        });
-
-        it("No roles specified", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            await expect(Department.find().setOptions({ res })).to.eventually.rejectedWith("No roles was specified");
+        it("No parameters", async () => {
+            await expect(Invoice.find()).to.eventually.rejectedWith("No response was specified");
+            await expect(Invoice.find().setOptions({ res })).to.eventually.rejectedWith("No user found in response locals");
         });
 
     });
 
     describe("Filter", () => {
 
-        describe("Find", () => {
+        describe("Read", () => {
 
             it("By admin", async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                const departments = await Department.find().setOptions({ res, roles });
-                expect(departments.length).to.equal(entryCount);
+                res.locals.user = { roles: [ADMIN] };
+                const invoices = await Invoice.find().setOptions({ res });
+                expect(invoices.length).to.equal(entryCount);
+                expect(invoices[0]).to.have.property("number");
+                expect(invoices[0]).to.have.property("amount");
             });
 
-            it("By user of department one, no filter", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const departments = await Department.find().setOptions({ res, roles });
-                expect(departments.length).to.equal(1);
-                expect(departments[0]).to.have.property("number", 5);
+            it.skip("By user with wrong role", async () => {
+                res.locals.user = { roles: [INVOICE_USER_CREATE] };
+                const invoices = await Invoice.find().setOptions({ res });
+                expect(invoices.length).to.equal(0);
             });
 
-            it("By user of department one with filter to allowed department", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const departments = await Department.find({ number: 5 }).setOptions({ res, roles });
-                expect(departments.length).to.equal(1);
-                expect(departments[0]).to.have.property("number", 5);
+            it.skip("By user with suitable role", async () => {
+                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+                const invoices = await Invoice.find().setOptions({ res });
+                expect(invoices.length).to.equal(10);
             });
 
-            it("By user of department one with filter to prohibited department", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const departments = await Department.find({ number: 6 }).setOptions({ res, roles });
-                expect(departments.length).to.equal(0);
+            it.skip("By user with combination of roles", async () => {
+                res.locals.user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
+                const invoices = await Invoice.find().setOptions({ res });
+                expect(invoices.length).to.equal(20);
+                expect(invoices[0]).not.to.have.property("amount");
             });
 
-            it("By user of department one and two without filter", async () => {
-                res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
-                const departments = await Department.find().sort({ number: 1 }).setOptions({ res, roles });
-                expect(departments.length).to.equal(2);
-                expect(departments[0]).to.have.property("number", 5);
-                expect(departments[1]).to.have.property("number", 6);
+            it.skip("By user with filter to allowed department", async () => {
+                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+                const invoices = await Invoice.find({ department: depOne }).setOptions({ res });
+                expect(invoices.length).to.equal(10);
             });
 
-            it("By user of department one and two with filter", async () => {
-                res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
-                const departments = await Department.find({ number: 5 }).sort({ number: 1 }).setOptions({ res, roles });
-                expect(departments.length).to.equal(1);
-                expect(departments[0]).to.have.property("number", 5);
+            it.skip("By user with filter to prohibited department", async () => {
+                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+                const invoices = await Invoice.find({ department: depTwo }).setOptions({ res });
+                expect(invoices.length).to.equal(0);
             });
         
         });
 
-        describe("Find one", () => {
+        describe.skip("Find one", () => {
 
             it("By admin", async () => {
                 res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
+                const department = await Department.findOne({ number: 6 }).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("By user of department one and filter to allowed department", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOne({ number: 5 }).setOptions({ res, roles });
+                const department = await Department.findOne({ number: 5 }).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("By user and filter to prohibited department", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
+                const department = await Department.findOne({ number: 6 }).setOptions({ res });
                 expect(department).not.to.be.ok;
             });
         
         });
 
-        describe("Update one", () => {
+        describe.skip("Update one", () => {
 
             const diff = { name: "Changed name" };
 
             it("By admin", async () => {
                 res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOneAndUpdate(diff).setOptions({ res, roles });
+                const department = await Department.findOneAndUpdate(diff).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("Update department one by user of department one", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res, roles });
+                const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("Update department two by user of department one", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res, roles });
+                const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res });
                 expect(department).not.to.be.ok;
             });
         
         });
 
-        describe("Delete one", () => {
+        describe.skip("Add one", () => {
 
-            beforeEach(async () => {
+            afterEach(async () => {
                 res.locals.user = { roles: [adminRoleKey] };
-                !await Department.findOne({ number: 5 }).setOptions({ res, roles }) && await createDepartment(5);
+                await Department.findOneAndRemove({ number: 100 }).setOptions({ res });
             });
 
             it("By admin", async () => {
                 res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res, roles });
+                await expect(new Department({ number: 100 }).save()).to.be.eventually.fulfilled;
+            });
+
+            it("Add department by allowed user", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
+                expect(department).to.be.ok;
+            });
+
+            it.skip("Add department by restricted user", async () => {
+                res.locals.user = { roles: [depTwoRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
+                expect(department).not.to.be.ok;
+            });
+        
+        });
+
+        describe.skip("Delete one", () => {
+
+            beforeEach(async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                !await Department.findOne({ number: 5 }).setOptions({ res }) && await createDepartment(5);
+            });
+
+            it("By admin", async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("Delete department one by user of department one", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res, roles });
+                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
                 expect(department).to.be.ok;
             });
 
             it("Delete department two by user of department one", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res, roles });
+                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
                 expect(department).not.to.be.ok;
             });
         
