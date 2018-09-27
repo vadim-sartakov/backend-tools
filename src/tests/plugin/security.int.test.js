@@ -80,71 +80,99 @@ describe("Security plugin", () => {
 
     });
 
-    describe("Find", () => {
+    describe("Filter", () => {
 
-        it("By admin", async () => {
-            res.locals.user = { roles: [adminRoleKey] };
-            const departments = await Department.find().setOptions({ res, roles });
-            expect(departments.length).to.equal(entryCount);
+        describe("Find", () => {
+
+            it("By admin", async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                const departments = await Department.find().setOptions({ res, roles });
+                expect(departments.length).to.equal(entryCount);
+            });
+
+            it("By user of department one, no filter", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const departments = await Department.find().setOptions({ res, roles });
+                expect(departments.length).to.equal(1);
+                expect(departments[0]).to.have.property("number", 5);
+            });
+
+            it("By user of department one with filter to allowed department", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const departments = await Department.find({ number: 5 }).setOptions({ res, roles });
+                expect(departments.length).to.equal(1);
+                expect(departments[0]).to.have.property("number", 5);
+            });
+
+            it("By user of department one with filter to prohibited department", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const departments = await Department.find({ number: 6 }).setOptions({ res, roles });
+                expect(departments.length).to.equal(0);
+            });
+
+            it("By user of department one and two without filter", async () => {
+                res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
+                const departments = await Department.find().sort({ number: 1 }).setOptions({ res, roles });
+                expect(departments.length).to.equal(2);
+                expect(departments[0]).to.have.property("number", 5);
+                expect(departments[1]).to.have.property("number", 6);
+            });
+
+            it("By user of department one and two with filter", async () => {
+                res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
+                const departments = await Department.find({ number: 5 }).sort({ number: 1 }).setOptions({ res, roles });
+                expect(departments.length).to.equal(1);
+                expect(departments[0]).to.have.property("number", 5);
+            });
+        
         });
 
-        it("By user of department one, no filter", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const departments = await Department.find().setOptions({ res, roles });
-            expect(departments.length).to.equal(1);
-            expect(departments[0]).to.have.property("number", 5);
+        describe("Find one", () => {
+
+            it("By admin", async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("By user of department one and filter to allowed department", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOne({ number: 5 }).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("By user and filter to prohibited department", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
+                expect(department).not.to.be.ok;
+            });
+        
         });
 
-        it("By user of department one with filter to allowed department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const departments = await Department.find({ number: 5 }).setOptions({ res, roles });
-            expect(departments.length).to.equal(1);
-            expect(departments[0]).to.have.property("number", 5);
+        describe("Update one", () => {
+
+            const diff = { name: "Changed name" };
+
+            it("By admin", async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                const department = await Department.findOneAndUpdate(diff).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("Update department one by user of department one", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("Update department two by user of department one", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res, roles });
+                expect(department).not.to.be.ok;
+            });
+        
         });
 
-        it("By user of department one with filter to prohibited department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const departments = await Department.find({ number: 6 }).setOptions({ res, roles });
-            expect(departments.length).to.equal(0);
-        });
-
-        it("By user of department one and two without filter", async () => {
-            res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
-            const departments = await Department.find().sort({ number: 1 }).setOptions({ res, roles });
-            expect(departments.length).to.equal(2);
-            expect(departments[0]).to.have.property("number", 5);
-            expect(departments[1]).to.have.property("number", 6);
-        });
-
-        it("By user of department one and two with filter", async () => {
-            res.locals.user = { roles: [depOneRoleKey, depTwoRoleKey] };
-            const departments = await Department.find({ number: 5 }).sort({ number: 1 }).setOptions({ res, roles });
-            expect(departments.length).to.equal(1);
-            expect(departments[0]).to.have.property("number", 5);
-        });
-    
-    });
-
-    describe("Find one", () => {
-
-        it("By admin", async () => {
-            res.locals.user = { roles: [adminRoleKey] };
-            const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
-            expect(department).to.be.ok;
-        });
-
-        it("By user of department one and filter to allowed department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOne({ number: 5 }).setOptions({ res, roles });
-            expect(department).to.be.ok;
-        });
-
-        it("By user and filter to prohibited department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOne({ number: 6 }).setOptions({ res, roles });
-            expect(department).not.to.be.ok;
-        });
-    
     });
 
 });
