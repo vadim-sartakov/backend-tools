@@ -39,7 +39,7 @@ const security = schema => {
     schema.pre("find", querySecurityHandler);
     schema.pre("findOne", querySecurityHandler);
     schema.pre("findOneAndUpdate", querySecurityHandler);
-    schema.pre("findOneAndDelete", querySecurityHandler);
+    schema.pre("findOneAndRemove", querySecurityHandler);
 
 };
 

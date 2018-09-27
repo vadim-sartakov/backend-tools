@@ -45,9 +45,10 @@ describe("Security plugin", () => {
         }
     };
 
+    const createDepartment = async (i) => await new Department({ name: `Department ${i}`, address: "Some address", number: i }).save();
     const populateDatabase = async () => {
         for (let i = 0; i < entryCount; i++) {
-            await new Department({ name: `Department ${i}`, address: "Some address", number: i }).save();
+            await createDepartment(i);
         }
     };
 
@@ -168,6 +169,33 @@ describe("Security plugin", () => {
             it("Update department two by user of department one", async () => {
                 res.locals.user = { roles: [depOneRoleKey] };
                 const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res, roles });
+                expect(department).not.to.be.ok;
+            });
+        
+        });
+
+        describe("Delete one", () => {
+
+            beforeEach(async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                !await Department.findOne({ number: 5 }).setOptions({ res, roles }) && await createDepartment(5);
+            });
+
+            it("By admin", async () => {
+                res.locals.user = { roles: [adminRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("Delete department one by user of department one", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res, roles });
+                expect(department).to.be.ok;
+            });
+
+            it("Delete department two by user of department one", async () => {
+                res.locals.user = { roles: [depOneRoleKey] };
+                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res, roles });
                 expect(department).not.to.be.ok;
             });
         
