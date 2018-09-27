@@ -13,54 +13,50 @@ const security = schema => {
         return user;
     };
 
-    function querySecurityHandler() {
+    const getPermission = (user, action) => {
+
+        return user.roles.reduce((prevPermission, role) => {
+
+            if (role === ADMIN || (action === "read" && role === ADMIN_READ)) return true;
+
+            const curPermissions = security[role] || {};
+            let permission = prevPermission === true || curPermissions[action];
+            if (permission && permission !== true) {
+                const { where, projection } = permission;
+                
+            }
+
+        });
+
+    };
+
+    const createQuerySecurityHandler = (action, callback) => function querySecurityHandler() {
 
         const user = getUser(this.options);
-        /*const resultPermissions = user.roles.reduce((prev, role) => {
-            
-            const { permissions } = roles[role] || { };
-            const curRead = permissions.model[this.model.modelName].read;
-            let { read } = (prev.read === true) || (role === ADMIN || role === ADMIN_READ) || curRead;
+        const { security } = schema.security;
 
-            if (read !== true && typeof read === "object") {
-                read = ;
-            };
+        if (!security) throw new Error(`No security defined in schema`);
 
-            return { read };
+        const permissions = getPermission(user, action);
 
-        }, {});
-        switch(this.operation) {
-            case "find":
-                if(!resultPermissions.read) throw new AccessDeniedError();
-                break;
-            case "update":
-                if(!resultPermissions.update) throw new AccessDeniedError();
-                break;
-            case "remove":
-                if(!resultPermissions.delete) throw new AccessDeniedError();
-                break;
-        }
-        user.roles.forEach(role => {
-            const { permissions } = roles[role] || { };
-            const { read } = (permissions && permissions.model[this.model.modelName]) || { };
-            if (typeof read === "object") {
+        if (!permissions[action]) throw new AccessDeniedError();
+        callback.call(this, permissions[action]);
 
-            }
-            filter && this.or(filter);
-        });*/
-
-    }
+    };
 
     function documentSecurityHandler() {
         this.isNew;
     }
 
-    schema.pre("save", documentSecurityHandler);
+    function onRead() {
 
-    schema.pre("find", querySecurityHandler);
-    schema.pre("findOne", querySecurityHandler);
-    schema.pre("findOneAndUpdate", querySecurityHandler);
-    schema.pre("findOneAndRemove", querySecurityHandler);
+    }
+
+    schema.pre("save", documentSecurityHandler);
+    schema.pre("find", createQuerySecurityHandler("read", onRead));
+    schema.pre("findOne", createQuerySecurityHandler("read"));
+    schema.pre("findOneAndUpdate", createQuerySecurityHandler("update"));
+    schema.pre("findOneAndRemove", createQuerySecurityHandler("delete"));
 
 };
 

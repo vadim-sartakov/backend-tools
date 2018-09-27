@@ -78,150 +78,146 @@ describe("Security plugin", () => {
 
     });
 
-    describe("Filter", () => {
+    describe("Read", () => {
 
-        describe("Read", () => {
-
-            it("By admin", async () => {
-                res.locals.user = { roles: [ADMIN] };
-                const invoices = await Invoice.find().setOptions({ res });
-                expect(invoices.length).to.equal(entryCount);
-                expect(invoices[0]).to.have.property("number");
-                expect(invoices[0]).to.have.property("amount");
-            });
-
-            it.skip("By user with wrong role", async () => {
-                res.locals.user = { roles: [INVOICE_USER_CREATE] };
-                const invoices = await Invoice.find().setOptions({ res });
-                expect(invoices.length).to.equal(0);
-            });
-
-            it.skip("By user with suitable role", async () => {
-                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-                const invoices = await Invoice.find().setOptions({ res });
-                expect(invoices.length).to.equal(10);
-            });
-
-            it.skip("By user with combination of roles", async () => {
-                res.locals.user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
-                const invoices = await Invoice.find().setOptions({ res });
-                expect(invoices.length).to.equal(20);
-                expect(invoices[0]).not.to.have.property("amount");
-            });
-
-            it.skip("By user with filter to allowed department", async () => {
-                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-                const invoices = await Invoice.find({ department: depOne }).setOptions({ res });
-                expect(invoices.length).to.equal(10);
-            });
-
-            it.skip("By user with filter to prohibited department", async () => {
-                res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-                const invoices = await Invoice.find({ department: depTwo }).setOptions({ res });
-                expect(invoices.length).to.equal(0);
-            });
-        
+        it("By admin", async () => {
+            res.locals.user = { roles: [ADMIN] };
+            const invoices = await Invoice.find().setOptions({ res });
+            expect(invoices.length).to.equal(entryCount);
+            expect(invoices[0]).to.have.property("number");
+            expect(invoices[0]).to.have.property("amount");
         });
 
-        describe.skip("Find one", () => {
-
-            it("By admin", async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOne({ number: 6 }).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("By user of department one and filter to allowed department", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOne({ number: 5 }).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("By user and filter to prohibited department", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOne({ number: 6 }).setOptions({ res });
-                expect(department).not.to.be.ok;
-            });
-        
+        it.skip("By user with wrong role", async () => {
+            res.locals.user = { roles: [INVOICE_USER_CREATE] };
+            const invoices = await Invoice.find().setOptions({ res });
+            expect(invoices.length).to.equal(0);
         });
 
-        describe.skip("Update one", () => {
-
-            const diff = { name: "Changed name" };
-
-            it("By admin", async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOneAndUpdate(diff).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("Update department one by user of department one", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("Update department two by user of department one", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res });
-                expect(department).not.to.be.ok;
-            });
-        
+        it.skip("By user with suitable role", async () => {
+            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find().setOptions({ res });
+            expect(invoices.length).to.equal(10);
         });
 
-        describe.skip("Add one", () => {
-
-            afterEach(async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                await Department.findOneAndRemove({ number: 100 }).setOptions({ res });
-            });
-
-            it("By admin", async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                await expect(new Department({ number: 100 }).save()).to.be.eventually.fulfilled;
-            });
-
-            it("Add department by allowed user", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it.skip("Add department by restricted user", async () => {
-                res.locals.user = { roles: [depTwoRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
-                expect(department).not.to.be.ok;
-            });
-        
+        it.skip("By user with combination of roles", async () => {
+            res.locals.user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
+            const invoices = await Invoice.find().setOptions({ res });
+            expect(invoices.length).to.equal(20);
+            expect(invoices[0]).not.to.have.property("amount");
         });
 
-        describe.skip("Delete one", () => {
-
-            beforeEach(async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                !await Department.findOne({ number: 5 }).setOptions({ res }) && await createDepartment(5);
-            });
-
-            it("By admin", async () => {
-                res.locals.user = { roles: [adminRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("Delete department one by user of department one", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
-                expect(department).to.be.ok;
-            });
-
-            it("Delete department two by user of department one", async () => {
-                res.locals.user = { roles: [depOneRoleKey] };
-                const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
-                expect(department).not.to.be.ok;
-            });
-        
+        it.skip("By user with filter to allowed department", async () => {
+            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find({ department: depOne }).setOptions({ res });
+            expect(invoices.length).to.equal(10);
         });
 
+        it.skip("By user with filter to prohibited department", async () => {
+            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find({ department: depTwo }).setOptions({ res });
+            expect(invoices.length).to.equal(0);
+        });
+    
+    });
+
+    describe.skip("Find one", () => {
+
+        it("By admin", async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            const department = await Department.findOne({ number: 6 }).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("By user of department one and filter to allowed department", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOne({ number: 5 }).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("By user and filter to prohibited department", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOne({ number: 6 }).setOptions({ res });
+            expect(department).not.to.be.ok;
+        });
+    
+    });
+
+    describe.skip("Update one", () => {
+
+        const diff = { name: "Changed name" };
+
+        it("By admin", async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            const department = await Department.findOneAndUpdate(diff).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("Update department one by user of department one", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("Update department two by user of department one", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res });
+            expect(department).not.to.be.ok;
+        });
+    
+    });
+
+    describe.skip("Add one", () => {
+
+        afterEach(async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            await Department.findOneAndRemove({ number: 100 }).setOptions({ res });
+        });
+
+        it("By admin", async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            await expect(new Department({ number: 100 }).save()).to.be.eventually.fulfilled;
+        });
+
+        it("Add department by allowed user", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it.skip("Add department by restricted user", async () => {
+            res.locals.user = { roles: [depTwoRoleKey] };
+            const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
+            expect(department).not.to.be.ok;
+        });
+    
+    });
+
+    describe.skip("Delete one", () => {
+
+        beforeEach(async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            !await Department.findOne({ number: 5 }).setOptions({ res }) && await createDepartment(5);
+        });
+
+        it("By admin", async () => {
+            res.locals.user = { roles: [adminRoleKey] };
+            const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("Delete department one by user of department one", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOneAndRemove({ number: 5 }).setOptions({ res });
+            expect(department).to.be.ok;
+        });
+
+        it("Delete department two by user of department one", async () => {
+            res.locals.user = { roles: [depOneRoleKey] };
+            const department = await Department.findOneAndRemove({ number: 6 }).setOptions({ res });
+            expect(department).not.to.be.ok;
+        });
+    
     });
 
 });
