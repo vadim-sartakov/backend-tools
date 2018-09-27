@@ -1,20 +1,34 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import { expect } from "chai";
 import autopopulate from "../../plugin/autopopulate";
-import { populateDatabase } from "../utils";
-import { loadModels } from "../model/loader";
 
 mongoose.set("debug", true);
 
 describe("Autopopulate plugin", () => {
 
-    let connection, User;
+    let connection, Role, Department, User;
+
+    const roleSchema = new Schema({ key: String });
+    const departmentSchema = new Schema({ name: String });
+    const userSchema = new Schema({
+        roles: [{ type: Schema.Types.ObjectId, ref: "Role" }],
+        department: { type: Schema.Types.ObjectId, ref: "Department" }
+    });
+
+    const populateDatabase = async () => {
+        const role = await new Role({ key: "ADMIN" }).save();
+        const department = await new Department({ name: "Department" }).save();
+        await new User({ roles: [ role ], department }).save();
+    };
+
     before(async () => {
+        userSchema.plugin(autopopulate);
         connection = await mongoose.createConnection(`${process.env.DB_URL}/autopopulatePluginTest`, { useNewUrlParser: true });
-        loadModels(connection, autopopulate);
-        User = connection.model("User");
-        await populateDatabase(connection, 1, new Date());
+        Role = connection.model("Role", roleSchema);
+        Department = connection.model("Department", departmentSchema);
+        User = connection.model("User", userSchema);
+        await populateDatabase();
     });
     after(async () => {
         await connection.dropDatabase();

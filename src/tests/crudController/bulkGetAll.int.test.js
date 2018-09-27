@@ -1,6 +1,6 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
 import express from "express";
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import qs from "qs";
 import request from "supertest";
 import { expect } from "chai";
@@ -9,8 +9,7 @@ import httpMiddlewares from "../../middleware/http";
 import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
-import { getNextPort, expectedLinks, populateDatabase } from "../utils";
-import { loadModels } from "../model/loader";
+import { getNextPort, expectedLinks } from "../utils";
 
 mongoose.set("debug", true);
 
@@ -18,14 +17,24 @@ describe('Get all bulk tests', () => {
 
     const entryCount = 42;
     const now = new Date();
+    const userSchema = new Schema({ firstName: String, lastName: String, phoneNumber: String, email: String, number: Number, createdAt: Date });
 
     let server, port, connection, User;
+
+    const populateDatabase = async () => {
+        let createdAt = now;
+        for (let i = 0; i < entryCount; i++) {
+            createdAt = new Date(createdAt);
+            createdAt.setDate(createdAt.getDate() + 1);
+            await new User({ firstName: "Bill", lastName: "Gates", number: i, phoneNumber: i, email: `mail${i}@mail.com`, createdAt }).save();
+        }
+    };
+ 
     before(async () => {
 
         connection = await mongoose.createConnection(`${process.env.DB_URL}/crudBulkGetAll`, { useNewUrlParser: true });
-        loadModels(connection);
-        User = connection.model("User");
-
+        User = connection.model("User", userSchema);
+        
         const app = express();
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
@@ -34,7 +43,8 @@ describe('Get all bulk tests', () => {
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
         port = server.address().port;
-        await populateDatabase(connection, entryCount, now);
+
+        await populateDatabase();
 
     });
 

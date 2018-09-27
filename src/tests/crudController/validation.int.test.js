@@ -1,6 +1,6 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
 import express from "express";
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import request from "supertest";
 import { expect } from "chai";
 import mongooseUniqueValidator from "mongoose-unique-validator";
@@ -10,12 +10,56 @@ import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
 import { getNextPort } from "../utils";
-import { loadModels } from "../model/loader";
-import { bill, userTranslations } from "../model/user";
 
 mongoose.set("debug", true);
 
 describe('Validation and translations', () => {
+
+    const userSchema = new Schema({
+        firstName: {
+            type: String,
+            required: true,
+            match: /^\w+$/
+        },
+        lastName: {
+            type: String,
+            required: true,
+            match: /^\w+$/
+        },
+        email: {
+            type: String,
+            lowercase: true,
+            unique: true
+        },
+        phoneNumber: {
+            type: String,
+            unique: true
+        }
+    });
+
+    const userTranslations = {
+        firstName: {
+            name: "First name"
+        },
+        lastName: {
+            name: "Last name",
+            validation: {
+                required: "`Last name` is required custom",
+                regexp: "`Last name` is invalid custom"
+            }
+        },
+        email: {
+            name: "Email"
+        },
+        phoneNumber: {
+            name: "Phone number",
+            validation: {
+                unique: "`Phone number` is not unique custom"
+            }
+        }
+    };
+
+    const bill = { firstName: "Bill", lastName: "Gates" };
 
     let server, connection, User, i18n;
     before(async () => {
@@ -24,8 +68,9 @@ describe('Validation and translations', () => {
         i18n.addResourceBundle("en", "model.User", userTranslations);
 
         connection = await mongoose.createConnection(`${process.env.DB_URL}/crudValidationTests`, { useNewUrlParser: true });
-        loadModels(connection, mongooseUniqueValidator);
-        User = connection.model("User");
+
+        userSchema.plugin(mongooseUniqueValidator);
+        User = connection.model("User", userSchema);
 
         const app = express();
         app.use(generalMiddlewares);

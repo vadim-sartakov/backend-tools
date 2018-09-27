@@ -1,6 +1,6 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
 import express from "express";
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import request from "supertest";
 import { expect } from "chai";
 import generalMiddlewares from "../../middleware/general";
@@ -9,21 +9,20 @@ import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
 import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
 import { getNextPort, expectedLinks } from "../utils";
-import { loadModels } from "../model/loader";
-import { bill } from "../model/user";
 
 mongoose.set("debug", true);
 
 describe("General crud integration tests", () => {
 
     const notFoundMessage = { message: "Not found" };
+    const bill = { firstName: "Bill", lastName: "Gates" };
+    const userSchema = new Schema({ firstName: String, lastName: String }, { versionKey: false });
 
     let server, port, connection, User;
     before(async () => {
 
         connection = await mongoose.createConnection(`${process.env.DB_URL}/crudGeneralTests`, { useNewUrlParser: true });
-        loadModels(connection);
-        User = connection.model("User");
+        User = connection.model("User", userSchema);
 
         const app = express();
         app.use(generalMiddlewares);

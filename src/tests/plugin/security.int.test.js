@@ -1,27 +1,43 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import { expect } from "chai";
 import security from "../../plugin/security";
-import { populateDatabase } from "../utils";
-import { loadModels } from "../model/loader";
-import { bill } from "../model/user";
 
 mongoose.set("debug", true);
 
-describe("Security plugin", () => {
+describe.skip("Security plugin", () => {
 
     const entryCount = 20;
-    const admin = { roles: ["ADMIN"] };
-    const user = { roles: ["USER"] };
+    const departmentSchema = new Schema({ name: String, number: Number });
 
-    let connection, User, expectedUser;
+    let connection, Department;
+
+    const admin = { roles: ["ADMIN"] };
+    const userOne = { roles: ["USER_ONE"] };
+    const userTwo = { roles: ["USER_TWO"] };
+
+    const userOneRole = {
+        key: "USER_ONE",
+        permissions: {
+            model: {
+                Department: {
+
+                }
+            }
+        }
+    };
+
+    const populateDatabase = async () => {
+        for (let i = 0; i < entryCount; i++) {
+            await new Department({ name: `Department ${i}`, number: i }).save();
+        }
+    };
+
     before(async () => {
-        expectedUser = { ...bill, number: 5 };
-        delete expectedUser.roles;
         connection = await mongoose.createConnection(`${process.env.DB_URL}/securityPluginTest`, { useNewUrlParser: true });
-        loadModels(connection, security);
-        User = connection.model("User");
-        await populateDatabase(connection, entryCount, new Date());
+        departmentSchema.plugin(security);
+        Department = connection.model("Department", departmentSchema);
+        await populateDatabase();
     });
     after(async () => {
         await connection.dropDatabase();
