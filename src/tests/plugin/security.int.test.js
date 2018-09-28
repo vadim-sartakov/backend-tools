@@ -11,24 +11,19 @@ describe("Security plugin", () => {
 
     const ADMIN = "ADMIN";
 
-    const INVOICE_USER_CREATE = "INVOICE_USER_CREATE";
-    const INVOICE_USER_READ = "INVOICE_USER_READ";
-    const INVOICE_USER_UPDATE = "INVOICE_USER_UPDATE";
-    const INVOICE_USER_DELETE = "INVOICE_USER_DELETE";
-
-    const INVOICE_MODERATOR_CREATE = "INVOICE_MODERATOR_CREATE";
-    const INVOICE_MODERATOR_READ = "INVOICE_MODERATOR_READ";
-    const INVOICE_MODERATOR_UPDATE = "INVOICE_MODERATOR_UPDATE";
-    const INVOICE_MODERATOR_DELETE = "INVOICE_MODERATOR_DELETE";
+    const SALES_MANAGER = "SALES_MANAGER";
+    const INVENTORY_MANAGER = "INVENTORY_MANAGER";
+    const ACCOUNTANT = "ACCOUNTANT";
+    const MODERATOR = "MODERATOR";
 
     const entryCount = 20;
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
-    const userWhere = user => ({ department: user.department });
-    const userReadProjection = "-amount";
-    const userModifyProjection = "-number";
+    const managerFilter = user => ({ department: user.department });
+    const managerReadProjection = "-amount";
+    const managerModifyProjection = "-number";
 
-    const detailsSchema = new Schema({ description: String, amount: Schema.Types.Decimal128 });
+    const detailsSchema = new Schema({ description: String, amount: Schema.Types.Decimal128, budgetItem: String });
     const invoiceSchema = new Schema({
         number: Number,
         order: { date: Date, number: String },
@@ -37,15 +32,16 @@ describe("Security plugin", () => {
         details: [detailsSchema]
     }, {
         security: {
-            [INVOICE_USER_CREATE]: { create: { projection: userModifyProjection } },
-            [INVOICE_USER_READ]: { read: { where: userWhere, projection: userReadProjection } },
-            [INVOICE_USER_UPDATE]: { update: { where: userWhere, projection: userModifyProjection } },
-            [INVOICE_USER_DELETE]: { delete: { where: userWhere, projection: userReadProjection } },
+            [SALES_MANAGER]: {
+                create: { projection: managerModifyProjection },
+                read: { where: managerFilter, projection: managerReadProjection },
+                update: { where: managerFilter, projection: managerModifyProjection },
+                delete: { where: managerFilter, projection: managerReadProjection }
+            },
+            [ACCOUNTANT]: {
 
-            [INVOICE_MODERATOR_CREATE]: { create: true },
-            [INVOICE_MODERATOR_READ]: { read: true },
-            [INVOICE_MODERATOR_UPDATE]: { update: true },
-            [INVOICE_MODERATOR_DELETE]: { delete: true }
+            },
+            [MODERATOR]: { create: true, read: true, update: true, delete: true },
         }
     });
 
@@ -99,19 +95,19 @@ describe("Security plugin", () => {
         });
 
         it("By user with wrong role", async () => {
-            const user = { roles: [INVOICE_USER_UPDATE] };
+            const user = { roles: [INVENTORY_MANAGER] };
             await expect(createInvoice(createdId).setOptions({ user }).save()).to.be.eventually.rejectedWith("Access is denied");
         });
 
         it("By user with suitable role", async () => {
-            const user = { roles: [INVOICE_USER_CREATE], department: depOne };
+            const user = { roles: [SALES_MANAGER], department: depOne };
             const saved = await createInvoice(createdId).setOptions({ user }).save();
             const savedFromDb = await Invoice.findOne({ _id: saved.id });
             expect(savedFromDb).to.have.property("number", undefined);
         });
 
         it("By user with combination of roles", async () => {
-            const user = { roles: [INVOICE_USER_CREATE, INVOICE_MODERATOR_CREATE], department: depOne };
+            const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
             const saved = await createInvoice(createdId).setOptions({ user }).save();
             const savedFromDb = await Invoice.findOne({ _id: saved.id });
             expect(savedFromDb).to.have.property("number").and.to.be.ok;
@@ -130,33 +126,33 @@ describe("Security plugin", () => {
         });
 
         it("By user with wrong role", async () => {
-            const user = { roles: [INVOICE_USER_CREATE] };
+            const user = { roles: [INVENTORY_MANAGER] };
             await expect(Invoice.find().setOptions({ user })).to.be.eventually.rejectedWith("Access is denied");
         });
 
         it("By user with suitable role", async () => {
-            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(10);
             expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
         it("By user with combination of roles", async () => {
-            const user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
+            const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
             const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(20);
             expect(invoices[0]._doc).to.have.property("amount");
         });
 
         it("By user with filter to allowed department", async () => {
-            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find({ department: depOne }).setOptions({ user });
             expect(invoices.length).to.equal(10);
             expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
         it("By user with filter to prohibited department", async () => {
-            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find({ department: depTwo }).setOptions({ user });
             expect(invoices.length).to.equal(0);
         });
