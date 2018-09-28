@@ -57,37 +57,20 @@ export const getPermissions = (security, user, action) => {
 const securityPlugin = schema => {
 
     schema.methods.setOptions = function(options) {
-        this._options = options;
+        this.options = options;
         return this;
     };
 
     const { security } = schema.options;
 
-    const getUser = options => {
-        const { user } = options;
-        return user;
-    };
-
-    const createQuerySecurityHandler = (action, callback) => function querySecurityHandler() {
-        const user = getUser(this.options);
+    const createSecurityHandler = (action, callback) => function querySecurityHandler() {
+        const { user } = this.options || {};
         const permissions = getPermissions(security, user, action);
-        if (!permissions) throw new AccessDeniedError();
+        // Throwing error does not stop execution chain while saving.
+        // Promise rejecting works in all cases.
+        if (!permissions) return Promise.reject(new AccessDeniedError());
         callback.call(this, permissions);
     };
-
-    function documentSecurityHandler() {
-        let user;
-        try {
-            user = getUser(this._options || {});
-        } catch (err) {
-            // Error throwing does not stop execution chain for some reason.
-            // Promise rejection works.
-            return Promise.reject(err);
-        }
-        const permissions = getPermissions(security, user, "create");
-        if (!permissions) return Promise.reject(new AccessDeniedError());
-        onSave.call(this, permissions);
-    }
 
     const eachFieldRecursive = (object, path, callback) => {
         Object.keys(object).forEach(curPath => {
@@ -95,9 +78,7 @@ const securityPlugin = schema => {
             const property = object[curPath];
             if (property) {
                 if (Array.isArray(property)) {
-                    property.forEach(item => {
-                        eachFieldRecursive(item, fullPath, callback);
-                    });
+                    property.forEach(item => eachFieldRecursive(item, fullPath, callback));
                 } else if (typeof property === "object" && !property._bsontype) {
                     eachFieldRecursive(property, fullPath, callback);
                 }
@@ -127,11 +108,11 @@ const securityPlugin = schema => {
         where && this.or(...where);
     }
 
-    schema.pre("save", documentSecurityHandler);
-    schema.pre("find", createQuerySecurityHandler("read", onRead));
-    schema.pre("findOne", createQuerySecurityHandler("read", onRead));
-    schema.pre("findOneAndUpdate", createQuerySecurityHandler("update", onUpdate));
-    schema.pre("findOneAndRemove", createQuerySecurityHandler("delete", onRead));
+    schema.pre("save", createSecurityHandler("create", onSave));
+    schema.pre("find", createSecurityHandler("read", onRead));
+    schema.pre("findOne", createSecurityHandler("read", onRead));
+    schema.pre("findOneAndUpdate", createSecurityHandler("update", onUpdate));
+    schema.pre("findOneAndRemove", createSecurityHandler("delete", onRead));
 
 };
 
