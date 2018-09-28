@@ -24,7 +24,7 @@ describe("Security plugin", () => {
     const entryCount = 20;
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
-    const where = user => ({ where: { department: user.department } });
+    const where = user => ({ department: user.department });
     const readProjection = "-amount";
     const modifyProjection = "-number";
 
@@ -88,32 +88,33 @@ describe("Security plugin", () => {
             expect(invoices[0]).to.have.property("amount");
         });
 
-        it.skip("By user with wrong role", async () => {
+        it("By user with wrong role", async () => {
             res.locals.user = { roles: [INVOICE_USER_CREATE] };
-            const invoices = await Invoice.find().setOptions({ res });
-            expect(invoices.length).to.equal(0);
+            await expect(Invoice.find().setOptions({ res })).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it.skip("By user with suitable role", async () => {
+        it("By user with suitable role", async () => {
             res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
             const invoices = await Invoice.find().setOptions({ res });
             expect(invoices.length).to.equal(10);
+            expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
-        it.skip("By user with combination of roles", async () => {
+        it("By user with combination of roles", async () => {
             res.locals.user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
             const invoices = await Invoice.find().setOptions({ res });
             expect(invoices.length).to.equal(20);
-            expect(invoices[0]).not.to.have.property("amount");
+            expect(invoices[0]._doc).to.have.property("amount");
         });
 
-        it.skip("By user with filter to allowed department", async () => {
+        it("By user with filter to allowed department", async () => {
             res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
             const invoices = await Invoice.find({ department: depOne }).setOptions({ res });
             expect(invoices.length).to.equal(10);
+            expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
-        it.skip("By user with filter to prohibited department", async () => {
+        it("By user with filter to prohibited department", async () => {
             res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
             const invoices = await Invoice.find({ department: depTwo }).setOptions({ res });
             expect(invoices.length).to.equal(0);

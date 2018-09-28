@@ -3,7 +3,56 @@ import AccessDeniedError from "../error/accessDenied";
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
 
-const security = schema => {
+export const getPermissions = (security, user, action) => {
+
+    const projectionToObject = projection => {
+        if (typeof projection === "object") return projection;
+        return projection.split(" ").reduce((prev, field) => {
+            const excluding = field.startsWith("-");
+            if (excluding) field = field.replace("-", "");
+            return { ...prev, [field]: excluding ? 0 : 1 };
+        }, {});
+    };
+
+    return user.roles.reduce((prevPermission, role) => {
+
+        if (prevPermission === true ||
+                role === ADMIN ||
+                (action === "read" && role === ADMIN_READ)) {
+            return true;
+        }
+
+        if (!security) return false;
+
+        const rolePermissions = security[role] || {};
+        let permission = rolePermissions[action];
+        if (permission === true) {
+            return true;
+        }
+        
+        if (!permission) {
+            return false;
+        }
+
+        if (typeof rolePermissions !== "object") {
+            return false;
+        }
+
+        const where = prevPermission.where || [];
+        where.push(permission.where(user));
+
+        const prevProj = (prevPermission.projection && projectionToObject(prevPermission.projection)) || {};
+        const curProj = (permission.projection && projectionToObject(permission.projection)) || {};
+
+        return { where, projection: { ...prevProj, ...curProj } };
+
+    }, false);
+
+};
+
+const securityPlugin = schema => {
+
+    const { security } = schema.options;
 
     const getUser = options => {
         const { res } = options;
@@ -13,51 +62,32 @@ const security = schema => {
         return user;
     };
 
-    const getPermission = (user, action) => {
-
-        return user.roles.reduce((prevPermission, role) => {
-
-            if (role === ADMIN || (action === "read" && role === ADMIN_READ)) return true;
-
-            const curPermissions = security[role] || {};
-            let permission = prevPermission === true || curPermissions[action];
-            if (permission && permission !== true) {
-                const { where, projection } = permission;
-                
-            }
-
-        });
-
-    };
-
     const createQuerySecurityHandler = (action, callback) => function querySecurityHandler() {
-
         const user = getUser(this.options);
-        const { security } = schema.security;
-
-        if (!security) throw new Error(`No security defined in schema`);
-
-        const permissions = getPermission(user, action);
-
-        if (!permissions[action]) throw new AccessDeniedError();
-        callback.call(this, permissions[action]);
-
+        const permissions = getPermissions(security, user, action);
+        if (!permissions) throw new AccessDeniedError();
+        callback.call(this, permissions);
     };
 
     function documentSecurityHandler() {
         this.isNew;
     }
 
-    function onRead() {
+    function onRead({ where, projection }) {
+        where && this.or(...where);
+        projection && this.select(projection);
+    }
 
+    function onUpdate({ where, projection }) {
+        where && this.or(...where);
     }
 
     schema.pre("save", documentSecurityHandler);
     schema.pre("find", createQuerySecurityHandler("read", onRead));
-    schema.pre("findOne", createQuerySecurityHandler("read"));
-    schema.pre("findOneAndUpdate", createQuerySecurityHandler("update"));
-    schema.pre("findOneAndRemove", createQuerySecurityHandler("delete"));
+    schema.pre("findOne", createQuerySecurityHandler("read", onRead));
+    schema.pre("findOneAndUpdate", createQuerySecurityHandler("update", onUpdate));
+    schema.pre("findOneAndRemove", createQuerySecurityHandler("delete", onRead));
 
 };
 
-export default security;
+export default securityPlugin;
