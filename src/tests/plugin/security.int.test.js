@@ -42,15 +42,15 @@ describe("Security plugin", () => {
         }
     });
 
-    let connection, Department, Invoice, res, depOne, depTwo;
+    let connection, Department, Invoice, depOne, depTwo;
 
-    const createDepartment = async number => await new Department({ name: `Department ${number}`, address: "Some address", number }).save();
-    const createInvoice = async (number, department) => await new Invoice({ number, amount: "10.23", department }).save();
+    const createDepartment = number => new Department({ name: `Department ${number}`, address: "Some address", number });
+    const createInvoice = (number, department) => new Invoice({ number, amount: "10.23", department });
     const populateDatabase = async () => {
-        depOne = await createDepartment(0);
-        depTwo = await createDepartment(1);
-        for (let i = 0; i < (entryCount / 2); i++) await createInvoice(i, depOne);
-        for (let i = (entryCount / 2); i < entryCount; i++) await createInvoice(i, depTwo);
+        depOne = await createDepartment(0).save();
+        depTwo = await createDepartment(1).save();
+        for (let i = 0; i < (entryCount / 2); i++) await createInvoice(i, depOne).setOptions({  }).save();
+        for (let i = (entryCount / 2); i < entryCount; i++) await createInvoice(i, depTwo).save();
     };
 
     before(async () => {
@@ -65,15 +65,36 @@ describe("Security plugin", () => {
         await connection.close(true);
     });
 
-    beforeEach(() => {
-        res = { locals: {} };
-    });
+    describe("Create", () => {
 
-    describe("Errors", () => {
+        const createdId = 100;
+        afterEach(async () => {
+            await Invoice.findOneAndRemove({ number: createdId });
+            await Invoice.findOneAndRemove({ number: undefined });
+        });
 
-        it("No parameters", async () => {
-            await expect(Invoice.find()).to.eventually.rejectedWith("No response was specified");
-            await expect(Invoice.find().setOptions({ res })).to.eventually.rejectedWith("No user found in response locals");
+        it("By admin", async () => {
+            const user = { roles: [ADMIN] };
+            await expect(createInvoice(createdId, depOne).setOptions({ user }).save()).to.be.eventually.fulfilled;
+        });
+
+        it("By user with wrong role", async () => {
+            const user = { roles: [INVOICE_USER_UPDATE] };
+            await expect(createInvoice(createdId).setOptions({ user }).save()).to.be.eventually.rejectedWith("Access is denied");
+        });
+
+        it("By user with suitable role", async () => {
+            const user = { roles: [INVOICE_USER_CREATE], department: depOne };
+            const saved = await createInvoice(createdId).setOptions({ user }).save();
+            const savedFromDb = await Invoice.findOne({ _id: saved.id });
+            expect(savedFromDb).to.have.property("number", undefined);
+        });
+
+        it("By user with combination of roles", async () => {
+            const user = { roles: [INVOICE_USER_CREATE, INVOICE_MODERATOR_CREATE], department: depOne };
+            const saved = await createInvoice(createdId).setOptions({ user }).save();
+            const savedFromDb = await Invoice.findOne({ _id: saved.id });
+            expect(savedFromDb).to.have.property("number").and.to.be.ok;
         });
 
     });
@@ -81,42 +102,42 @@ describe("Security plugin", () => {
     describe("Read", () => {
 
         it("By admin", async () => {
-            res.locals.user = { roles: [ADMIN] };
-            const invoices = await Invoice.find().setOptions({ res });
+            const user = { roles: [ADMIN] };
+            const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(entryCount);
             expect(invoices[0]).to.have.property("number");
             expect(invoices[0]).to.have.property("amount");
         });
 
         it("By user with wrong role", async () => {
-            res.locals.user = { roles: [INVOICE_USER_CREATE] };
-            await expect(Invoice.find().setOptions({ res })).to.be.eventually.rejectedWith("Access is denied");
+            const user = { roles: [INVOICE_USER_CREATE] };
+            await expect(Invoice.find().setOptions({ user })).to.be.eventually.rejectedWith("Access is denied");
         });
 
         it("By user with suitable role", async () => {
-            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-            const invoices = await Invoice.find().setOptions({ res });
+            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(10);
             expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
         it("By user with combination of roles", async () => {
-            res.locals.user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
-            const invoices = await Invoice.find().setOptions({ res });
+            const user = { roles: [INVOICE_USER_READ, INVOICE_MODERATOR_READ], department: depOne };
+            const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(20);
             expect(invoices[0]._doc).to.have.property("amount");
         });
 
         it("By user with filter to allowed department", async () => {
-            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-            const invoices = await Invoice.find({ department: depOne }).setOptions({ res });
+            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find({ department: depOne }).setOptions({ user });
             expect(invoices.length).to.equal(10);
             expect(invoices[0]._doc).not.to.have.property("amount");
         });
 
         it("By user with filter to prohibited department", async () => {
-            res.locals.user = { roles: [INVOICE_USER_READ], department: depOne };
-            const invoices = await Invoice.find({ department: depTwo }).setOptions({ res });
+            const user = { roles: [INVOICE_USER_READ], department: depOne };
+            const invoices = await Invoice.find({ department: depTwo }).setOptions({ user });
             expect(invoices.length).to.equal(0);
         });
     

@@ -1,9 +1,12 @@
+import mongoose from "mongoose";
 import AccessDeniedError from "../error/accessDenied";
 
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
 
 export const getPermissions = (security, user, action) => {
+
+    if (!user) return true;
 
     const projectionToObject = projection => {
         if (typeof projection === "object") return projection;
@@ -38,9 +41,11 @@ export const getPermissions = (security, user, action) => {
             return false;
         }
 
-        const where = prevPermission.where || [];
-        where.push(permission.where(user));
-
+        let where;
+        if (permission.where) {
+            where = prevPermission.where || [];
+            where.push(permission.where(user));
+        }
         const prevProj = (prevPermission.projection && projectionToObject(prevPermission.projection)) || {};
         const curProj = (permission.projection && projectionToObject(permission.projection)) || {};
 
@@ -52,13 +57,15 @@ export const getPermissions = (security, user, action) => {
 
 const securityPlugin = schema => {
 
+    schema.methods.setOptions = function(options) {
+        this._options = options;
+        return this;
+    };
+
     const { security } = schema.options;
 
     const getUser = options => {
-        const { res } = options;
-        if (!res) throw new Error("No response was specified");
-        const { user } = options.res.locals;
-        if (!user) throw new Error("No user found in response locals");
+        const { user } = options;
         return user;
     };
 
@@ -70,7 +77,40 @@ const securityPlugin = schema => {
     };
 
     function documentSecurityHandler() {
-        this.isNew;
+        let user;
+        try {
+            user = getUser(this._options || {});
+        } catch (err) {
+            // Error throwing does not stop execution chain for some reason.
+            // Promise rejection works.
+            return Promise.reject(err);
+        }
+        const permissions = getPermissions(security, user, "create");
+        if (!permissions) return Promise.reject(new AccessDeniedError());
+        onSave.call(this, permissions);
+    }
+
+    const eachFieldRecursive = (object, path, callback) => {
+        Object.keys(object).forEach(curPath => {
+            const fullPath = `${path}${path === "" ? "" : "."}${curPath}`;
+            const property = object[curPath];
+            if (property && typeof property === "object" && !property._bsontype) {
+                eachFieldRecursive(property, fullPath, callback);
+            }
+            callback(object, fullPath, curPath);
+        });
+    };
+
+    function onSave({ projection }) {
+        if (!projection) return;
+        const exclusive = projection[Object.keys(projection)[0]] === 0;
+        eachFieldRecursive(this._doc, "", (property, fullPath, curPath) => {
+            if (exclusive && projection[fullPath] === 0) {
+                delete property[curPath];
+            } else if (!exclusive && !projection[fullPath]) {
+                delete property[curPath];
+            }
+        });
     }
 
     function onRead({ where, projection }) {
