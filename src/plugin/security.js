@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import AccessDeniedError from "../error/accessDenied";
 
 const ADMIN = "ADMIN";
@@ -94,8 +93,14 @@ const securityPlugin = schema => {
         Object.keys(object).forEach(curPath => {
             const fullPath = `${path}${path === "" ? "" : "."}${curPath}`;
             const property = object[curPath];
-            if (property && typeof property === "object" && !property._bsontype) {
-                eachFieldRecursive(property, fullPath, callback);
+            if (property) {
+                if (Array.isArray(property)) {
+                    property.forEach(item => {
+                        eachFieldRecursive(item, fullPath, callback);
+                    });
+                } else if (typeof property === "object" && !property._bsontype) {
+                    eachFieldRecursive(property, fullPath, callback);
+                }
             }
             callback(object, fullPath, curPath);
         });

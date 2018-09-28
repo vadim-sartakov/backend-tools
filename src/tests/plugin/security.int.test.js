@@ -24,16 +24,23 @@ describe("Security plugin", () => {
     const entryCount = 20;
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
-    const where = user => ({ department: user.department });
-    const readProjection = "-amount";
-    const modifyProjection = "-number";
+    const userWhere = user => ({ department: user.department });
+    const userReadProjection = "-amount";
+    const userModifyProjection = "-number";
 
-    const invoiceSchema = new Schema({ number: Number, amount: Schema.Types.Decimal128, department: { type: Schema.Types.ObjectId, ref: "Department" } }, {
+    const detailsSchema = new Schema({ description: String, amount: Schema.Types.Decimal128 });
+    const invoiceSchema = new Schema({
+        number: Number,
+        order: { date: Date, number: String },
+        amount: Schema.Types.Decimal128,
+        department: { type: Schema.Types.ObjectId, ref: "Department" },
+        details: [detailsSchema]
+    }, {
         security: {
-            [INVOICE_USER_CREATE]: { create: { projection: modifyProjection } },
-            [INVOICE_USER_READ]: { read: { where, projection: readProjection } },
-            [INVOICE_USER_UPDATE]: { update: { where, projection: modifyProjection } },
-            [INVOICE_USER_DELETE]: { delete: { where, projection: readProjection } },
+            [INVOICE_USER_CREATE]: { create: { projection: userModifyProjection } },
+            [INVOICE_USER_READ]: { read: { where: userWhere, projection: userReadProjection } },
+            [INVOICE_USER_UPDATE]: { update: { where: userWhere, projection: userModifyProjection } },
+            [INVOICE_USER_DELETE]: { delete: { where: userWhere, projection: userReadProjection } },
 
             [INVOICE_MODERATOR_CREATE]: { create: true },
             [INVOICE_MODERATOR_READ]: { read: true },
@@ -45,7 +52,20 @@ describe("Security plugin", () => {
     let connection, Department, Invoice, depOne, depTwo;
 
     const createDepartment = number => new Department({ name: `Department ${number}`, address: "Some address", number });
-    const createInvoice = (number, department) => new Invoice({ number, amount: "10.23", department });
+    const createInvoice = (number, department) => new Invoice({
+        number,
+        order: {
+            date: new Date(),
+            number: "987/2"
+        },
+        amount: "10.23",
+        department,
+        details: [
+            { description: "Entry one", amount: "5.43" },
+            { description: "Entry two", amount: "2.01" },
+            { description: "Entry three", amount: "8.56" },
+        ]
+    });
     const populateDatabase = async () => {
         depOne = await createDepartment(0).save();
         depTwo = await createDepartment(1).save();
