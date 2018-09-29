@@ -20,14 +20,16 @@ describe("Security plugin", () => {
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
     const managerFilter = user => ({ department: user.department });
-    const managerReadProjection = "-amount";
-    const managerModifyProjection = "-number";
+    const managerReadProjection = "-number -budget.item -details.account";
 
-    const detailsSchema = new Schema({ description: String, amount: Schema.Types.Decimal128, budgetItem: String });
+    const managerModifyProjection = "-number -budget.item -details.account";
+    const accountantModifyProjection = "number budget.item details.account";
+
+    const detailsSchema = new Schema({ description: String, amount: Number, account: String });
     const invoiceSchema = new Schema({
         number: Number,
-        order: { date: Date, number: String },
-        amount: Schema.Types.Decimal128,
+        budget: { item: String },
+        amount: Number,
         department: { type: Schema.Types.ObjectId, ref: "Department" },
         details: [detailsSchema]
     }, {
@@ -39,7 +41,8 @@ describe("Security plugin", () => {
                 delete: { where: managerFilter, projection: managerReadProjection }
             },
             [ACCOUNTANT]: {
-
+                read: true,
+                update: { projection: accountantModifyProjection }
             },
             [MODERATOR]: { create: true, read: true, update: true, delete: true },
         }
@@ -50,16 +53,13 @@ describe("Security plugin", () => {
     const createDepartment = number => new Department({ name: `Department ${number}`, address: "Some address", number });
     const createInvoice = (number, department) => new Invoice({
         number,
-        order: {
-            date: new Date(),
-            number: "987/2"
-        },
-        amount: "10.23",
+        budget: { item: "102-5" },
+        amount: 100,
         department,
         details: [
-            { description: "Entry one", amount: "5.43" },
-            { description: "Entry two", amount: "2.01" },
-            { description: "Entry three", amount: "8.56" },
+            { description: "Entry one", amount: 5, account: "1" },
+            { description: "Entry two", amount: 2, account: "2" },
+            { description: "Entry three", amount: 8, account: "3" },
         ]
     });
     const populateDatabase = async () => {
@@ -94,23 +94,27 @@ describe("Security plugin", () => {
             await expect(createInvoice(createdId, depOne).setOptions({ user }).save()).to.be.eventually.fulfilled;
         });
 
-        it("By user with wrong role", async () => {
+        it("By inventory manager", async () => {
             const user = { roles: [INVENTORY_MANAGER] };
             await expect(createInvoice(createdId).setOptions({ user }).save()).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it("By user with suitable role", async () => {
+        it.only("By manager of department one", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
             const saved = await createInvoice(createdId).setOptions({ user }).save();
             const savedFromDb = await Invoice.findOne({ _id: saved.id });
-            expect(savedFromDb).to.have.property("number", undefined);
+            expect(savedFromDb._doc).not.to.have.property("number");
+            expect(savedFromDb._doc).not.to.have.nested.property("budget.item");
+            expect(savedFromDb._doc).not.to.have.nested.property("details[0]._doc.account");
         });
 
-        it("By user with combination of roles", async () => {
+        it("By user as combination of manager and moderator", async () => {
             const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
             const saved = await createInvoice(createdId).setOptions({ user }).save();
             const savedFromDb = await Invoice.findOne({ _id: saved.id });
-            expect(savedFromDb).to.have.property("number").and.to.be.ok;
+            expect(savedFromDb._doc).to.have.property("number");
+            expect(savedFromDb._doc).to.have.nested.property("budget.item");
+            expect(savedFromDb._doc).to.have.nested.property("details[0]._doc.account");
         });
 
     });
@@ -125,33 +129,42 @@ describe("Security plugin", () => {
             expect(invoices[0]).to.have.property("amount");
         });
 
-        it("By user with wrong role", async () => {
+        it("By inventory manager", async () => {
             const user = { roles: [INVENTORY_MANAGER] };
             await expect(Invoice.find().setOptions({ user })).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it("By user with suitable role", async () => {
+        it("By manager of department 1", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(10);
-            expect(invoices[0]._doc).not.to.have.property("amount");
+            const invoice = invoices[0]._doc;
+            expect(invoice).not.to.have.property("number");
+            expect(invoice).not.to.have.nested.property("budget.item");
+            expect(invoice).not.to.have.nested.property("details[0]._doc.account");
         });
 
-        it("By user with combination of roles", async () => {
+        it("By user as combination of manager and moderator", async () => {
             const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
             const invoices = await Invoice.find().setOptions({ user });
             expect(invoices.length).to.equal(20);
-            expect(invoices[0]._doc).to.have.property("amount");
+            const invoice = invoices[0]._doc;
+            expect(invoice).to.have.property("number");
+            expect(invoice).to.have.nested.property("budget.item");
+            expect(invoice).to.have.nested.property("details[0]._doc.account");
         });
 
-        it("By user with filter to allowed department", async () => {
+        it("By manager of department one with filter", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find({ department: depOne }).setOptions({ user });
             expect(invoices.length).to.equal(10);
-            expect(invoices[0]._doc).not.to.have.property("amount");
+            const invoice = invoices[0]._doc;
+            expect(invoice).not.to.have.property("number");
+            expect(invoice).not.to.have.nested.property("budget.item");
+            expect(invoice).not.to.have.nested.property("details[0]._doc.account");
         });
 
-        it("By user with filter to prohibited department", async () => {
+        it("Department 2 data by manager of department 1", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
             const invoices = await Invoice.find({ department: depTwo }).setOptions({ user });
             expect(invoices.length).to.equal(0);
