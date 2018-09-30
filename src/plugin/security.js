@@ -76,12 +76,11 @@ const securityPlugin = schema => {
         Object.keys(object).forEach(curPath => {
             const fullPath = `${path}${path === "" ? "" : "."}${curPath}`;
             const property = object[curPath];
-            if (property) {
-                if (Array.isArray(property)) {
-                    property.forEach(item => eachFieldRecursive(item, fullPath, callback));
-                } else if (typeof property === "object" && !property._bsontype) {
-                    eachFieldRecursive(property, fullPath, callback);
-                }
+            if (!property || curPath.startsWith("_")) return;
+            if (Array.isArray(property)) {
+                property.forEach(item => eachFieldRecursive((item._doc && item._doc) || item, fullPath, callback));
+            } else if (typeof property === "object") {
+                eachFieldRecursive(property, fullPath, callback);
             }
             callback(object, fullPath, curPath);
         });

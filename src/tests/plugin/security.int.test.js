@@ -99,7 +99,7 @@ describe("Security plugin", () => {
             await expect(createInvoice(createdId).setOptions({ user }).save()).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it.only("By manager of department one", async () => {
+        it("By manager of department one", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
             const saved = await createInvoice(createdId).setOptions({ user }).save();
             const savedFromDb = await Invoice.findOne({ _id: saved.id });
