@@ -90,28 +90,17 @@ const securityPlugin = schema => {
     function onSave({ projection }) {
         if (!projection) return;
         const exclusive = projection[Object.keys(projection)[0]] === 0;
-        eachFieldRecursive(this._doc, "", (property, fullPath, curPath) => {
-            if (exclusive && projection[fullPath] === 0) {
-                delete property[curPath];
-            } else if (!exclusive && !projection[fullPath]) {
-                delete property[curPath];
+
+        Object.keys(projection).forEach(path => {
+            const docPath = path.split(".").map((value, index, array) => {
+                const property = array.slice(0, index + 1);
+                return property._doc ? `${value}.${property._doc}` : value;
+            }).join(".");
+            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
+                lodash.set(this._doc, docPath, undefined);
             }
         });
-        /**
-         * path.split(".").forEach((value, index, array) => {
-                const path = array.slice(0, index).join(".");
-                const property = lodash.get(existing._doc, property);
-                if (Array.isArray(property)) {
-                    
-                    property.forEach((value) => {
-                        const arrayPath = `${path}[${index}]`;
-                        const prevValue = lodash.get(existing._doc, `${path}[${index}]`);
-                        lodash.set(this._update, arrayPath, prevValue);
-                    });                        
 
-                }
-            });
-         */
     }
 
     function onRead({ where, projection }) {
