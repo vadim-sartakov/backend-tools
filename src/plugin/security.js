@@ -65,7 +65,9 @@ const securityPlugin = schema => {
     const { security } = schema.options;
 
     const createSecurityHandler = (action, callback) => async function querySecurityHandler() {
-        const { user } = (this.constructor.name === "Query" && this.options) || (this.constructor.name === "model" && this._options) || {};
+        const { user } = 
+                (this.constructor.name === "Query" && this.options) ||
+                (this.constructor.name === "model" && this._options) || {};
         const permissions = getPermissions(security, user, action);
         // Throwing error does not stop execution chain while saving.
         // Promise rejecting works in all cases.
@@ -73,25 +75,15 @@ const securityPlugin = schema => {
         await callback.call(this, permissions);
     };
 
-    const eachFieldRecursive = (object, path, callback) => {
-        Object.keys(object).forEach(curPath => {
-            const fullPath = `${path}${path === "" ? "" : "."}${curPath}`;
-            const property = object[curPath];
-            if (!property || curPath.startsWith("_")) return;
-            if (Array.isArray(property)) {
-                property.forEach(item => eachFieldRecursive((item._doc && item._doc) || item, fullPath, callback));
-            } else if (typeof property === "object") {
-                eachFieldRecursive((property._doc && property._doc) || property, fullPath, callback);
-            }
-            callback(object, fullPath, curPath);
-        });
-    };
-
     function onSave({ projection }) {
         if (!projection) return;
         const exclusive = projection[Object.keys(projection)[0]] === 0;
 
         Object.keys(projection).forEach(path => {
+            /*path.split(".").forEach((value, index, array) => {
+                const curPath = array.slice(0, index + 1).join(".");
+                const property = lodash
+            });*/
             const docPath = path.split(".").map((value, index, array) => {
                 const property = array.slice(0, index + 1);
                 return property._doc ? `${value}.${property._doc}` : value;
@@ -100,7 +92,6 @@ const securityPlugin = schema => {
                 lodash.set(this._doc, docPath, undefined);
             }
         });
-
     }
 
     function onRead({ where, projection }) {
