@@ -175,24 +175,41 @@ describe("Security plugin", () => {
     
     });
 
-    describe.skip("Find one", () => {
+    describe("Find one", () => {
 
         it("By admin", async () => {
-            res.locals.user = { roles: [adminRoleKey] };
-            const department = await Department.findOne({ number: 6 }).setOptions({ res });
-            expect(department).to.be.ok;
+            const user = { roles: [ADMIN] };
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
+            expect(invoice).to.have.nested.property("_doc.number");
+            expect(invoice).to.have.nested.property("_doc.budget.item");
+            expect(invoice).to.have.nested.property("_doc.details[0]._doc.account");
         });
 
-        it("By user of department one and filter to allowed department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOne({ number: 5 }).setOptions({ res });
-            expect(department).to.be.ok;
+        it("By inventory manager", async () => {
+            const user = { roles: [INVENTORY_MANAGER] };
+            await expect(Invoice.findOne({ number: 5 }).setOptions({ user })).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it("By user and filter to prohibited department", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOne({ number: 6 }).setOptions({ res });
-            expect(department).not.to.be.ok;
+        it("By manager of department 1", async () => {
+            const user = { roles: [SALES_MANAGER], department: depOne };
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
+            expect(invoice).not.to.have.nested.property("_doc.number");
+            expect(invoice).not.to.have.nested.property("_doc.budget.item");
+            expect(invoice).not.to.have.nested.property("_doc.details[0]._doc.account");
+        });
+
+        it("By user as combination of manager and moderator", async () => {
+            const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
+            expect(invoice).to.have.nested.property("_doc.number");
+            expect(invoice).to.have.nested.property("_doc.budget.item");
+            expect(invoice).to.have.nested.property("_doc.details[0]._doc.account");
+        });
+
+        it("Department 2 data by manager of department 1", async () => {
+            const user = { roles: [SALES_MANAGER], department: depOne };
+            const invoice = await Invoice.findOne({ department: depTwo }).setOptions({ user });
+            expect(invoice).not.to.be.ok;
         });
     
     });
