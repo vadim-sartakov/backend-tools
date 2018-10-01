@@ -1,3 +1,4 @@
+import lodash from "lodash";
 import AccessDeniedError from "../error/accessDenied";
 
 const ADMIN = "ADMIN";
@@ -63,13 +64,13 @@ const securityPlugin = schema => {
 
     const { security } = schema.options;
 
-    const createSecurityHandler = (action, callback) => function querySecurityHandler() {
+    const createSecurityHandler = (action, callback) => async function querySecurityHandler() {
         const { user } = (this.constructor.name === "Query" && this.options) || (this.constructor.name === "model" && this._options) || {};
         const permissions = getPermissions(security, user, action);
         // Throwing error does not stop execution chain while saving.
         // Promise rejecting works in all cases.
         if (!permissions) return Promise.reject(new AccessDeniedError());
-        callback.call(this, permissions);
+        await callback.call(this, permissions);
     };
 
     const eachFieldRecursive = (object, path, callback) => {
@@ -96,6 +97,21 @@ const securityPlugin = schema => {
                 delete property[curPath];
             }
         });
+        /**
+         * path.split(".").forEach((value, index, array) => {
+                const path = array.slice(0, index).join(".");
+                const property = lodash.get(existing._doc, property);
+                if (Array.isArray(property)) {
+                    
+                    property.forEach((value) => {
+                        const arrayPath = `${path}[${index}]`;
+                        const prevValue = lodash.get(existing._doc, `${path}[${index}]`);
+                        lodash.set(this._update, arrayPath, prevValue);
+                    });                        
+
+                }
+            });
+         */
     }
 
     function onRead({ where, projection }) {
@@ -103,8 +119,19 @@ const securityPlugin = schema => {
         projection && this.select(projection);
     }
 
-    function onUpdate({ where, projection }) {
+    async function onUpdate({ where, projection }) {
         where && this.or(...where);
+        if (!projection) return;
+
+        const existing = await this.model.findOne(this._conditions).setOptions({ lean: true });
+        const exclusive = projection[Object.keys(projection)[0]] === 0;
+
+        Object.keys(projection).forEach(path => {
+            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
+                const prevValue = lodash.get(existing, path);
+                prevValue && lodash.set(this._update, path, prevValue);
+            }
+        });
     }
 
     schema.pre("save", createSecurityHandler("create", onSave));

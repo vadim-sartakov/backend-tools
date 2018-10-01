@@ -2,9 +2,12 @@ import env from "../../config/env"; // eslint-disable-line no-unused-vars
 import mongoose, { Schema } from "mongoose";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
+import chaiSubset from "chai-subset";
 import security from "../../plugin/security";
 
 chai.use(chaiAsPromised);
+chai.use(chaiSubset);
+
 mongoose.set("debug", true);
 
 describe("Security plugin", () => {
@@ -17,7 +20,6 @@ describe("Security plugin", () => {
     const MODERATOR = "MODERATOR";
 
     const entryCount = 20;
-    const departmentSchema = new Schema({ name: String, address: String, number: Number });
 
     const managerFilter = user => ({ department: user.department });
     const managerReadProjection = "-number -budget.item -details.account";
@@ -25,6 +27,7 @@ describe("Security plugin", () => {
     const managerModifyProjection = "-number -budget.item -details.account";
     const accountantModifyProjection = "number budget.item details.account";
 
+    const departmentSchema = new Schema({ name: String, address: String, number: Number });
     const orderSchema = new Schema({ number: String });
     const detailsSchema = new Schema({ description: String, amount: Number, account: String });
     const invoiceSchema = new Schema({
@@ -48,20 +51,23 @@ describe("Security plugin", () => {
             [MODERATOR]: { create: true, read: true, update: true, delete: true },
         }
     });
-
-    let connection, Department, Invoice, depOne, depTwo;
-
-    const createDepartment = number => new Department({ name: `Department ${number}`, address: "Some address", number });
-    const createInvoice = (number, department) => new Invoice({
-        number,
+    const invoiceDoc = {
         budget: { item: "102-5" },
         amount: 100,
-        department,
         details: [
             { description: "Entry one", amount: 5, account: "1" },
             { description: "Entry two", amount: 2, account: "2" },
             { description: "Entry three", amount: 8, account: "3" },
         ]
+    };
+
+    let connection, Department, Invoice, depOne, depTwo;
+
+    const createDepartment = number => new Department({ name: `Department ${number}`, address: "Some address", number });
+    const createInvoice = (number, department) => new Invoice({
+        ...invoiceDoc,
+        number,
+        department
     });
     const populateDatabase = async () => {
         depOne = await createDepartment(0).save();
@@ -214,26 +220,62 @@ describe("Security plugin", () => {
     
     });
 
-    describe.skip("Update one", () => {
+    describe("Update one", () => {
 
-        const diff = { name: "Changed name" };
+        const diff = {
+            number: 200,
+            budget: { item: "Item" },
+            details: [
+                { description: "Entry one updated", amount: 5, account: "100" },
+                { description: "Entry two", amount: 2, account: "2" },
+                { description: "Entry three", amount: 8, account: "3" },
+            ]
+        };
+        const number = 5;
+        let _id;
+
+        before(async () => {
+            const updatable = await Invoice.findOne({ number });
+            _id = updatable.id;
+        });
+
+        afterEach(async () => {
+            await Invoice.findOneAndRemove({ _id });
+            const saved = await createInvoice(number, depOne).save();
+            _id = saved.id;
+        });
 
         it("By admin", async () => {
-            res.locals.user = { roles: [adminRoleKey] };
-            const department = await Department.findOneAndUpdate(diff).setOptions({ res });
-            expect(department).to.be.ok;
+            const user = { roles: [ADMIN] };
+            await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user, lean: true });
+            const updated = await Invoice.findOne({ _id });
+            expect(updated).to.containSubset(diff);
         });
 
-        it("Update department one by user of department one", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOneAndUpdate({ number: 5 }, diff).setOptions({ res });
-            expect(department).to.be.ok;
+        it("By inventory manager", async () => {
+            const user = { roles: [INVENTORY_MANAGER] };
+            await expect(Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user })).to.be.eventually.rejectedWith("Access is denied");
         });
 
-        it("Update department two by user of department one", async () => {
-            res.locals.user = { roles: [depOneRoleKey] };
-            const department = await Department.findOneAndUpdate({ number: 6 }, diff).setOptions({ res });
-            expect(department).not.to.be.ok;
+        it("Invoice of department one by manager of department one", async () => {
+            const user = { roles: [SALES_MANAGER], department: depOne };
+            await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user });
+            const updated = await Invoice.findOne({ _id }).setOptions({ lean: true });
+            expect(updated).to.have.nested.property("number", number);
+            expect(updated).to.have.nested.property("budget.item", invoiceDoc.budget.item);
+        });
+
+        it("Invoice of department two by manager of department one", async () => {
+            const user = { roles: [SALES_MANAGER], department: depTwo };
+            const invoice = await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user });
+            expect(invoice).not.to.be.ok;
+        });
+
+        it("By user as combination of manager and moderator", async () => {
+            const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
+            await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user, lean: true });
+            const updated = await Invoice.findOne({ _id });
+            expect(updated).to.containSubset(diff);
         });
     
     });
