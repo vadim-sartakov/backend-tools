@@ -57,14 +57,14 @@ export const getPermissions = (security, user, action) => {
 const securityPlugin = schema => {
 
     schema.methods.setOptions = function(options) {
-        this.options = options;
+        this._options = options;
         return this;
     };
 
     const { security } = schema.options;
 
     const createSecurityHandler = (action, callback) => function querySecurityHandler() {
-        const { user } = this.options || {};
+        const { user } = (this.constructor.name === "Query" && this.options) || (this.constructor.name === "model" && this._options) || {};
         const permissions = getPermissions(security, user, action);
         // Throwing error does not stop execution chain while saving.
         // Promise rejecting works in all cases.
@@ -80,7 +80,7 @@ const securityPlugin = schema => {
             if (Array.isArray(property)) {
                 property.forEach(item => eachFieldRecursive((item._doc && item._doc) || item, fullPath, callback));
             } else if (typeof property === "object") {
-                eachFieldRecursive(property, fullPath, callback);
+                eachFieldRecursive((property._doc && property._doc) || property, fullPath, callback);
             }
             callback(object, fullPath, curPath);
         });
