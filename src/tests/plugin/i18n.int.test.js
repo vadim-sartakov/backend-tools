@@ -1,39 +1,40 @@
 import env from "../../config/env"; // eslint-disable-line no-unused-vars
-import express from "express";
 import mongoose, { Schema } from "mongoose";
-import request from "supertest";
-import { expect } from "chai";
 import mongooseUniqueValidator from "mongoose-unique-validator";
-import generalMiddlewares from "../../middleware/general";
-import httpMiddlewares from "../../middleware/http";
-import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
-import crudValidationMiddleware from "../../middleware/crud";
-import crudRouter from "../../controller/crudController";
-import { getNextPort } from "../utils";
+import chai, { expect } from "chai";
+import chaiAsPromised from "chai-as-promised";
+import { createI18n } from '../../middleware/i18n';
+import i18nPlugin from "../../plugin/i18n";
+
+chai.use(chaiAsPromised);
 
 mongoose.set("debug", true);
 
-describe('Validation and translations', () => {
+describe("i18n plugin", () => {
 
     const userSchema = new Schema({
         firstName: {
             type: String,
             required: true,
-            match: /^\w+$/
+            match: /^\w+$/,
+            en: "First name"
         },
         lastName: {
             type: String,
             required: true,
-            match: /^\w+$/
+            match: /^\w+$/,
+            en: "Last name"
         },
         email: {
             type: String,
             lowercase: true,
-            unique: true
+            unique: true,
+            en: "Email"
         },
         phoneNumber: {
             type: String,
-            unique: true
+            unique: true,
+            en: "Phone number"
         }
     });
 
@@ -61,40 +62,27 @@ describe('Validation and translations', () => {
 
     const bill = { firstName: "Bill", lastName: "Gates" };
 
-    let server, connection, User, i18n;
+    let connection, User, i18n;
     before(async () => {
-
+        userSchema.plugin(mongooseUniqueValidator);
+        userSchema.plugin(i18nPlugin);
         i18n = createI18n();
         i18n.addResourceBundle("en", "model.User", userTranslations);
-
-        connection = await mongoose.createConnection(`${process.env.DB_URL}/crudValidationTests`, { useNewUrlParser: true });
-
-        userSchema.plugin(mongooseUniqueValidator);
+        connection = await mongoose.createConnection(`${process.env.DB_URL}/i18nPluginTest`, { useNewUrlParser: true });
         User = connection.model("User", userSchema);
-
-        const app = express();
-        app.use(generalMiddlewares);
-        app.use(createI18nMiddleware(i18n));
-        app.use("/users", crudRouter(User));
-        app.use(crudValidationMiddleware);
-        app.use(httpMiddlewares);
-        server = app.listen(getNextPort());
-
     });
-
-    after(async () => { 
+    after(async () => {
         await connection.dropDatabase();
         await connection.close(true);
-        server.close();
     });
-
     const dropCollection = async () => await User.deleteMany({ });
     beforeEach(dropCollection);
-    afterEach(dropCollection);    
+    afterEach(dropCollection);
 
-    const validateFields = (res, errCount, ...fields) => {
-        const { errors } = res.body;
-        expect(errors).not.to.be.undefined;
+    const checkError = (err, errCount, ...fields) => {
+        expect(err.message).to.equal("Validation failed");
+        const { errors } = err;
+        expect(errors).to.be.ok;
         expect(Object.keys(errors).length).to.equal(errCount);
         fields.forEach(field => {
             expect(errors[field.name]).not.to.be.undefined;
@@ -103,9 +91,9 @@ describe('Validation and translations', () => {
     };
 
     it('Add user with empty fields', async () => {
-        const res = await request(server).post("/users").expect(400);
-        validateFields(
-            res,
+        const err = await expect(new User({ }).setOptions({ i18n }).save()).to.be.eventually.rejected;
+        checkError(
+            err,
             2,
             { name: "firstName", value: "`First name` is required" },
             { name: "lastName", value: "`Last name` is required custom" }
@@ -135,13 +123,13 @@ describe('Validation and translations', () => {
         await request(server).post("/users").send({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).expect(201);
     });
 
-    it('Update existing entry with wrong values', async () => {
+    it.only('Update existing entry with wrong values', async () => {
         const extendedDoc = { ...bill, email: "mail@mailbox.com", phoneNumber: "+123456" };
         await new User(extendedDoc).save();
         const instance = await new User({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).save();
-        const res = await request(server).put(`/users/${instance.id}`).send({ ...extendedDoc, firstName: "/*+-" }).expect(400);
-        validateFields(
-            res,
+        const err = await expect(User.findOneAndUpdate({ _id: instance.id }, { ...extendedDoc, firstName: "/*+-" })).to.be.eventually.rejected;
+        checkError(
+            err,
             3,
             { name: "firstName", value: "`First name` is invalid" },
             { name: "email", value: "`Email` is not unique" },
