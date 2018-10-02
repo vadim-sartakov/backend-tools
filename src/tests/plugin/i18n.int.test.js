@@ -101,9 +101,9 @@ describe("i18n plugin", () => {
     });
 
     it('Add user with wrong first name', async () => {
-        const res = await request(server).post("/users").send({ ...bill, firstName: "+=-!", lastName: "**/+" }).expect(400);
-        validateFields(
-            res,
+        const err = await expect(new User({ ...bill, firstName: "+=-!", lastName: "**/+" }).setOptions({ i18n }).save()).to.be.eventually.rejected;
+        checkError(
+            err,
             2,
             { name: "firstName", value: "`First name` is invalid" },
             { name: "lastName", value: "`Last name` is invalid custom" }
@@ -112,22 +112,26 @@ describe("i18n plugin", () => {
 
     it('Add non-unique email', async () => {
         const extendedDoc = { ...bill, email: "mail@mailbox.com", phoneNumber: "+123456" };
-        await request(server).post("/users").send(extendedDoc).expect(201);
-        const res = await request(server).post("/users").send(extendedDoc).expect(400);
-        validateFields(
-            res,
+        await new User(extendedDoc).save();
+        const err = await expect(new User(extendedDoc).setOptions({ i18n }).save()).to.be.eventually.rejected;
+        checkError(
+            err,
             2,
             { name: "email", value: "`Email` is not unique" },
             { name: "phoneNumber", value: "`Phone number` is not unique custom" }
         );
-        await request(server).post("/users").send({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).expect(201);
+        await expect(new User({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).setOptions({ i18n }).save()).to.be.eventually.fulfilled;
     });
 
-    it.only('Update existing entry with wrong values', async () => {
+    it('Update existing entry with wrong values', async () => {
         const extendedDoc = { ...bill, email: "mail@mailbox.com", phoneNumber: "+123456" };
         await new User(extendedDoc).save();
         const instance = await new User({ ...extendedDoc, email: "mail2@mailbox.com", phoneNumber: "+321" }).save();
-        const err = await expect(User.findOneAndUpdate({ _id: instance.id }, { ...extendedDoc, firstName: "/*+-" })).to.be.eventually.rejected;
+        const err = await expect(User.findOneAndUpdate(
+            { _id: instance.id },
+            { ...extendedDoc, firstName: "/*+-" },
+            { runValidators: true, context: 'query', i18n }
+        )).to.be.eventually.rejected;
         checkError(
             err,
             3,

@@ -1,19 +1,13 @@
-function translateMessages(err) => {
+function translateMessages(err) {
 
     let i18n, modelName;
     if (this.constructor.name === "Query") {
         i18n = this.options.i18n;
-        modelName = this.constructor.name;
+        modelName = this.model.modelName;
     } else if (this.constructor.name === "model") {
         i18n = this._options.i18n;
         modelName = this.constructor.modelName;
     }
-
-    const { i18n } = 
-            (this.constructor.name === "Query" && this.options) ||
-            (this.constructor.name === "model" && this._options);
-
-    const modelName = ;
 
     if (!i18n) return;
 
@@ -31,10 +25,10 @@ function translateMessages(err) => {
 
     });
 
-};
+}
 
 function errorMiddleware(err, doc, next) { // eslint-disable-line no-unused-vars
-    err.name === 'ValidationError' && translateMessages(err, this.constructor.modelName, this._options && this._options.i18n);
+    err.name === 'ValidationError' && translateMessages.call(this, err);
     next(err);
 }
 
