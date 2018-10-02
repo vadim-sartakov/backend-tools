@@ -22,10 +22,10 @@ describe("Security plugin", () => {
     const entryCount = 20;
 
     const managerFilter = user => ({ department: user.department });
-    const managerReadProjection = "-number -budget.item -details.account";
+    const managerReadProjection = "-number -budget.item -order.number -details.account";
 
-    const managerModifyProjection = "-number -budget.item -details.account";
-    const accountantModifyProjection = "number budget.item details.account";
+    const managerModifyProjection = "-number -budget.item -order.number";
+    const accountantModifyProjection = "number budget.item order.number";
 
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
     const orderSchema = new Schema({ number: String });
@@ -33,6 +33,7 @@ describe("Security plugin", () => {
     const invoiceSchema = new Schema({
         number: Number,
         budget: { item: String },
+        order: orderSchema,
         amount: Number,
         department: { type: Schema.Types.ObjectId, ref: "Department" },
         details: [detailsSchema]
@@ -53,6 +54,7 @@ describe("Security plugin", () => {
     });
     const invoiceDoc = {
         budget: { item: "102-5" },
+        order: { number: "156/2" },
         amount: 100,
         details: [
             { description: "Entry one", amount: 5, account: "1" },
@@ -98,7 +100,11 @@ describe("Security plugin", () => {
 
         it("By admin", async () => {
             const user = { roles: [ADMIN] };
-            await expect(createInvoice(createdId, depOne).setOptions({ user }).save()).to.be.eventually.fulfilled;
+            const invoice = await createInvoice(createdId, depOne).setOptions({ user }).save();
+            const dbInvoice = await Invoice.findOne({ _id: invoice.id }).setOptions({ lean: true });
+            expect(dbInvoice).to.have.property("number");
+            expect(dbInvoice).to.have.nested.property("budget.item");
+            expect(dbInvoice).to.have.nested.property("order.number");
         });
 
         it("By inventory manager", async () => {
@@ -108,20 +114,20 @@ describe("Security plugin", () => {
 
         it("By manager of department one", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
-            const saved = await createInvoice(createdId).setOptions({ user }).save();
-            const savedFromDb = await Invoice.findOne({ _id: saved.id });
-            expect(savedFromDb._doc).not.to.have.property("number");
-            expect(savedFromDb._doc).not.to.have.nested.property("budget.item");
-            expect(savedFromDb._doc).not.to.have.nested.property("details[0]._doc.account");
+            const invoice = await createInvoice(createdId).setOptions({ user }).save();
+            const dbInvoice = await Invoice.findOne({ _id: invoice.id }).setOptions({ lean: true });
+            expect(dbInvoice).not.to.have.property("number");
+            expect(dbInvoice).not.to.have.nested.property("budget.item");
+            expect(dbInvoice).not.to.have.nested.property("order.number");
         });
 
         it("By user as combination of manager and moderator", async () => {
             const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
-            const saved = await createInvoice(createdId).setOptions({ user }).save();
-            const savedFromDb = await Invoice.findOne({ _id: saved.id });
-            expect(savedFromDb._doc).to.have.property("number");
-            expect(savedFromDb._doc).to.have.nested.property("budget.item");
-            expect(savedFromDb._doc).to.have.nested.property("details[0]._doc.account");
+            const invoice = await createInvoice(createdId).setOptions({ user }).save();
+            const dbInvoice = await Invoice.findOne({ _id: invoice.id }).setOptions({ lean: true });
+            expect(dbInvoice).to.have.property("number");
+            expect(dbInvoice).to.have.nested.property("budget.item");
+            expect(dbInvoice).to.have.nested.property("order.number");
         });
 
     });
@@ -130,12 +136,13 @@ describe("Security plugin", () => {
 
         it("By admin", async () => {
             const user = { roles: [ADMIN] };
-            const invoices = await Invoice.find().setOptions({ user });
+            const invoices = await Invoice.find().setOptions({ user, lean: true });
             expect(invoices.length).to.equal(entryCount);
-            const invoice = invoices[0]._doc;
+            const invoice = invoices[0];
             expect(invoice).to.have.property("number");
             expect(invoice).to.have.nested.property("budget.item");
-            expect(invoice).to.have.nested.property("details[0]._doc.account");
+            expect(invoice).to.have.nested.property("order.number");
+            expect(invoice).to.have.nested.property("details[0].account");
         });
 
         it("By inventory manager", async () => {
@@ -145,32 +152,35 @@ describe("Security plugin", () => {
 
         it("By manager of department 1", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
-            const invoices = await Invoice.find().setOptions({ user });
+            const invoices = await Invoice.find().setOptions({ user, lean: true });
             expect(invoices.length).to.equal(10);
-            const invoice = invoices[0]._doc;
+            const invoice = invoices[0];
             expect(invoice).not.to.have.property("number");
             expect(invoice).not.to.have.nested.property("budget.item");
-            expect(invoice).not.to.have.nested.property("details[0]._doc.account");
+            expect(invoice).not.to.have.nested.property("order.number");
+            expect(invoice).not.to.have.nested.property("details[0].account");
         });
 
         it("By user as combination of manager and moderator", async () => {
             const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
-            const invoices = await Invoice.find().setOptions({ user });
+            const invoices = await Invoice.find().setOptions({ user, lean: true });
             expect(invoices.length).to.equal(20);
-            const invoice = invoices[0]._doc;
+            const invoice = invoices[0];
             expect(invoice).to.have.property("number");
             expect(invoice).to.have.nested.property("budget.item");
-            expect(invoice).to.have.nested.property("details[0]._doc.account");
+            expect(invoice).to.have.nested.property("order.number");
+            expect(invoice).to.have.nested.property("details[0].account");
         });
 
         it("By manager of department one with filter", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
-            const invoices = await Invoice.find({ department: depOne }).setOptions({ user });
+            const invoices = await Invoice.find({ department: depOne }).setOptions({ user, lean: true });
             expect(invoices.length).to.equal(10);
-            const invoice = invoices[0]._doc;
+            const invoice = invoices[0];
             expect(invoice).not.to.have.property("number");
             expect(invoice).not.to.have.nested.property("budget.item");
-            expect(invoice).not.to.have.nested.property("details[0]._doc.account");
+            expect(invoice).not.to.have.nested.property("order.number");
+            expect(invoice).not.to.have.nested.property("details[0].account");
         });
 
         it("Department 2 data by manager of department 1", async () => {
@@ -185,10 +195,11 @@ describe("Security plugin", () => {
 
         it("By admin", async () => {
             const user = { roles: [ADMIN] };
-            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
-            expect(invoice).to.have.nested.property("_doc.number");
-            expect(invoice).to.have.nested.property("_doc.budget.item");
-            expect(invoice).to.have.nested.property("_doc.details[0]._doc.account");
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user, lean: true });
+            expect(invoice).to.have.nested.property("number");
+            expect(invoice).to.have.nested.property("budget.item");
+            expect(invoice).to.have.nested.property("order.number");
+            expect(invoice).to.have.nested.property("details[0].account");
         });
 
         it("By inventory manager", async () => {
@@ -198,18 +209,20 @@ describe("Security plugin", () => {
 
         it("By manager of department 1", async () => {
             const user = { roles: [SALES_MANAGER], department: depOne };
-            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
-            expect(invoice).not.to.have.nested.property("_doc.number");
-            expect(invoice).not.to.have.nested.property("_doc.budget.item");
-            expect(invoice).not.to.have.nested.property("_doc.details[0]._doc.account");
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user, lean: true });
+            expect(invoice).not.to.have.nested.property("number");
+            expect(invoice).not.to.have.nested.property("budget.item");
+            expect(invoice).not.to.have.nested.property("order.number");
+            expect(invoice).not.to.have.nested.property("details[0].account");
         });
 
         it("By user as combination of manager and moderator", async () => {
             const user = { roles: [SALES_MANAGER, MODERATOR], department: depOne };
-            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user });
-            expect(invoice).to.have.nested.property("_doc.number");
-            expect(invoice).to.have.nested.property("_doc.budget.item");
-            expect(invoice).to.have.nested.property("_doc.details[0]._doc.account");
+            const invoice = await Invoice.findOne({ number: 5 }).setOptions({ user, lean: true });
+            expect(invoice).to.have.nested.property("number");
+            expect(invoice).to.have.nested.property("budget.item");
+            expect(invoice).to.have.nested.property("order.number");
+            expect(invoice).to.have.nested.property("details[0].account");
         });
 
         it("Department 2 data by manager of department 1", async () => {
@@ -224,6 +237,7 @@ describe("Security plugin", () => {
 
         const diff = {
             number: 200,
+            order: { number: "New number" },
             budget: { item: "Item" },
             details: [
                 { description: "Entry one updated", amount: 5, account: "100" },
@@ -240,9 +254,7 @@ describe("Security plugin", () => {
         });
 
         afterEach(async () => {
-            await Invoice.findOneAndRemove({ _id });
-            const saved = await createInvoice(number, depOne).save();
-            _id = saved.id;
+            await Invoice.findOneAndUpdate({ _id }, { ...invoiceDoc, number: 5, department: depOne });
         });
 
         it("By admin", async () => {
@@ -263,6 +275,7 @@ describe("Security plugin", () => {
             const updated = await Invoice.findOne({ _id }).setOptions({ lean: true });
             expect(updated).to.have.nested.property("number", number);
             expect(updated).to.have.nested.property("budget.item", invoiceDoc.budget.item);
+            expect(updated).to.have.nested.property("order.number", invoiceDoc.order.number);
         });
 
         it("Invoice of department two by manager of department one", async () => {

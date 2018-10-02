@@ -80,16 +80,8 @@ const securityPlugin = schema => {
         const exclusive = projection[Object.keys(projection)[0]] === 0;
 
         Object.keys(projection).forEach(path => {
-            /*path.split(".").forEach((value, index, array) => {
-                const curPath = array.slice(0, index + 1).join(".");
-                const property = lodash
-            });*/
-            const docPath = path.split(".").map((value, index, array) => {
-                const property = array.slice(0, index + 1);
-                return property._doc ? `${value}.${property._doc}` : value;
-            }).join(".");
             if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
-                lodash.set(this._doc, docPath, undefined);
+                lodash.set(this._doc, path, undefined);
             }
         });
     }
