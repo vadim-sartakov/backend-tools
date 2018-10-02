@@ -290,6 +290,16 @@ describe("Security plugin", () => {
             const updated = await Invoice.findOne({ _id });
             expect(updated).to.containSubset(diff);
         });
+
+        it("By accountant", async () => {
+            const user = { roles: [ACCOUNTANT], department: depOne };
+            await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user });
+            const updated = await Invoice.findOne({ _id }).setOptions({ lean: true });
+            expect(updated).to.have.nested.property("amount", invoiceDoc.amount);
+            expect(updated).to.have.nested.property("number", diff.number);
+            expect(updated).to.have.nested.property("budget.item", diff.budget.item);
+            expect(updated).to.have.nested.property("order.number", diff.order.number);
+        });
     
     });
 
