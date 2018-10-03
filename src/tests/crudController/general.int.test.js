@@ -6,11 +6,8 @@ import { expect } from "chai";
 import generalMiddlewares from "../../middleware/general";
 import httpMiddlewares from "../../middleware/http";
 import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
-import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
 import { getNextPort, expectedLinks } from "../utils";
-
-mongoose.set("debug", true);
 
 describe("General crud integration tests", () => {
 
@@ -28,7 +25,6 @@ describe("General crud integration tests", () => {
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
         app.use("/users", crudRouter(User));
-        app.use(crudValidationMiddleware);
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
         port = server.address().port;
@@ -78,7 +74,7 @@ describe("General crud integration tests", () => {
     describe("Get one", () => {
 
         it("Get missing user", async () => {
-            await request(server).get("/users/123").expect(404, notFoundMessage);
+            await request(server).get("/users/5bb20e23ed343a54b4d60c39").expect(404, notFoundMessage);
         });
 
         it("Get one user", async () => {
@@ -94,7 +90,7 @@ describe("General crud integration tests", () => {
         const diff = { firstName: "Steve" };
 
         it("Update missing user", async () => {
-            await request(server).put(`/users/123`)
+            await request(server).put(`/users/5bb20e23ed343a54b4d60c39`)
                 .send({ ...bill, ...diff })
                 .expect(404, notFoundMessage);
         });
@@ -111,7 +107,7 @@ describe("General crud integration tests", () => {
     describe("Delete one", () => {
 
         it("Delete missing user", async () => {
-            await request(server).delete("/users/123").expect(404, notFoundMessage);
+            await request(server).delete("/users/5bb20e23ed343a54b4d60c39").expect(404, notFoundMessage);
         });
 
         it("Delete user", async () => {

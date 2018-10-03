@@ -1,13 +1,11 @@
 import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
-import { createModelSetMiddleware } from "../middleware/crud";
 
 const crudRouter = (Model, opts) => {
 
     const router = Router();
     const routeMap = createRouteMap(Model, opts);
-    router.all("/*", createModelSetMiddleware(Model.modelName));
 
     const rootRouter = router.route("/");
     routeMap.getAll && rootRouter.get(routeMap.getAll);
@@ -41,50 +39,33 @@ const createRouteMap = (Model, opts = defaultOpts) => {
 
 };
 
-const normalizeConditions = conditions => {
-    if (conditions.length === 1) {
-        return conditions[0];
-    } else if (conditions.length > 1) {
-        return { $and: conditions };
-    }
-};
-
-/**
- * @param {Object} Model 
- * @param {RouteMapOptions} opts 
- */
-export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next) => {
+export const createGetAll = (Model, opts = defaultOpts) => async (req, res) => {
 
     opts = { ...defaultOpts, ...opts };
 
-    const { projection, populate, conditions } = getQueryValues(opts, opts.getAll, req, res);
     const { defaultPageSize } = opts;
+    const { user, i18n } = res.locals;
 
     let { page, size, filter, sort } = req.query;
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
 
-    if (filter) conditions.push(filter);
-
-    const condition = normalizeConditions(conditions);
-
     const query = Model.find()
+        .setOptions({ i18n, user, lean: true })
         .skip(page * size)
         .limit(size);
 
-    condition && query.where(condition);
-    if (projection) query.select(projection);
-    if (populate) query.populate(populate);
+    if (filter) query.where(filter);
     if (sort) query.sort(sort);
 
-    const result = await query.exec().catch(next);
-    if (!result) return;
+    let result;
+    try { result = await query.exec(); } catch(err) { throw err; }
 
-    const countQuery = Model.count();
-    condition && countQuery.where(condition);
-    const totalCount = await countQuery.exec().catch(next);
+    const countQuery = Model.count().setOptions({ i18n, user });
+    if (filter) countQuery.where(filter);
 
-    if (totalCount === undefined) return;
+    let totalCount;
+    try { totalCount = await countQuery.exec(); } catch(err) { throw err; }
     
     const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
     const prev = Math.max(page - 1, 0);
@@ -96,103 +77,51 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res, next
     page < lastPage && link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: nextPage, size })}`, rel: "next" });
     link.set({ uri: `${getCurrentUrl(req)}?${querystring.stringify({ page: lastPage, size })}`, rel: "last" });
 
-    result && res.set("X-Total-Count", totalCount) && res.set("Link", link.toString()).json(result);
+    res.set("X-Total-Count", totalCount);
+    res.set("Link", link.toString());
+    res.json(result);
 
 };
 
-const getQueryValues = (opts, specificOpts, req, res) => {
+export const createAddOne = (Model) => async (req, res) => {
 
-    opts = { ...opts, ...specificOpts };
-    const { securityCallback, projectionCallback, populateCallback } = opts;
-    const security = securityCallback && securityCallback(req, res);
-    const projection = projectionCallback && projectionCallback(req, res);
-    const populate = populateCallback && populateCallback(req, res);
+    const { user, i18n } = res.locals;
+    const doc = new Model(req.body);
+    
+    doc.setOptions && doc.setOptions({ user, i18n });
+    
+    let instance;
+    try { instance = await doc.save(); } catch(err) { throw err; }
 
-    const conditions = [];
-    if (security) conditions.push(security);
+    let created;
+    try { created = await Model.findById(instance._id).setOptions({ user, i18n, lean: true }); } catch(err) { throw err; }
 
-    return { security, projection, populate, conditions };
-
-};
-
-export const createAddOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-
-    const { projection } = getQueryValues(opts, opts.addOne, req, res);
-
-    const instance = await new Model(req.body).save().catch(next);
-    if (!instance) return;
-
-    const createdQuery = Model.findById(instance._id);
-    if (projection) createdQuery.select(projection);
-
-    const createdInstance = await createdQuery.exec().catch(next);
-    if (!createdInstance) return;
-
-    createdInstance && res.status(201).location(getLocation(req, createdInstance.id)).json(createdInstance);
+    res.status(201).location(getLocation(req, created._id)).json(created);
 
 };
 
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;
 
-export const createGetOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-    
-    const { projection, populate, conditions } = getQueryValues(opts, opts.getOne, req, res);
-
-    conditions.push({ _id: req.params.id });
-    const condition = normalizeConditions(conditions);
-
-    const query = Model.findOne(condition);
-    if (projection) query.select(projection);
-    if (populate) query.populate(populate);
-    const instance = await query.exec().catch(next);
-
+export const createGetOne = Model => async (req, res, next) => {
+    const { user, i18n } = res.locals;
+    let instance;
+    try { instance = await Model.findOne({ _id: req.params.id }).setOptions({ user, i18n }).catch(next); } catch(err) { throw err; }
     instance ? res.json(instance) : next();
-
 };
 
-export const createUpdateOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-
-    const { projection, populate, conditions } = getQueryValues(opts, opts.updateOne, req, res);
-
-    conditions.push({ _id: req.params.id });
-    const condition = normalizeConditions(conditions);
-
-    // Removing prohibited keys
-    if (projection) {
-        const inclusiveProjection = Object.keys(projection)[0] === 0 ? true : false;
-        Object.keys(res.body)
-            .filter(key => 
-                inclusiveProjection && !projection[key] ?
-                true : !inclusiveProjection && projection[key] ?
-                true : false)
-            .forEach(key => delete res.body[key]);        
-    }
-
-    const query = Model.findOneAndUpdate(condition, req.body, { runValidators: true, context: 'query' });
-
-    const instance = await query.exec().catch(next);
-    if (!instance) return;
-
-    const updatedQuery = Model.findById(instance._id);
-    if (projection) updatedQuery.select(projection);
-    if (populate) updatedQuery.populate(populate);
-
-    const updatedInstance = await updatedQuery.exec().catch(next);
-    if (!updatedInstance) return;
-
-    updatedInstance ? res.status(200).json(updatedInstance) : next();
-
+export const createUpdateOne = Model => async (req, res, next) => {
+    const { user, i18n } = res.locals;
+    const instance = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, { runValidators: true, context: 'query', i18n, user }).catch(next);
+    if (!instance) return next();
+    const updatedInstance = await Model.findById(instance._id).setOptions({ user, i18n }).catch(next);
+    updatedInstance && res.json(updatedInstance);
 };
 
-export const createDeleteOne = (Model, opts = defaultOpts) => async (req, res, next) => {
-    const { conditions } = getQueryValues(opts, opts.deleteOne, req, res);
-    conditions.push({ _id: req.params.id });
-    const condition = normalizeConditions(conditions);
-    const query = Model.findOneAndDelete(condition);
-    query.where(condition);
-    const instance = await query.exec().catch(next);
-    instance && res.status(204).send();
+export const createDeleteOne = Model => async (req, res, next) => {
+    const { user, i18n } = res.locals;
+    const instance = await Model.findOneAndDelete({ _id: req.params.id }).setOptions({ user, i18n }).catch(next);
+    instance ? res.status(204).send() : next();
 };
 
 export default crudRouter;

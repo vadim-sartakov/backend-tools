@@ -7,11 +7,8 @@ import { expect } from "chai";
 import generalMiddlewares from "../../middleware/general";
 import httpMiddlewares from "../../middleware/http";
 import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
-import crudValidationMiddleware from "../../middleware/crud";
 import crudRouter from "../../controller/crudController";
 import { getNextPort, expectedLinks } from "../utils";
-
-mongoose.set("debug", true);
 
 describe('Get all bulk tests', () => {
 
@@ -39,7 +36,6 @@ describe('Get all bulk tests', () => {
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
         app.use("/users", crudRouter(User));
-        app.use(crudValidationMiddleware);
         app.use(httpMiddlewares);
         server = app.listen(getNextPort());
         port = server.address().port;
