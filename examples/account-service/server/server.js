@@ -1,14 +1,14 @@
-import env from './config/env';  // eslint-disable-line no-unused-vars
+import env from '../../../src/config/env';  // eslint-disable-line no-unused-vars
 import express from 'express';
-import { connectDatabase } from './config/database';
-import createLogger from './config/logger';
-import { crudRouter } from './controller/crudController';
+import { connectDatabase } from '../../../src/config/database';
+import createLogger from '../../../src/config/logger';
+import crudRouter from '../../../route/crud';
 
-import generalMiddlewares from './middleware/general';
+import generalMiddlewares from '../../../src/middleware/general';
 import { createI18n, createI18nMiddleware } from './middleware/i18n';
-import httpMiddlewares from './middleware/http';
+import httpMiddlewares from '../../../src/middleware/http';
 
-import httpRu from './locales/http/ru';
+import httpRu from '../../../src/locales/http/ru';
 
 connectDatabase();
 

@@ -8,13 +8,13 @@
     "int-test": "cross-env NODE_ENV=test mocha **/*int.test.js --require babel-core/register --require babel-polyfill --timeout 10000",
     "eslint": "eslint --ignore-path .gitignore ./",
     "clean": "rimraf lib/",
-    "compile": "babel src/ --ignore test.js,/tests --out-dir lib/ --copy-files --source-maps",
+    "compile": "babel src/ --out-dir lib/ --copy-files --source-maps",
     "build": "npm-run-all clean compile",
     "debug": "cross-env NODE_ENV=development nodemon src/server.js --ignore *.test.js --inspect --exec babel-node",
     "start": "cross-env NODE_ENV=production node lib/server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Vadim Sartakov",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.3",
@@ -37,6 +37,7 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
     "babel-preset-latest": "^6.24.1",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
@@ -53,7 +54,7 @@
   },
   "babel": {
     "presets": [
-      "latest"
+      "env"
     ],
     "plugins": [
       "transform-object-rest-spread"

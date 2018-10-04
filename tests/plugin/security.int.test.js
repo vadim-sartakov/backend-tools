@@ -1,9 +1,9 @@
-import env from "../../config/env"; // eslint-disable-line no-unused-vars
+import env from "../../src/config/env"; // eslint-disable-line no-unused-vars
 import mongoose, { Schema } from "mongoose";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import chaiSubset from "chai-subset";
-import security from "../../plugin/security";
+import security from "../../src/plugin/security";
 
 chai.use(chaiAsPromised);
 chai.use(chaiSubset);

@@ -1,13 +1,13 @@
-import env from "../../config/env"; // eslint-disable-line no-unused-vars
+import env from "../../src/config/env"; // eslint-disable-line no-unused-vars
 import express from "express";
 import mongoose, { Schema } from "mongoose";
 import qs from "qs";
 import request from "supertest";
 import { expect } from "chai";
-import generalMiddlewares from "../../middleware/general";
-import httpMiddlewares from "../../middleware/http";
-import { createI18n, createI18nMiddleware } from '../../config/i18n';
-import crudRouter from "../../controller/crudController";
+import generalMiddlewares from "../../src/middleware/general";
+import httpMiddlewares from "../../src/middleware/http";
+import { createI18n, createI18nMiddleware } from '../../src/config/i18n';
+import crudRouter from "../../src/route/crud";
 import { getNextPort, expectedLinks } from "../utils";
 
 describe('Get all bulk tests', () => {
