@@ -3,17 +3,20 @@
   "version": "0.0.0",
   "description": "Account service server side example",
   "private": true,
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf lib/",
     "compile": "babel src/ --out-dir lib/ --copy-files --source-maps",
     "build": "npm-run-all clean compile",
-    "debug": "cross-env NODE_ENV=development nodemon src/index.js --ignore *.test.js --inspect --exec babel-node",
-    "start": "cross-env NODE_ENV=production node lib/index.js"
+    "debug": "nodemon src/index.js --ignore *.test.js --inspect --exec babel-node",
+    "start": "node lib/index.js"
   },
   "author": "Vadim Sartakov",
   "license": "ISC",
+  "dependencies": {
+    "backend-tools": "file:../../../"
+  },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
