@@ -1,11 +1,20 @@
-import autopopulatePlugin from 'mongoose-autopopulate';
-import { eachPathRecursive } from './utils';
+import mongoose from "mongoose";
+import autopopulatePlugin from "mongoose-autopopulate";
+import { eachPathRecursive } from "./utils";
 
 const autopopulateFunction = function(opts) {
-    if (!this._fields) return true;
-    const selectValue = this._fields[opts.path] || 0;
+
+    if (!this._fields) return true; 
+    
+    const model = mongoose.model(opts.model);
+    const { populateProjection } = model && model.schema.options;
+    const selectFieldValue = this._fields[opts.path] || 0;
     const exclusiveSelect = this._fields[Object.keys(this._fields)[0]] === 0;
-    return exclusiveSelect ? !selectValue : selectValue;
+
+    if ((exclusiveSelect && selectFieldValue) || (!exclusiveSelect && !selectFieldValue)) return false;
+
+    return { maxDepth: 1, select: populateProjection };
+
 };
 
 const autopopulate = function(schema) {

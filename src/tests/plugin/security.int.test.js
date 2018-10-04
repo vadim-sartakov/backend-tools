@@ -43,7 +43,7 @@ describe("Security plugin", () => {
                 create: { projection: managerModifyProjection },
                 read: { where: managerFilter, projection: managerReadProjection },
                 update: { where: managerFilter, projection: managerModifyProjection },
-                delete: { where: managerFilter, projection: managerReadProjection }
+                delete: { where: managerFilter }
             },
             [ACCOUNTANT]: {
                 read: true,

@@ -5,7 +5,7 @@ import request from "supertest";
 import { expect } from "chai";
 import generalMiddlewares from "../../middleware/general";
 import httpMiddlewares from "../../middleware/http";
-import { createI18n, createI18nMiddleware } from '../../middleware/i18n';
+import { createI18n, createI18nMiddleware } from '../../config/i18n';
 import crudRouter from "../../controller/crudController";
 import { getNextPort, expectedLinks } from "../utils";
 

@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 import mongooseUniqueValidator from "mongoose-unique-validator";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { createI18n } from '../../middleware/i18n';
+import { createI18n } from '../../config/i18n';
 import i18nPlugin from "../../plugin/i18n";
 
 chai.use(chaiAsPromised);
