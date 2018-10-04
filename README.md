@@ -78,6 +78,8 @@ Model level security can be defined as option of schema. Security object contain
 }
 ```
 
+Each access modifier can have either plain `true` value or object. Object can describe `where` cluase for queries to filter
+
 Example
 ```javascript
 import mongoose, { Schema } from "mongoose";
