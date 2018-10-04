@@ -11,8 +11,8 @@ import { createLogger } from "backend-tools";
 const logger = createLogger("server");
 ```
 
-Function returns winston logger with suitable decorators and formatters. It already has 2 transports: both console and file. Logs saved to "./log" directory. Directory creates automatically if it's absent.
-To determine the level of Logger "debug" library is used. So environment variable DEBUG is taking in count.
+Function accepts logger label and returns winston logger with suitable decorators and formatters. It already has 2 transports: both console and file. Logs directory specified with `LOG_PATH` environment variable, default is `./log` directory. Directory creates automatically if it's absent.
+To determine the level of Logger "debug" library is used. So environment variable `DEBUG` is taking in count.
 
 ### Crud router
 Creates CRUD Express `Route` object which is ready to bind to your app.
@@ -67,34 +67,51 @@ User.findOne().select("firstName roles").then(result => {
 ```
 
 ### Security
-Model level security can be defined as option of schema. Security object contains keys as roles and each role contains object with the following structure:
+Model level security can be defined as option of schema. Security object contains keys as roles and each role contains object with access modifiers.
 
-```javascript
-{
-    ROLE_ONE_KEY: {
-        create: true,
-        read: { where: user => ({ user.department }), projection: "firstName" }
-    }
-}
-```
+There are four access modifiers types which are bound to the following mongoose operations:
+- create - Document.save();
+- read - Query.find(), Query.findOne();
+- update - Query.findOneAndUpdate();
+- delete - Query.findOneAndRemove();
 
-Each access modifier can have either plain `true` value or object. Object can describe `where` cluase for queries to filter
+Each access modifier can have either plain `true` value or object. Object can describe `where` cluase for queries to filter and projection. `projection` property related to `read` and `update` operations. It will be ignored for other ones.
 
-Example
-```javascript
-import mongoose, { Schema } from "mongoose";
-
-const userSchema = new Schema({ firstName: String, lastName: String }, {
-    security: {
-        "USER": { create: {  } }
-    }
-});
-
-User = connection.model("User", userSchema);
-```
+To make things work you need to set `user` option with `roles` array.
+For queries default method `setOptions` is used. For documents plugin adds same method which stores option in `_options` field.
 
 By default middleware prohibits all actions unless opposite were defined in schema security options.
 
-System role `ADMIN` will permit any requested access and `ADMIN_READ` role will permit any `read` access.
+Predefined `ADMIN` role will permit any requested access and `ADMIN_READ` role will permit any `read` access.
+
+## If no user was specified in query option, than method executes without any restrictions.
+
+Example:
+```javascript
+import mongoose, { Schema } from "mongoose";
+import { security } from "backend-tools";
+
+const readFilter = user => ({ user.department });
+const readProjection = "firstName";
+const modifyProjection = "-password";
+
+const security = {
+    MANAGER: {
+        create: true,
+        read: { where: readFilter, projection: readProjection },
+        update: { where: readFilter, projection: modifyProjection },
+        delete: { where: readFilter }
+    }
+}
+
+const userSchema = new Schema({ firstName: String, lastName: String, password: String }, { security });
+
+const User = mongoose.model("User", userSchema);
+const doc = new User({ firstName: "Bill", lastName: "Gates" });
+
+const appUser = { roles: [ "MANAGER" ] }
+doc.setOptions({ user: appUser });
+```
+
 
 ### i18n
