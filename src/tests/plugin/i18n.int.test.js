@@ -17,24 +17,20 @@ describe("i18n plugin", () => {
             type: String,
             required: true,
             match: /^\w+$/,
-            en: "First name"
         },
         lastName: {
             type: String,
             required: true,
             match: /^\w+$/,
-            en: "Last name"
         },
         email: {
             type: String,
             lowercase: true,
             unique: true,
-            en: "Email"
         },
         phoneNumber: {
             type: String,
             unique: true,
-            en: "Phone number"
         }
     });
 

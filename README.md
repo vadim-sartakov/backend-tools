@@ -14,6 +14,12 @@ const logger = createLogger("server");
 Function accepts logger label and returns winston logger with suitable decorators and formatters. It already has 2 transports: both console and file. Logs directory specified with `LOG_PATH` environment variable, default is `./log` directory. Directory creates automatically if it's absent.
 To determine the level of Logger "debug" library is used. So environment variable `DEBUG` is taking in count.
 
+### i18n
+Uses i18next to create preconfigured instance and middleware.
+```javascript
+import { createI18n, createI18nMiddleware } from "backend-tools";
+```
+
 ### Crud router
 Creates CRUD Express `Route` object which is ready to bind to your app.
 
@@ -45,7 +51,7 @@ Uses "mongoose-autopopulate" internally but with the idea to not populate fields
 
 ```javascript
 import mongoose, { Schema } from "mongoose";
-import { autopopulate } from "backend-tools";
+import { autopopulatePlugin } from "backend-tools";
 
 // Defining schemas
 const roleSchema = new Schema({ key: String, description: String }, { populateProjection: "key" });
@@ -53,7 +59,7 @@ const departmentSchema = new Schema({ name: String, address: String }, { populat
 const userSchema = new Schema({ roles: [{ type: Schema.Types.ObjectId, ref: "Role" }]
 
 // Adding plugin
-mongoose.plugin(autopopulate);
+mongoose.plugin(autopopulatePlugin);
 
 // Creating models
 Role = mongoose.model("Role", roleSchema);
@@ -62,7 +68,8 @@ User = mongoose.model("User", userSchema);
 
 // Querying
 User.findOne().select("firstName roles").then(result => {
-    /* result will not contain department field, though it's autopopulatable. Also Role will be populated with only "key" field.*/
+    /* result will not contain department field, though it's autopopulatable.
+    Also Role will be populated with only "key" field.*/
 });
 ```
 
@@ -84,12 +91,12 @@ By default middleware prohibits all actions unless opposite were defined in sche
 
 Predefined `ADMIN` role will permit any requested access and `ADMIN_READ` role will permit any `read` access.
 
-## If no user was specified in query option, than method executes without any restrictions.
+### If no user was specified in query option, than method executes without any restrictions.
 
 Example:
 ```javascript
 import mongoose, { Schema } from "mongoose";
-import { security } from "backend-tools";
+import { securityPlugin } from "backend-tools";
 
 const readFilter = user => ({ user.department });
 const readProjection = "firstName";
@@ -104,6 +111,8 @@ const security = {
     }
 }
 
+mongoose.plugin(securityPlugin);
+
 const userSchema = new Schema({ firstName: String, lastName: String, password: String }, { security });
 
 const User = mongoose.model("User", userSchema);
@@ -113,5 +122,42 @@ const appUser = { roles: [ "MANAGER" ] }
 doc.setOptions({ user: appUser });
 ```
 
-
 ### i18n
+Plugin places post `validate` hook to catch validation errors and translate them.
+To create instance of `i18next` or related preconfigured middleware you can use `createI18n` and `createI18nMiddleware` utils.
+
+After initializing arbitrary translations could be loaded later.Custom validations translations should be placed under `validation` key.
+
+`i18n` instance should be passed to document or query with `setOptions` method. For documents this method is also added by plugin as with security plugin.
+
+```javascript
+import mongoose from "mongoose";
+import { createI18n, i18nPlugin } from "backend-tools";
+
+const userTranslations = {
+    firstName: {
+        name: "First name"
+    },
+    lastName: {
+        name: "Last name",
+        validation: {
+            required: "`{PATH}` is required custom",
+            regexp: "`{PATH}` is invalid custom"
+        }
+    }
+};
+
+mongoose.plugin(i18nPlugin);
+
+const userSchema = new Schema({
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true }
+});
+const User = mongoose.model("User", userSchema);
+
+const i18n = createI18n();
+i18n.addResourceBundle("en", "model.User", userTranslations);
+
+new User({ firstName: "Bill", lastName: "Gates" }).setOptions({ i18n }).save();
+// In case of validation error {PATH} will contain fully translated values under "name" keys.
+```

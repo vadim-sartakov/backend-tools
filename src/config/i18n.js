@@ -3,14 +3,14 @@ import i18nMiddleware, { LanguageDetector } from 'i18next-express-middleware';
 import http from '../locales/http/en';
 import validation from '../locales/validation/en';
 
-export const createI18n = () => {
+export const createI18n = (defaultLang = "en") => {
 
     const i18n = i18next.createInstance();
     i18n.use(LanguageDetector).init({
-        preload: ["en"],
-        fallbackLng: "en",
+        preload: [defaultLang],
+        fallbackLng: defaultLang,
         resources: {
-            en: { http, validation }
+            [defaultLang]: { http, validation }
         }
     });
     
