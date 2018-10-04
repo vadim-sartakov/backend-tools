@@ -1,8 +1,8 @@
 {
-  "name": "test",
-  "version": "1.0.0",
-  "description": "",
-  "main": "lib/server.js",
+  "name": "backend-tools",
+  "version": "0.0.1",
+  "description": "Set of useful tools for building backend applications",
+  "main": "lib/index.js",
   "scripts": {
     "unit-test": "mocha **/*unit.test.js --require babel-core/register --require babel-polyfill",
     "int-test": "cross-env NODE_ENV=test mocha **/*int.test.js --require babel-core/register --require babel-polyfill --timeout 10000",
