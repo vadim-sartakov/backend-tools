@@ -1,52 +1,61 @@
 import { Schema } from "mongoose";
 
-export const accountSchema = new Schema({
+const account = {
     user: { type: Schema.Types.ObjectId, ref: "User" },
     confirmedAt: Date
-});
+};
+
+const password = {
+    password: {
+        type: String,
+        required: true
+    },
+};
 
 export const usernameSchema = new Schema({
-    userName: {
+    ...account,
+    ...password,
+    username: {
         type: String,
         unique: true,
         lowercase: true
     }
-});
+}, { collection: "userNameAccounts" });
 
 export const emailSchema = new Schema({
+    ...account,
+    ...password,
     email: {
         type: String,
         match: /^.+@.+\..+$/,
         required: true,
         unique: true,
         lowercase: true
-    }
-});
+    },
+    object: Schema.Types.Mixed
+}, { collection: "emailAccounts" });
 
 export const phoneNumberSchema = new Schema({
+    ...account,
+    ...password,
     phoneNumber: {
         type: String,
         unique: true
     }
-});
+}, { collection: "phoneNumberAccounts" });
 
 export const oAuth2AccountSchema = new Schema({
+    ...account,
     service: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    accessToken: {
         type: String,
         required: true
     }
-});
+}, { collection: "oAuth2Accounts" });
 
-export const activeDirectoryAccountSchema = new Schema({
-    userName: {
-        type: String,
-        unique: true,
-        lowercase: true
+export const windowsAccountSchema = new Schema({
+    ...account,
+    username: {
+        type: String
     },
     userSid: {
         type: String,
@@ -54,4 +63,4 @@ export const activeDirectoryAccountSchema = new Schema({
         unique: true
     },
     groups: [String],
-});
+}, { collection: "windowsAccounts" });

@@ -10,7 +10,8 @@ import {
     securityPlugin,
     i18nPlugin,
 
-    crudRouter
+    crudRouter,
+    AccessDeniedError
 } from "backend-tools";  
 import express from "express";
 import mongoose from "mongoose";
@@ -32,21 +33,56 @@ app.disable('x-powered-by');
 app.use(generalMiddlewares);
 
 app.use((req, res, next) => {
+
+    if (res.locals.user) return;
+
     const nodeSSPIInstance = new nodeSSPI({ retrieveGroups: true });
-    nodeSSPIInstance.authenticate(req, res, err => {
-        if (res.finished) return;
+    nodeSSPIInstance.authenticate(req, res, err => (async () => {
+        
+        if (res.finished || res.locals.user) return;
         if (err) return next(err);
-        res.locals.winUser = {
-            userName: req.connection.user,
-            userSid: req.connection.userSid,
-            groups: req.connection.userGroups
-        };
+
+        const User = mongoose.model("User");
+        const WindowsAccount = mongoose.model("WindowsAccount");
+
+        let user = await User.findOne({ username: req.connection.user });
+        let account = await WindowsAccount.findOne({ userSid: req.connection.userSid });
+
+        if (!user) {
+            user = await new User({ username: req.connection.user, blocked: true, roles: ["USER"] }).save();
+            user.blocked = false;
+            user = await user.save();
+        }
+
+        if (!account) {
+            account = await new WindowsAccount({
+                user,
+                confirmedAt: new Date(),
+                username: req.connection.user,
+                userSid: req.connection.userSid,
+                groups: req.connection.userGroups
+            }).save();
+        }
+
+        res.locals.user = { ...user._doc, account };
         next();
-    });
+
+    })().catch(next));
+
+});
+
+app.get("*", (req, res, next) => {
+    if (res.locals.user) res.locals.permitted = true;
+    next();
+});
+
+app.all("*", (req, res, next) => {
+    if (!res.locals.permitted) throw new AccessDeniedError();
+    next();
 });
 
 app.get("/me", (req, res) => {
-    res.json(res.locals.winUser);
+    res.json(res.locals.user);
 });
 
 app.use(createI18nMiddleware(i18n));

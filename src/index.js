@@ -10,3 +10,5 @@ export { default as securityPlugin } from "./plugin/security";
 export { default as i18nPlugin } from "./plugin/i18n";
 
 export { default as crudRouter } from "./route/crud";
+
+export { default as AccessDeniedError } from "./error/accessDenied";

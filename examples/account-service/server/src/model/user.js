@@ -1,7 +1,7 @@
 import { Schema } from "mongoose";
 
 const userSchema = new Schema({
-    password: {
+    username: {
         type: String,
         required: true
     },
@@ -13,6 +13,8 @@ const userSchema = new Schema({
         type: [{ type: String }],
         notEmpty: true
     }
-}, { timestamps: true });
+}, { timestamps: true, security: {
+    "USER": { read: true }
+} });
 
 export default userSchema;
