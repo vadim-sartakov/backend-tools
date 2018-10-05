@@ -3,8 +3,6 @@ import mongoose, { Schema } from "mongoose";
 import { expect } from "chai";
 import autopopulate from "../../src/plugin/autopopulate";
 
-mongoose.set("debug", true);
-
 describe("Autopopulate plugin", () => {
 
     let connection, Role, Department, User;

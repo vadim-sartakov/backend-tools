@@ -8,8 +8,6 @@ import i18nPlugin from "../../src/plugin/i18n";
 
 chai.use(chaiAsPromised);
 
-mongoose.set("debug", true);
-
 describe("i18n plugin", () => {
 
     const userSchema = new Schema({

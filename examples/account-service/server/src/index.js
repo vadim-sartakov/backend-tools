@@ -16,13 +16,21 @@ import express from "express";
 import mongoose from "mongoose";
 import loadModels from "./model/loader";
 
-const i18n = createI18n();
+mongoose.plugin(autopopulatePlugin);
+mongoose.plugin(securityPlugin);
+mongoose.plugin(i18nPlugin);
+
+loadModels();
+
+const User = mongoose.model("User");
+
 const app = express();
+const i18n = createI18n();
 
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
 app.use(createI18nMiddleware(i18n));
-//app.use("/users", crudRouter(User));
+app.use("/users", crudRouter(User));
 app.use(httpMiddlewares);
 
 const logger = createLogger("server");

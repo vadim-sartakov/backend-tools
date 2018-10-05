@@ -18,15 +18,13 @@ export const createLogger = labelName => {
         format: combine(colorize(), format)
     }) ];
 
-    if (process.env.NODE_ENV === "production") {
-        const FileTransport = new winston.transports.File({
-            filename: `${logDirectory}/app.log`,
-            maxsize: 1024 * 1024 * 10,
-            maxFiles: 10,
-            format
-        });
-        transports.push(FileTransport);
-    }
+    const FileTransport = new winston.transports.File({
+        filename: `${logDirectory}/app.log`,
+        maxsize: 1024 * 1024 * 10,
+        maxFiles: 10,
+        format
+    });
+    transports.push(FileTransport);
 
     const debug = createDebug(labelName);
     const logger = winston.createLogger({

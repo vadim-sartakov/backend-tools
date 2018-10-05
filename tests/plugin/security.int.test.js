@@ -8,8 +8,6 @@ import security from "../../src/plugin/security";
 chai.use(chaiAsPromised);
 chai.use(chaiSubset);
 
-mongoose.set("debug", true);
-
 describe("Security plugin", () => {
 
     const ADMIN = "ADMIN";
