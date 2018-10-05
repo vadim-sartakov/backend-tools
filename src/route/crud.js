@@ -39,7 +39,12 @@ const createRouteMap = (Model, opts = defaultOpts) => {
 
 };
 
-export const createGetAll = (Model, opts = defaultOpts) => async (req, res) => {
+const errorHandler = (err, res, next) => {
+    if (err.name !== "ValidationError") next(err);
+    res.status(400).json(err);
+};
+
+export const createGetAll = (Model, opts = defaultOpts) => (req, res, next) => (async () => {
 
     opts = { ...defaultOpts, ...opts };
 
@@ -58,14 +63,12 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res) => {
     if (filter) query.where(filter);
     if (sort) query.sort(sort);
 
-    let result;
-    try { result = await query.exec(); } catch(err) { throw err; }
+    let result = await query.exec();
 
     const countQuery = Model.count().setOptions({ i18n, user });
     if (filter) countQuery.where(filter);
 
-    let totalCount;
-    try { totalCount = await countQuery.exec(); } catch(err) { throw err; }
+    let totalCount = await countQuery.exec();
     
     const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
     const prev = Math.max(page - 1, 0);
@@ -81,47 +84,43 @@ export const createGetAll = (Model, opts = defaultOpts) => async (req, res) => {
     res.set("Link", link.toString());
     res.json(result);
 
-};
+})().catch(err => errorHandler(err, res, next));
 
-export const createAddOne = (Model) => async (req, res) => {
+export const createAddOne = Model => (req, res, next) => (async () => {
 
     const { user, i18n } = res.locals;
     const doc = new Model(req.body);
     
     doc.setOptions && doc.setOptions({ user, i18n });
     
-    let instance;
-    try { instance = await doc.save(); } catch(err) { throw err; }
-
-    let created;
-    try { created = await Model.findById(instance._id).setOptions({ user, i18n, lean: true }); } catch(err) { throw err; }
+    let instance = await doc.save();
+    let created = await Model.findById(instance._id).setOptions({ user, i18n, lean: true });
 
     res.status(201).location(getLocation(req, created._id)).json(created);
 
-};
+})().catch(err => errorHandler(err, res, next));
 
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;
 
-export const createGetOne = Model => async (req, res, next) => {
+export const createGetOne = Model => (req, res, next) => (async () => {
     const { user, i18n } = res.locals;
-    let instance;
-    try { instance = await Model.findOne({ _id: req.params.id }).setOptions({ user, i18n }).catch(next); } catch(err) { throw err; }
+    let instance = await Model.findOne({ _id: req.params.id }).setOptions({ user, i18n });
     instance ? res.json(instance) : next();
-};
+})().catch(err => errorHandler(err, res, next));
 
-export const createUpdateOne = Model => async (req, res, next) => {
+export const createUpdateOne = Model => (req, res, next) => (async () => {
     const { user, i18n } = res.locals;
-    const instance = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, { runValidators: true, context: 'query', i18n, user }).catch(next);
+    const instance = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, { runValidators: true, context: 'query', i18n, user });
     if (!instance) return next();
-    const updatedInstance = await Model.findById(instance._id).setOptions({ user, i18n }).catch(next);
+    const updatedInstance = await Model.findById(instance._id).setOptions({ user, i18n });
     updatedInstance && res.json(updatedInstance);
-};
+})().catch(err => errorHandler(err, res, next));
 
-export const createDeleteOne = Model => async (req, res, next) => {
+export const createDeleteOne = Model => (req, res, next) => (async () => {
     const { user, i18n } = res.locals;
-    const instance = await Model.findOneAndDelete({ _id: req.params.id }).setOptions({ user, i18n }).catch(next);
+    const instance = await Model.findOneAndDelete({ _id: req.params.id }).setOptions({ user, i18n });
     instance ? res.status(204).send() : next();
-};
+})().catch(err => errorHandler(err, res, next));
 
 export default crudRouter;

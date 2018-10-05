@@ -18,8 +18,8 @@ export const connectDatabase = database => {
 
     const connection = mongoose.connect(`${process.env.DB_URL}${database ? `/${database}` : ""}`, { useNewUrlParser: true, bufferCommands: false });
 
-    logger.level === "debug" && mongoose.set("debug", (collectionName, method, query, doc) => {
-        logger.log("debug", "Executing on collection '%s' method '%s' query '%o' with fields '%o'", collectionName, method, query, doc);
+    logger.level === "debug" && mongoose.set("debug", (collection, method, query, doc, options) => {
+        logger.log("debug", "Executing on collection '%s' method '%s' query '%o' with fields '%o'", collection, method, query, doc);
     });
 
     return connection;

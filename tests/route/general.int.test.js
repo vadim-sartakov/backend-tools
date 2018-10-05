@@ -13,7 +13,10 @@ describe("General crud integration tests", () => {
 
     const notFoundMessage = { message: "Not found" };
     const bill = { firstName: "Bill", lastName: "Gates" };
-    const userSchema = new Schema({ firstName: String, lastName: String }, { versionKey: false });
+    const userSchema = new Schema({
+        firstName: { type: String, required: true },
+        lastName: { type: String, required: true }
+    }, { versionKey: false });
 
     let server, port, connection, User;
     before(async () => {
@@ -69,6 +72,12 @@ describe("General crud integration tests", () => {
 
         });
 
+        it("Add invalid user", async () => {
+            const res = await request(server).post("/users").send({});
+            expect(res.status).equal(400);
+            expect(res.body).to.have.nested.property("name", "ValidationError");
+        });
+
     });
 
     describe("Get one", () => {
@@ -100,6 +109,13 @@ describe("General crud integration tests", () => {
             await request(server).put(`/users/${newInstance.id}`)
                 .send({ ...bill, ...diff })
                 .expect(200, { ...bill, _id: newInstance.id, ...diff });
+        });
+
+        it("Update user with invalid values", async () => {
+            const newInstance = await new User(bill).save();
+            const res = await request(server).put(`/users/${newInstance.id}`).send({ firstName: "" });
+            expect(res.status).equal(400);
+            expect(res.body).to.have.nested.property("name", "ValidationError");
         });
 
     });  
