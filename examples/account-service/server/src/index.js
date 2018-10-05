@@ -1,13 +1,20 @@
 import {
     env, // eslint-disable-line no-unused-vars
     createLogger,
-    crudRouter,
-    generalMiddlewares,
     createI18n,
     createI18nMiddleware,
-    httpMiddlewares
-} from 'backend-tools';  
-import express from 'express';
+    httpMiddlewares,
+    generalMiddlewares,
+    
+    autopopulatePlugin,
+    securityPlugin,
+    i18nPlugin,
+
+    crudRouter
+} from "backend-tools";  
+import express from "express";
+import mongoose from "mongoose";
+import loadModels from "./model/loader";
 
 const i18n = createI18n();
 const app = express();

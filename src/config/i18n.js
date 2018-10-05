@@ -1,7 +1,7 @@
 import i18next from 'i18next';
 import i18nMiddleware, { LanguageDetector } from 'i18next-express-middleware';
-import http from '../locales/http/en';
-import validation from '../locales/validation/en';
+import http from '../locale/http/en';
+import validation from '../locale/validation/en';
 
 export const createI18n = (defaultLang = "en") => {
 
