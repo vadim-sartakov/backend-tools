@@ -15,7 +15,9 @@
   "author": "Vadim Sartakov",
   "license": "ISC",
   "dependencies": {
-    "backend-tools": "file:../../../"
+    "backend-tools": "file:../../../",
+    "express-ntlm": "^2.3.0",
+    "node-sspi": "^0.2.3"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

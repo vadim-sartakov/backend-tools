@@ -1,16 +1,5 @@
 import { Schema } from "mongoose";
 
-const emailSchema = new Schema({
-    email: {
-        type: String,
-        match: /^.+@.+\..+$/,
-        required: true,
-        unique: true,
-        lowercase: true
-    },
-    confirmedAt: Date
-});
-
 const userSchema = new Schema({
     password: {
         type: String,
@@ -21,11 +10,7 @@ const userSchema = new Schema({
         default: false
     },
     roles: {
-        type: [{ type: Schema.Types.ObjectId, ref: 'Role' }],
-        notEmpty: true
-    },
-    emails: {
-        type: [emailSchema],
+        type: [{ type: String }],
         notEmpty: true
     }
 }, { timestamps: true });
