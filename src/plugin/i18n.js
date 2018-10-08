@@ -5,6 +5,7 @@ function translateMessages(err) {
         i18n = this.options.i18n;
         modelName = this.model.modelName;
     } else if (this.constructor.name === "model") {
+        if (!this._options) return;
         i18n = this._options.i18n;
         modelName = this.constructor.modelName;
     }
