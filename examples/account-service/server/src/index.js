@@ -20,10 +20,8 @@ import passport from "passport";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import GitHubStrategy from "passport-github";
 import nodeSSPI from "node-sspi";
-import mongooseUniqueValidator from "mongoose-unique-validator";
 import loadModels from "./model/loader";
 
-//mongoose.plugin(mongooseUniqueValidator);
 mongoose.plugin(autopopulatePlugin);
 mongoose.plugin(securityPlugin);
 mongoose.plugin(i18nPlugin);
@@ -60,9 +58,17 @@ app.use(generalMiddlewares);
 app.use(passport.initialize());
 
 const sendToken = (req, res) => {
-    const token = jwt.sign({ user: { id: req.user._id, roles: req.user.roles } }, "test", { expiresIn: "10m" });
+    const token = jwt.sign({ user: { id: req.user._id, roles: req.user.roles }, account: {  } }, "test", { expiresIn: "10m" });
     res.json({ token });
 };
+
+app.all("*", (req, res, next) => {
+    passport.authenticate("jwt", (err, user) => {
+        if (err) return next(err);
+        if (!user) return next();
+        req.logIn(user, err => next(err));
+    })(req, res, next);
+});
 
 app.get("/login/github", passport.authenticate("github"));
 app.get("/login/github/auth", passport.authenticate("github", { session: false }), sendToken);
@@ -100,10 +106,8 @@ app.get("/login/windows", (req, res, next) => {
 
 });
 
-app.all("*", passport.authenticate("jwt", { session: false }));
-
 app.all("*", (req, res, next) => {
-    if (!req.user.roles.indexOf("USER") === -1) throw new AccessDeniedError();
+    if (!req.user || req.user.roles.indexOf("USER") === -1) throw new AccessDeniedError();
     next();
 });
 
