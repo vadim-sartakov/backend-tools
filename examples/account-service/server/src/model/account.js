@@ -1,11 +1,7 @@
 import { Schema } from "mongoose";
+import bcrypt from "bcryptjs";
 
 const account = {
-    user: {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        required: true
-    },
     confirmedAt: Date
 };
 
@@ -13,14 +9,30 @@ export const localSchema = new Schema({
     ...account,
     username: {
         type: String,
-        unique: true,
+        required: true,
         lowercase: true
     },
-    password: {
+    passwordHash: {
         type: String,
         required: true
     }
-}, { collection: "localAccounts" });
+});
+localSchema.virtual("password").set(function(password) {
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(password, salt);
+    this.passwordHash = hash;
+});
+localSchema.index({ username: 1 }, { unique: true, sparse: true });
+
+export const windowsAccountSchema = new Schema({
+    ...account,
+    username: String,
+    userSid: {
+        type: String,
+        required: true
+    },
+});
+windowsAccountSchema.index({ userSid: 1 }, { unique: true, sparse: true });
 
 export const oAuth2AccountSchema = new Schema({
     ...account,
@@ -32,16 +44,9 @@ export const oAuth2AccountSchema = new Schema({
         type: String,
         required: true
     },
-}, { collection: "oAuth2Accounts" });
-oAuth2AccountSchema.index({ provider: 1, profileId: 1 });
-
-export const windowsAccountSchema = new Schema({
-    ...account,
-    username: String,
-    userSid: {
+    username: {
         type: String,
-        required: true,
-        unique: true
-    },
-    groups: [String],
-}, { collection: "windowsAccounts" });
+        required: true
+    }
+});
+oAuth2AccountSchema.index({ provider: 1, profileId: 1 }, { unique: true, sparse: true });

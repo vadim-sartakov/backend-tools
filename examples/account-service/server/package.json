@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "backend-tools": "file:../../../",
+    "bcryptjs": "^2.4.3",
     "express-ntlm": "^2.3.0",
     "jsonwebtoken": "^8.3.0",
     "node-sspi": "^0.2.3",

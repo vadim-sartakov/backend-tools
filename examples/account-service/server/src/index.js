@@ -23,7 +23,7 @@ import nodeSSPI from "node-sspi";
 import mongooseUniqueValidator from "mongoose-unique-validator";
 import loadModels from "./model/loader";
 
-mongoose.plugin(mongooseUniqueValidator);
+//mongoose.plugin(mongooseUniqueValidator);
 mongoose.plugin(autopopulatePlugin);
 mongoose.plugin(securityPlugin);
 mongoose.plugin(i18nPlugin);
@@ -33,25 +33,16 @@ loadModels();
 passport.use(new JwtStrategy({
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: "test"
-}, (payload, cb) => {
-    cb(undefined, { ...payload.user });
-}));
+}, (payload, cb) => cb(null, { ...payload.user })));
 
 const oAuth2VerifyCallback = (accessToken, refreshToken, profile, cb) => (async () => {
-
     const User = mongoose.model("User");
-    const OAuth2Account = mongoose.model("OAuth2Account");
-
-    let account = await OAuth2Account.findOne({ provider: profile.provider, profileId: profile.id });
-    if (account) return cb(undefined, account.user._doc);
-
-    let user = await new User({ username: profile.username, blocked: true, roles: ["USER"] }).save();
-    account = await new OAuth2Account({ user, provider: profile.provider, profileId: profile.id }).save();
-
-    user.blocked = false;
-    user = await user.save();
+    let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
+    if (!user) {
+        const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
+        user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
+    }
     cb(null, user._doc);
-
 })().catch(err => cb(err));
 
 passport.use(new GitHubStrategy({
@@ -78,33 +69,29 @@ app.get("/login/github/auth", passport.authenticate("github", { session: false }
 
 app.get("/login/windows", (req, res, next) => {
 
-    const nodeSSPIInstance = new nodeSSPI({ retrieveGroups: true });
+    const nodeSSPIInstance = new nodeSSPI();
     nodeSSPIInstance.authenticate(req, res, err => (async () => {
         
         if (res.finished || res.locals.user) return;
         if (err) return next(err);
 
         const User = mongoose.model("User");
-        const WindowsAccount = mongoose.model("WindowsAccount");
 
-        let account = await WindowsAccount.findOne({ userSid: req.connection.userSid });
-        if (!account) {
-
-            let user = await new User({ username: req.connection.user, blocked: true, roles: ["USER"] }).save();
-            account = await new WindowsAccount({
-                user,
+        let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
+        if (!user) {
+            const account = {
                 confirmedAt: new Date(),
                 username: req.connection.user,
-                userSid: req.connection.userSid,
-                groups: req.connection.userGroups
+                userSid: req.connection.userSid
+            };
+            user = await new User({
+                username: req.connection.user,
+                roles: ["USER"],
+                accounts: { windows: [account] }
             }).save();
-
-            user.blocked = false;
-            user = await user.save();
-
         }
 
-        req.user = account.user._doc;
+        req.user = user._doc;
         sendToken(req, res);
 
         next();
