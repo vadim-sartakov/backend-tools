@@ -16,9 +16,8 @@ import {
 import express from "express";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import passport from "passport";
-import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
-import GitHubStrategy from "passport-github";
+import jwtMiddleware from "express-jwt";
+import ClientOAuth2 from "client-oauth2";
 import nodeSSPI from "node-sspi";
 import loadModels from "./model/loader";
 
@@ -28,26 +27,16 @@ mongoose.plugin(i18nPlugin);
 
 loadModels();
 
-passport.use(new JwtStrategy({
-    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: "test"
-}, (payload, cb) => cb(null, { ...payload.user })));
-
-const oAuth2VerifyCallback = (accessToken, refreshToken, profile, cb) => (async () => {
+const authenticateOAuth2Client = async (req, res, profile) => {
     const User = mongoose.model("User");
     let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
     if (!user) {
         const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
         user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
     }
-    cb(null, user._doc);
-})().catch(err => cb(err));
-
-passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackUrl: "http://localhost:8080/login/github/auth"
-}, oAuth2VerifyCallback));
+    res.locals.loggedInUser = user._doc;
+    res.locals.account = { type: profile.provider, accessToken: profile.accessToken };
+};
 
 const app = express();
 const i18n = createI18n();
@@ -55,64 +44,83 @@ const i18n = createI18n();
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
 
-app.use(passport.initialize());
+app.use(jwtMiddleware({ secret: "test", resultProperty: "locals.user", credentialsRequired: false }));
 
-const sendToken = (req, res) => {
-    const token = jwt.sign({ user: { id: req.user._id, roles: req.user.roles }, account: {  } }, "test", { expiresIn: "10m" });
-    res.json({ token });
-};
-
-app.all("*", (req, res, next) => {
-    passport.authenticate("jwt", (err, user) => {
-        if (err) return next(err);
-        if (!user) return next();
-        req.logIn(user, err => next(err));
-    })(req, res, next);
+const githubAuth = new ClientOAuth2({
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    accessTokenUri: 'https://github.com/login/oauth/access_token',
+    authorizationUri: 'https://github.com/login/oauth/authorize',
+    redirectUri: 'http://localhost:8080/login/github/auth',
 });
 
-app.get("/login/github", passport.authenticate("github"));
-app.get("/login/github/auth", passport.authenticate("github", { session: false }), sendToken);
+const issueJwt = (req, res) => {
+
+    let { user, loggedInUser, account } = res.locals;
+    if (user && user.id === loggedInUser._id) {
+        user.accounts.push(account);
+    } else {
+        user = { id: loggedInUser._id, roles: loggedInUser.roles, accounts: [account] };
+    }
+
+    const token = jwt.sign(user, "test", { expiresIn: "10m" });
+    res.json({ token });
+
+};
+
+app.get("/login/github", (req, res) => {
+    const uri = githubAuth.code.getUri();
+    res.redirect(uri);
+});
+app.get("/login/github/auth", (req, res, next) => {
+    (async () => {
+        const user = await githubAuth.code.getToken(req.originalUrl);
+        await authenticateOAuth2Client(req, res, user);
+    })().catch(next);
+}, issueJwt);
 
 app.get("/login/windows", (req, res, next) => {
 
     const nodeSSPIInstance = new nodeSSPI();
-    nodeSSPIInstance.authenticate(req, res, err => (async () => {
+    nodeSSPIInstance.authenticate(req, res, err => {
         
-        if (res.finished || res.locals.user) return;
-        if (err) return next(err);
+        (async () => {
+            if (res.finished || res.locals.user) return;
+            if (err) return next(err);
 
-        const User = mongoose.model("User");
+            const User = mongoose.model("User");
 
-        let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
-        if (!user) {
-            const account = {
-                confirmedAt: new Date(),
-                username: req.connection.user,
-                userSid: req.connection.userSid
-            };
-            user = await new User({
-                username: req.connection.user,
-                roles: ["USER"],
-                accounts: { windows: [account] }
-            }).save();
-        }
+            let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
+            if (!user) {
+                const account = {
+                    confirmedAt: new Date(),
+                    username: req.connection.user,
+                    userSid: req.connection.userSid
+                };
+                user = await new User({
+                    username: req.connection.user,
+                    roles: ["USER"],
+                    accounts: { windows: [account] }
+                }).save();
+            }
 
-        req.user = user._doc;
-        sendToken(req, res);
+            res.locals.loggedInUser = user._doc;
+            res.locals.account = { type: "windows", username: req.connection.user, userSid: req.connection.userSid };
 
-        next();
+            next();
+        })().catch(next);
 
-    })().catch(next));
+    });
 
-});
+}, issueJwt);
 
 app.all("*", (req, res, next) => {
-    if (!req.user || req.user.roles.indexOf("USER") === -1) throw new AccessDeniedError();
+    if (!res.locals.user || res.locals.user.roles.indexOf("USER") === -1) throw new AccessDeniedError();
     next();
 });
 
 app.get("/me", (req, res) => {
-    res.json(req.user);
+    res.json(res.locals.user);
 });
 
 app.use(createI18nMiddleware(i18n));
