@@ -19,7 +19,6 @@
     "backend-tools": "file:../../../",
     "bcryptjs": "^2.4.3",
     "client-oauth2": "^4.2.1",
-    "express-jwt": "^5.3.1",
     "express-jwt-permissions": "^1.2.1",
     "jsonwebtoken": "^8.3.0",
     "node-sspi": "^0.2.3"

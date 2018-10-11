@@ -14,10 +14,10 @@ import {
     crudRouter,
     AccessDeniedError
 } from "backend-tools";  
+import crypto from "crypto";
 import express from "express";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import jwtMiddleware from "express-jwt";
 import ClientOAuth2 from "client-oauth2";
 import axios from "axios";
 import nodeSSPI from "node-sspi";
@@ -38,8 +38,9 @@ const authenticateOAuth2Client = async (req, res, token, profile) => {
         const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
         user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
     }
-    res.locals.loggedInUser = user._doc;
-    res.locals.account = { type: profile.provider, accessToken: token.accessToken, refreshToken: token.refreshToken };
+    res.locals.loggedInUser = user;
+    res.locals.account = { type: profile.provider, accessToken: token.accessToken };
+    if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
 };
 
 const app = express();
@@ -48,7 +49,14 @@ const i18n = createI18n();
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
 
-app.use(jwtMiddleware({ secret: "test", resultProperty: "locals.user", credentialsRequired: false }));
+app.use((req, res, next) => {
+    if (!req.headers.authorization) return next();
+    const [schema, token] = req.headers.authorization.split(" ");
+    if ((!token) || schema.toLowerCase() !== "bearer") return next();
+    const payload = jwt.verify(token, "test");
+    res.locals.user = payload;
+    next();
+});
 
 const githubAuth = new ClientOAuth2({
     clientId: process.env.GITHUB_CLIENT_ID,
@@ -61,10 +69,10 @@ const githubAuth = new ClientOAuth2({
 const issueJwt = (req, res) => {
 
     let { user, loggedInUser, account } = res.locals;
-    if (user && user.id === loggedInUser._id) {
+    if (user && user.id === loggedInUser.id) {
         user.accounts.push(account);
     } else {
-        user = { id: loggedInUser._id, roles: loggedInUser.roles, accounts: [account] };
+        user = { id: loggedInUser.id, roles: loggedInUser.roles, accounts: [account] };
     }
 
     const token = jwt.sign(user, "test", { expiresIn: "10m" });
@@ -73,17 +81,27 @@ const issueJwt = (req, res) => {
 };
 
 app.get("/login/github", (req, res) => {
-    const uri = githubAuth.code.getUri();
+    const state = crypto.randomBytes(10).toString("hex");
+    res.cookie("state", state, { httpOnly: true });
+    const uri = githubAuth.code.getUri({ state });
     res.redirect(uri);
 });
-app.get("/login/github/auth", asyncMiddleware(async (req, res) => {
+app.get("/login/github/auth", asyncMiddleware(async (req, res, next) => {
     const token = await githubAuth.code.getToken(req.originalUrl);
+    const state = req.cookies.state;
+    if (req.query.state !== state) throw new Error("States are not equal");
+    res.clearCookie("state");
     const request = token.sign({ method: "GET", url: "https://api.github.com/user" });
     const profile = await axios.request(request);
-    await authenticateOAuth2Client(req, res, { provider: "github", id: profile.id, username: profile.username });
+    await authenticateOAuth2Client(req, res, token, { provider: "github", id: profile.data.id, username: profile.data.login });
+    next();
 }), issueJwt);
 
 app.get("/login/windows", (req, res, next) => {
+
+    if (req.headers.authorization && req.headers.authorization.split(" ")[0] !== "NTLM") { 
+        throw new Error("Request can't contain authorization header");
+    }
 
     const nodeSSPIInstance = new nodeSSPI();
     nodeSSPIInstance.authenticate(req, res, err => (async () => {
