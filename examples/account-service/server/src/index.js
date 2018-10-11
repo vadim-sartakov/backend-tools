@@ -31,18 +31,6 @@ loadModels();
 
 const asyncMiddleware = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const authenticateOAuth2Client = async (req, res, token, profile) => {
-    const User = mongoose.model("User");
-    let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
-    if (!user) {
-        const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
-        user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
-    }
-    res.locals.loggedInUser = user;
-    res.locals.account = { type: profile.provider, accessToken: token.accessToken };
-    if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
-};
-
 const app = express();
 const i18n = createI18n();
 
@@ -58,12 +46,47 @@ app.use((req, res, next) => {
     next();
 });
 
-const githubAuth = new ClientOAuth2({
-    clientId: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    accessTokenUri: 'https://github.com/login/oauth/access_token',
-    authorizationUri: 'https://github.com/login/oauth/authorize',
-    redirectUri: 'http://localhost:8080/login/github/auth',
+const oAuth2Redirect = clientOAuth2 => (req, res) => {
+    const state = crypto.randomBytes(10).toString("hex");
+    res.cookie("state", state, { httpOnly: true });
+    const uri = clientOAuth2.code.getUri({ state });
+    res.redirect(uri);
+};
+
+const authenticateOAuth2Client = async (req, res, token, profile) => {
+    const User = mongoose.model("User");
+    let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
+    if (!user) {
+        const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
+        user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
+    }
+    res.locals.loggedInUser = user;
+    res.locals.account = { type: profile.provider, accessToken: token.accessToken };
+    if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
+};
+
+const findOrCreateUser = async ({ userFindQuery, accountType, account, username }) => {
+    const User = mongoose.model("User");
+    let user = await User.findOne(userFindQuery);
+    if (!user) {
+        user = await new User({
+            username,
+            roles: ["USER"],
+            accounts: { [accountType]: [account] }
+        }).save();
+    }
+    return user;
+};
+
+const oAuth2Authenticate = (clientOAuth2, userCallback) => asyncMiddleware(async (req, res, next) => {
+    const token = await clientOAuth2.code.getToken(req.originalUrl);
+    const state = req.cookies.state;
+    if (req.query.state !== state) throw new Error("States are not equal");
+    res.clearCookie("state");
+    const request = token.sign({ method: "GET", url: clientOAuth2.options.userInfoUri });
+    const profile = await axios.request(request);
+    await authenticateOAuth2Client(req, res, token, { provider: "github", id: profile.data.id, username: profile.data.login });
+    next();
 });
 
 const issueJwt = (req, res) => {
@@ -80,12 +103,16 @@ const issueJwt = (req, res) => {
 
 };
 
-app.get("/login/github", (req, res) => {
-    const state = crypto.randomBytes(10).toString("hex");
-    res.cookie("state", state, { httpOnly: true });
-    const uri = githubAuth.code.getUri({ state });
-    res.redirect(uri);
+const githubAuth = new ClientOAuth2({
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    accessTokenUri: "https://github.com/login/oauth/access_token",
+    authorizationUri: "https://github.com/login/oauth/authorize",
+    redirectUri: "http://localhost:8080/login/github/auth",
+    userInfoUri: "https://api.github.com/user",
+    provider: "github"
 });
+app.get("/login/github", oAuth2Redirect(githubAuth));
 app.get("/login/github/auth", asyncMiddleware(async (req, res, next) => {
     const token = await githubAuth.code.getToken(req.originalUrl);
     const state = req.cookies.state;
