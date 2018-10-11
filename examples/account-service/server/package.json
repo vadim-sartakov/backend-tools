@@ -15,6 +15,7 @@
   "author": "Vadim Sartakov",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.18.0",
     "backend-tools": "file:../../../",
     "bcryptjs": "^2.4.3",
     "client-oauth2": "^4.2.1",

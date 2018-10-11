@@ -4,7 +4,7 @@ import mongoose, { Schema } from "mongoose";
 import request from "supertest";
 import { expect } from "chai";
 import generalMiddlewares from "../../src/middleware/general";
-import httpMiddlewares from "../../src/middleware/http";
+import { notFoundMiddleware, serverErrorMiddleware } from "../../src/middleware/http";
 import { createI18n, createI18nMiddleware } from '../../src/config/i18n';
 import crudRouter from "../../src/route/crud";
 import { getNextPort, expectedLinks } from "../utils";
@@ -28,7 +28,8 @@ describe("General crud integration tests", () => {
         app.use(generalMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
         app.use("/users", crudRouter(User));
-        app.use(httpMiddlewares);
+        app.use(notFoundMiddleware());
+        app.use(serverErrorMiddleware());
         server = app.listen(getNextPort());
         port = server.address().port;
         

@@ -3,7 +3,8 @@ import {
     createLogger,
     createI18n,
     createI18nMiddleware,
-    httpMiddlewares,
+    notFoundMiddleware,
+    serverErrorMiddleware,
     generalMiddlewares,
     
     autopopulatePlugin,
@@ -18,6 +19,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import jwtMiddleware from "express-jwt";
 import ClientOAuth2 from "client-oauth2";
+import axios from "axios";
 import nodeSSPI from "node-sspi";
 import loadModels from "./model/loader";
 
@@ -27,7 +29,9 @@ mongoose.plugin(i18nPlugin);
 
 loadModels();
 
-const authenticateOAuth2Client = async (req, res, profile) => {
+const asyncMiddleware = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+const authenticateOAuth2Client = async (req, res, token, profile) => {
     const User = mongoose.model("User");
     let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
     if (!user) {
@@ -35,7 +39,7 @@ const authenticateOAuth2Client = async (req, res, profile) => {
         user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
     }
     res.locals.loggedInUser = user._doc;
-    res.locals.account = { type: profile.provider, accessToken: profile.accessToken };
+    res.locals.account = { type: profile.provider, accessToken: token.accessToken, refreshToken: token.refreshToken };
 };
 
 const app = express();
@@ -72,49 +76,46 @@ app.get("/login/github", (req, res) => {
     const uri = githubAuth.code.getUri();
     res.redirect(uri);
 });
-app.get("/login/github/auth", (req, res, next) => {
-    (async () => {
-        const user = await githubAuth.code.getToken(req.originalUrl);
-        await authenticateOAuth2Client(req, res, user);
-    })().catch(next);
-}, issueJwt);
+app.get("/login/github/auth", asyncMiddleware(async (req, res) => {
+    const token = await githubAuth.code.getToken(req.originalUrl);
+    const request = token.sign({ method: "GET", url: "https://api.github.com/user" });
+    const profile = await axios.request(request);
+    await authenticateOAuth2Client(req, res, { provider: "github", id: profile.id, username: profile.username });
+}), issueJwt);
 
 app.get("/login/windows", (req, res, next) => {
 
     const nodeSSPIInstance = new nodeSSPI();
-    nodeSSPIInstance.authenticate(req, res, err => {
-        
-        (async () => {
-            if (res.finished || res.locals.user) return;
-            if (err) return next(err);
+    nodeSSPIInstance.authenticate(req, res, err => (async () => {
 
-            const User = mongoose.model("User");
+        if (res.finished || res.locals.user) return;
+        if (err) return next(err);
 
-            let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
-            if (!user) {
-                const account = {
-                    confirmedAt: new Date(),
-                    username: req.connection.user,
-                    userSid: req.connection.userSid
-                };
-                user = await new User({
-                    username: req.connection.user,
-                    roles: ["USER"],
-                    accounts: { windows: [account] }
-                }).save();
-            }
+        const User = mongoose.model("User");
 
-            res.locals.loggedInUser = user._doc;
-            res.locals.account = { type: "windows", username: req.connection.user, userSid: req.connection.userSid };
+        let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
+        if (!user) {
+            const account = {
+                confirmedAt: new Date(),
+                username: req.connection.user,
+                userSid: req.connection.userSid
+            };
+            user = await new User({
+                username: req.connection.user,
+                roles: ["USER"],
+                accounts: { windows: [account] }
+            }).save();
+        }
 
-            next();
-        })().catch(next);
+        res.locals.loggedInUser = user._doc;
+        res.locals.account = { type: "windows", username: req.connection.user, userSid: req.connection.userSid };
+        next();
 
-    });
+    })().catch(next));
 
 }, issueJwt);
 
-app.all("*", (req, res, next) => {
+app.use((req, res, next) => {
     if (!res.locals.user || res.locals.user.roles.indexOf("USER") === -1) throw new AccessDeniedError();
     next();
 });
@@ -125,7 +126,10 @@ app.get("/me", (req, res) => {
 
 app.use(createI18nMiddleware(i18n));
 app.use("/users", crudRouter(mongoose.model("User")));
-app.use(httpMiddlewares);
+
+const httpLogger = createLogger("http");
+app.use(notFoundMiddleware((message, ...args) => httpLogger.warn(message, ...args)));
+app.use(serverErrorMiddleware(err => httpLogger.error("%s \n %s", err.message, err.stack)));
 
 const mongooseLogger = createLogger("mongoose");
 mongoose.set("debug", (collection, method, query, doc, opts) => {
