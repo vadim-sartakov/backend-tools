@@ -42,7 +42,7 @@ const jwtMiddleware = (req, res, next) => {
     const [schema, token] = req.headers.authorization.split(" ");
     if ((!token) || schema.toLowerCase() !== "bearer") return next();
     const payload = jwt.verify(token, "test");
-    res.locals.user = payload;
+    res.locals.user = payload.user;
     next();
 };
 app.use(jwtMiddleware);
@@ -73,7 +73,7 @@ const oAuth2Authenticate = (clientOAuth2, profileToAccount) => asyncMiddleware(a
     res.clearCookie("state");
     const request = token.sign({ method: "GET", url: clientOAuth2.options.userInfoUri });
     const profile = await axios.request(request);
-    const account = { confirmedAt: new Date(), provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
+    const account = { provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
     const user = await findOrCreateUser(
         { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.id": account.id },
         "oAuth2",
@@ -94,7 +94,7 @@ const issueJwt = (req, res) => {
         user = { id: loggedInUser.id, roles: loggedInUser.roles, accounts: [account] };
     }
 
-    const accessToken = jwt.sign(user, "test", { expiresIn: "10m" });
+    const accessToken = jwt.sign({ user }, "test", { expiresIn: "10m" });
     res.json({ accessToken });
 
 };
@@ -109,10 +109,7 @@ const githubAuth = new ClientOAuth2({
     provider: "github"
 });
 app.get("/login/github", oAuth2Redirect(githubAuth));
-app.get("/login/github/auth", oAuth2Authenticate(
-    githubAuth,
-    profile => ({ id: profile.id, username: profile.login })
-), issueJwt);
+app.get("/login/github/auth", oAuth2Authenticate(githubAuth, profile => ({ id: profile.id, username: profile.login })), issueJwt);
 
 app.get("/login/windows", (req, res, next) => {
 
@@ -126,11 +123,7 @@ app.get("/login/windows", (req, res, next) => {
         if (res.finished || res.locals.user) return;
         if (err) return next(err);
 
-        const account = {
-            confirmedAt: new Date(),
-            username: req.connection.user,
-            userSid: req.connection.userSid
-        };
+        const account = { username: req.connection.user, userSid: req.connection.userSid };
         const user = await findOrCreateUser({ "accounts.windows.userSid": req.connection.userSid }, "windows", account);
 
         res.locals.loggedInUser = user;
