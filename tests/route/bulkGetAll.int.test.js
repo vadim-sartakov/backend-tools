@@ -7,7 +7,7 @@ import { expect } from "chai";
 import generalMiddlewares from "../../src/middleware/general";
 import { notFoundMiddleware, serverErrorMiddleware } from "../../src/middleware/http";
 import { createI18n, createI18nMiddleware } from '../../src/config/i18n';
-import crudRouter from "../../src/route/crud";
+import crudRouter from "../../src/router/crud";
 import { getNextPort, expectedLinks } from "../utils";
 
 describe('Get all bulk tests', () => {
