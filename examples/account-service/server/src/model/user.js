@@ -2,10 +2,6 @@ import { Schema } from "mongoose";
 import { localSchema, windowsAccountSchema, oAuth2AccountSchema } from "./account";
 
 const userSchema = new Schema({
-    username: {
-        type: String,
-        required: true
-    },
     blocked: {
         type: Boolean,
         default: false

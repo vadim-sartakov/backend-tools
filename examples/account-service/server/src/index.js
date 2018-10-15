@@ -59,7 +59,6 @@ const findOrCreateUser = async (userFindQuery, accountType, account) => {
     let user = await User.findOne(userFindQuery);
     if (!user) {
         user = await new User({
-            username: account.username,
             roles: ["USER"],
             accounts: { [accountType]: [account] }
         }).save();
@@ -76,7 +75,7 @@ const oAuth2Authenticate = (clientOAuth2, profileToAccount) => asyncMiddleware(a
     const profile = await axios.request(request);
     const account = { confirmedAt: new Date(), provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
     const user = await findOrCreateUser(
-        { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.profileId": account.id },
+        { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.id": account.id },
         "oAuth2",
         account
     );

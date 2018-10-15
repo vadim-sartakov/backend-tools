@@ -1,12 +1,8 @@
 import { Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
-const account = {
-    confirmedAt: Date
-};
-
 export const localSchema = new Schema({
-    ...account,
+    confirmedAt: Date,
     username: {
         type: String,
         required: true,
@@ -16,7 +12,7 @@ export const localSchema = new Schema({
         type: String,
         required: true
     }
-});
+}, { _id: false });
 localSchema.virtual("password").set(function(password) {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
@@ -25,22 +21,20 @@ localSchema.virtual("password").set(function(password) {
 localSchema.index({ username: 1 }, { unique: true, sparse: true });
 
 export const windowsAccountSchema = new Schema({
-    ...account,
     username: String,
     userSid: {
         type: String,
         required: true
     },
-});
+}, { _id: false });
 windowsAccountSchema.index({ userSid: 1 }, { unique: true, sparse: true });
 
 export const oAuth2AccountSchema = new Schema({
-    ...account,
     provider: {
         type: String,
         required: true
     },
-    profileId: {
+    id: {
         type: String,
         required: true
     },
@@ -48,5 +42,5 @@ export const oAuth2AccountSchema = new Schema({
         type: String,
         required: true
     }
-});
-oAuth2AccountSchema.index({ provider: 1, profileId: 1 }, { unique: true, sparse: true });
+}, { _id: false });
+oAuth2AccountSchema.index({ provider: 1, id: 1 }, { unique: true, sparse: true });
