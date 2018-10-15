@@ -37,14 +37,15 @@ const i18n = createI18n();
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
 
-app.use((req, res, next) => {
+const jwtMiddleware = (req, res, next) => {
     if (!req.headers.authorization) return next();
     const [schema, token] = req.headers.authorization.split(" ");
     if ((!token) || schema.toLowerCase() !== "bearer") return next();
     const payload = jwt.verify(token, "test");
     res.locals.user = payload;
     next();
-});
+};
+app.use(jwtMiddleware);
 
 const oAuth2Redirect = clientOAuth2 => (req, res) => {
     const state = crypto.randomBytes(10).toString("hex");
@@ -53,24 +54,12 @@ const oAuth2Redirect = clientOAuth2 => (req, res) => {
     res.redirect(uri);
 };
 
-const authenticateOAuth2Client = async (req, res, token, profile) => {
-    const User = mongoose.model("User");
-    let user = await User.findOne({ "accounts.oAuth2.provider": profile.provider, "accounts.oAuth2.profileId": profile.id });
-    if (!user) {
-        const account = { provider: profile.provider, profileId: profile.id, username: profile.username };
-        user = await new User({ username: profile.username, roles: ["USER"], accounts: { oAuth2: [account] } }).save();
-    }
-    res.locals.loggedInUser = user;
-    res.locals.account = { type: profile.provider, accessToken: token.accessToken };
-    if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
-};
-
-const findOrCreateUser = async ({ userFindQuery, accountType, account, username }) => {
+const findOrCreateUser = async (userFindQuery, accountType, account) => {
     const User = mongoose.model("User");
     let user = await User.findOne(userFindQuery);
     if (!user) {
         user = await new User({
-            username,
+            username: account.username,
             roles: ["USER"],
             accounts: { [accountType]: [account] }
         }).save();
@@ -78,14 +67,22 @@ const findOrCreateUser = async ({ userFindQuery, accountType, account, username 
     return user;
 };
 
-const oAuth2Authenticate = (clientOAuth2, userCallback) => asyncMiddleware(async (req, res, next) => {
+const oAuth2Authenticate = (clientOAuth2, profileToAccount) => asyncMiddleware(async (req, res, next) => {
     const token = await clientOAuth2.code.getToken(req.originalUrl);
     const state = req.cookies.state;
     if (req.query.state !== state) throw new Error("States are not equal");
     res.clearCookie("state");
     const request = token.sign({ method: "GET", url: clientOAuth2.options.userInfoUri });
     const profile = await axios.request(request);
-    await authenticateOAuth2Client(req, res, token, { provider: "github", id: profile.data.id, username: profile.data.login });
+    const account = { confirmedAt: new Date(), provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
+    const user = await findOrCreateUser(
+        { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.profileId": account.id },
+        "oAuth2",
+        account
+    );
+    res.locals.loggedInUser = user;
+    res.locals.account = { type: account.provider, accessToken: token.accessToken };
+    if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
     next();
 });
 
@@ -98,8 +95,8 @@ const issueJwt = (req, res) => {
         user = { id: loggedInUser.id, roles: loggedInUser.roles, accounts: [account] };
     }
 
-    const token = jwt.sign(user, "test", { expiresIn: "10m" });
-    res.json({ token });
+    const accessToken = jwt.sign(user, "test", { expiresIn: "10m" });
+    res.json({ accessToken });
 
 };
 
@@ -113,16 +110,10 @@ const githubAuth = new ClientOAuth2({
     provider: "github"
 });
 app.get("/login/github", oAuth2Redirect(githubAuth));
-app.get("/login/github/auth", asyncMiddleware(async (req, res, next) => {
-    const token = await githubAuth.code.getToken(req.originalUrl);
-    const state = req.cookies.state;
-    if (req.query.state !== state) throw new Error("States are not equal");
-    res.clearCookie("state");
-    const request = token.sign({ method: "GET", url: "https://api.github.com/user" });
-    const profile = await axios.request(request);
-    await authenticateOAuth2Client(req, res, token, { provider: "github", id: profile.data.id, username: profile.data.login });
-    next();
-}), issueJwt);
+app.get("/login/github/auth", oAuth2Authenticate(
+    githubAuth,
+    profile => ({ id: profile.id, username: profile.login })
+), issueJwt);
 
 app.get("/login/windows", (req, res, next) => {
 
@@ -136,24 +127,15 @@ app.get("/login/windows", (req, res, next) => {
         if (res.finished || res.locals.user) return;
         if (err) return next(err);
 
-        const User = mongoose.model("User");
+        const account = {
+            confirmedAt: new Date(),
+            username: req.connection.user,
+            userSid: req.connection.userSid
+        };
+        const user = await findOrCreateUser({ "accounts.windows.userSid": req.connection.userSid }, "windows", account);
 
-        let user = await User.findOne({ "accounts.windows.userSid": req.connection.userSid });
-        if (!user) {
-            const account = {
-                confirmedAt: new Date(),
-                username: req.connection.user,
-                userSid: req.connection.userSid
-            };
-            user = await new User({
-                username: req.connection.user,
-                roles: ["USER"],
-                accounts: { windows: [account] }
-            }).save();
-        }
-
-        res.locals.loggedInUser = user._doc;
-        res.locals.account = { type: "windows", username: req.connection.user, userSid: req.connection.userSid };
+        res.locals.loggedInUser = user;
+        res.locals.account = { type: "windows", username: account.username, userSid: account.userSid };
         next();
 
     })().catch(next));
