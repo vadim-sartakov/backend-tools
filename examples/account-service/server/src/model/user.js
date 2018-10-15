@@ -16,7 +16,7 @@ const userSchema = new Schema({
         windows: [windowsAccountSchema]
     }
 }, { timestamps: true, security: {
-    "USER": { create: true, read: true, update: true, delete: true }
+    "USER": { create: true, read: { projection: "-accounts.local.password" }, update: { projection: "-accounts.local" }, delete: true }
 } });
 
 export default userSchema;
