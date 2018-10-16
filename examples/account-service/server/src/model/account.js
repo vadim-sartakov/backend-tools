@@ -8,15 +8,15 @@ export const localSchema = new Schema({
         required: true,
         lowercase: true
     },
-    password: {
+    passwordHash: {
         type: String,
-        required: true,
-        set: password => {
-            const salt = bcrypt.genSaltSync(10);
-            return bcrypt.hashSync(password, salt);
-        }
+        required: true
     }
 }, { _id: false });
+localSchema.virtual("password").set(function(password) {
+    const salt = bcrypt.genSaltSync(10);
+    this.passwordHash = bcrypt.hashSync(password, salt);
+});
 localSchema.index({ username: 1 }, { unique: true, sparse: true });
 
 export const windowsAccountSchema = new Schema({

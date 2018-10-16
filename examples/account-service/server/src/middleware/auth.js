@@ -83,9 +83,24 @@ export const winAuthenticate = (req, res, next) => {
 
 };
 
+const isPermitted = (res, roles) => {
+    roles = Array.isArray(roles) ? roles : [roles];
+    const { user } = res.locals;
+    if (!user && roles.includes("ANON")) return true;
+    if (!user) return false;
+    return user.roles.some(role => roles.includes(role));
+};
+
 export const permit = roles => (req, res, next) => {
-    const user = res.locals;
-    if ((!user && user.roles.indexOf("ANON") === -1) ||
-        user.roles.some(value => roles.includes(value))) throw new AccessDeniedError();
-    next();
+    if (isPermitted(res, roles))
+        next();
+    else
+        throw new AccessDeniedError();
+};
+
+export const deny = roles => (req, res, next) => {
+    if (!isPermitted(res, roles))
+        next();
+    else
+        throw new AccessDeniedError();
 };
