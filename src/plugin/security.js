@@ -1,4 +1,5 @@
 import lodash from "lodash";
+import { eachPathRecursive } from "./utils";
 import AccessDeniedError from "../error/accessDenied";
 
 const ADMIN = "ADMIN";
@@ -98,12 +99,13 @@ const securityPlugin = schema => {
         const existing = await this.model.findOne(this._conditions).setOptions({ lean: true });
         const exclusive = projection[Object.keys(projection)[0]] === 0;
 
-        Object.keys(projection).forEach(path => {
+        eachPathRecursive(schema, (path) => {
             if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
                 const prevValue = lodash.get(existing, path);
                 prevValue && lodash.set(this._update, path, prevValue);
             }
         });
+
     }
 
     schema.pre("save", createSecurityHandler("create", onSave));

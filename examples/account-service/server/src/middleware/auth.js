@@ -55,7 +55,7 @@ export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asy
         account
     );
     res.locals.loggedInUser = user;
-    res.locals.account = { type: account.provider, accessToken: token.accessToken };
+    res.locals.account = { type: account.provider, username: account.username, accessToken: token.accessToken };
     if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
     next();
 });

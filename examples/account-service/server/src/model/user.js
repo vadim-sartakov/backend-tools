@@ -11,12 +11,12 @@ const userSchema = new Schema({
         notEmpty: true
     },
     accounts: {
-        local: [localSchema],
+        local: localSchema,
         oAuth2: [oAuth2AccountSchema],
         windows: [windowsAccountSchema]
     }
 }, { timestamps: true, security: {
-    "USER": { create: true, read: { projection: "-accounts.local.passwordHash" }, update: { projection: "-accounts" }, delete: true }
+    "USER": { create: true, read: { projection: "-accounts.local.passwordHash" }, update: { projection: "accounts.local.password" }, delete: true }
 } });
 
 export default userSchema;

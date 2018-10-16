@@ -237,6 +237,7 @@ describe("Security plugin", () => {
             number: 200,
             order: { number: "New number" },
             budget: { item: "Item" },
+            amount: 300,
             details: [
                 { description: "Entry one updated", amount: 5, account: "100" },
                 { description: "Entry two", amount: 2, account: "2" },
@@ -274,6 +275,7 @@ describe("Security plugin", () => {
             expect(updated).to.have.nested.property("number", number);
             expect(updated).to.have.nested.property("budget.item", invoiceDoc.budget.item);
             expect(updated).to.have.nested.property("order.number", invoiceDoc.order.number);
+            expect(updated).to.have.nested.property("amount", diff.amount);
         });
 
         it("Invoice of department two by manager of department one", async () => {
@@ -293,10 +295,10 @@ describe("Security plugin", () => {
             const user = { roles: [ACCOUNTANT], department: depOne };
             await Invoice.findOneAndUpdate({ _id }, diff).setOptions({ user });
             const updated = await Invoice.findOne({ _id }).setOptions({ lean: true });
-            expect(updated).to.have.nested.property("amount", invoiceDoc.amount);
             expect(updated).to.have.nested.property("number", diff.number);
             expect(updated).to.have.nested.property("budget.item", diff.budget.item);
             expect(updated).to.have.nested.property("order.number", diff.order.number);
+            expect(updated).to.have.nested.property("amount", invoiceDoc.amount);
         });
     
     });

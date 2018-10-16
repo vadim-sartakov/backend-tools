@@ -1,13 +1,18 @@
 import { Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
-export const localSchema = new Schema({
+const loginSchema = new Schema({
     confirmedAt: Date,
-    username: {
+    login: {
         type: String,
-        required: true,
-        lowercase: true
-    },
+        lowercase: true,
+        required: true
+    }
+}, { _id: false });
+loginSchema.index({ login: 1 }, { unique: true, sparse: true });
+
+export const localSchema = new Schema({
+    logins: [loginSchema],
     passwordHash: {
         type: String,
         required: true
@@ -17,7 +22,6 @@ localSchema.virtual("password").set(function(password) {
     const salt = bcrypt.genSaltSync(10);
     this.passwordHash = bcrypt.hashSync(password, salt);
 });
-localSchema.index({ username: 1 }, { unique: true, sparse: true });
 
 export const windowsAccountSchema = new Schema({
     username: String,

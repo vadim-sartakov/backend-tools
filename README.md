@@ -91,7 +91,9 @@ By default middleware prohibits all actions unless opposite were defined in sche
 
 Predefined `ADMIN` role will permit any requested access and `ADMIN_READ` role will permit any `read` access.
 
-### If no user was specified in query option, than method executes without any restrictions.
+### Caveats:
+- If no user was specified in query option, than method executes without any restrictions.
+- Create and update projection does not support arrays in their paths. If path including array is specified, it will be ignored. 
 
 Example:
 ```javascript
