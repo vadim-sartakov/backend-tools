@@ -1,6 +1,7 @@
 import lodash from "lodash";
 import { eachPathRecursive } from "./utils";
 import AccessDeniedError from "../error/accessDenied";
+import { handle } from "i18next-express-middleware";
 
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
@@ -76,15 +77,19 @@ const securityPlugin = schema => {
         await callback.call(this, permissions);
     };
 
+    const resetValuesHandler = (projection, callback) => {
+        const exclusive = projection[Object.keys(projection)[0]] === 0;
+        return path => {
+            if (path.includes("createdAt") || path.includes("updatedAt") || path.includes("_")) return;
+            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
+                callback(path);
+            }
+        }
+    };
+
     function onSave({ projection }) {
         if (!projection) return;
-        const exclusive = projection[Object.keys(projection)[0]] === 0;
-
-        Object.keys(projection).forEach(path => {
-            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
-                lodash.set(this._doc, path, undefined);
-            }
-        });
+        eachPathRecursive(schema, resetValuesHandler(projection, path => lodash.set(this._doc, path, undefined)));
     }
 
     function onRead({ where, projection }) {
@@ -95,17 +100,11 @@ const securityPlugin = schema => {
     async function onUpdate({ where, projection }) {
         where && this.or(...where);
         if (!projection) return;
-
         const existing = await this.model.findOne(this._conditions).setOptions({ lean: true });
-        const exclusive = projection[Object.keys(projection)[0]] === 0;
-
-        eachPathRecursive(schema, (path) => {
-            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
-                const prevValue = lodash.get(existing, path);
-                prevValue && lodash.set(this._update, path, prevValue);
-            }
-        });
-
+        eachPathRecursive(schema, resetValuesHandler(projection, path => {
+            const prevValue = lodash.get(existing, path);
+            prevValue && lodash.set(this._update, path, prevValue);
+        }));
     }
 
     schema.pre("save", createSecurityHandler("create", onSave));

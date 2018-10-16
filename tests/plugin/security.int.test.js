@@ -44,6 +44,7 @@ describe("Security plugin", () => {
                 delete: { where: managerFilter }
             },
             [ACCOUNTANT]: {
+                create: { projection: accountantModifyProjection },
                 read: true,
                 update: { projection: accountantModifyProjection }
             },
@@ -126,6 +127,16 @@ describe("Security plugin", () => {
             expect(dbInvoice).to.have.property("number");
             expect(dbInvoice).to.have.nested.property("budget.item");
             expect(dbInvoice).to.have.nested.property("order.number");
+        });
+
+        it("By accountant", async () => {
+            const user = { roles: [ACCOUNTANT], department: depOne };
+            const invoice = await createInvoice(createdId).setOptions({ user }).save();
+            const dbInvoice = await Invoice.findOne({ _id: invoice.id }).setOptions({ lean: true });
+            expect(dbInvoice).to.have.nested.property("number");
+            expect(dbInvoice).to.have.nested.property("budget.item");
+            expect(dbInvoice).to.have.nested.property("order.number");
+            expect(dbInvoice).not.to.have.nested.property("amount", invoiceDoc.amount);
         });
 
     });
