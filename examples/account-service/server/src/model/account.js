@@ -13,15 +13,19 @@ loginSchema.index({ login: 1 }, { unique: true, sparse: true });
 
 export const localSchema = new Schema({
     logins: [loginSchema],
-    passwordHash: {
+    password: {
         type: String,
-        required: true
+        required: true,
+        set: password => {
+            const salt = bcrypt.genSaltSync(10);
+            return bcrypt.hashSync(password, salt);
+        }
     }
 }, { _id: false });
-localSchema.virtual("password").set(function(password) {
+/*localSchema.virtual("password").set(function(password) {
     const salt = bcrypt.genSaltSync(10);
     this.passwordHash = bcrypt.hashSync(password, salt);
-});
+});*/
 
 export const windowsAccountSchema = new Schema({
     username: String,

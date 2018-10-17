@@ -76,24 +76,30 @@ const securityPlugin = schema => {
         await callback.call(this, permissions);
     };
 
-    const resetValuesHandler = (projection, getValue, restoreValue) => {
-        const exclusive = projection[Object.keys(projection)[0]] === 0;
-        return path => {
-            if (path.includes("createdAt") || path.includes("updatedAt") || path.includes("_")) return;
+    const normalizeSet = object => {
+        const result = {};
+        eachPathRecursive(schema, path => {
             // Reducing path to first array
             path = path.split(".").reduce((prev, cur) => {
-                const isArray = Array.isArray(getValue(prev));
+                const isArray = Array.isArray(_.get(object, prev));
                 return isArray ? prev : `${prev}.${cur}`;
             });
-            if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
-                restoreValue(path);
-            }
-        };
+            const value = _.get(object, path);
+            if (value) result[path] = value;
+        });
+        return result;
+    };
+
+    const handleRestricted = (object, projection, handler) => {
+        const exclusive = projection[Object.keys(projection)[0]] === 0;
+        const excludeFilter = path => (exclusive && projection[path] === 0) || (!exclusive && !projection[path]);
+        Object.keys(object).filter(excludeFilter).forEach(path => handler(path));
     };
 
     function onSave({ projection }) {
         if (!projection) return;
-        eachPathRecursive(schema, resetValuesHandler(projection, path => _.get(this._doc, path), path => _.set(this._doc, path, undefined)));
+        const normalizedDoc = normalizeSet(this._doc);
+        handleRestricted(normalizedDoc, projection, path => this.set(path, undefined));
     }
 
     function onRead({ where, projection }) {
@@ -104,11 +110,8 @@ const securityPlugin = schema => {
     async function onUpdate({ where, projection }) {
         where && this.or(...where);
         if (!projection) return;
-        const existing = await this.model.findOne(this._conditions).setOptions({ lean: true });
-        eachPathRecursive(schema, resetValuesHandler(projection, path => _.get(this._update, path), path => {
-            const prevValue = _.get(existing, path);
-            prevValue && _.set(this._update, path, prevValue);
-        }));
+        this._update = normalizeSet(this._update);
+        handleRestricted(this._update, projection, path => delete this._update[path]);
     }
 
     schema.pre("save", createSecurityHandler("create", onSave));
