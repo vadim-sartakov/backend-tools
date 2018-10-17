@@ -1,7 +1,6 @@
-import lodash from "lodash";
+import _ from "lodash";
 import { eachPathRecursive } from "./utils";
 import AccessDeniedError from "../error/accessDenied";
-import { handle } from "i18next-express-middleware";
 
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
@@ -77,19 +76,24 @@ const securityPlugin = schema => {
         await callback.call(this, permissions);
     };
 
-    const resetValuesHandler = (projection, callback) => {
+    const resetValuesHandler = (projection, getValue, restoreValue) => {
         const exclusive = projection[Object.keys(projection)[0]] === 0;
         return path => {
             if (path.includes("createdAt") || path.includes("updatedAt") || path.includes("_")) return;
+            // Reducing path to first array
+            path = path.split(".").reduce((prev, cur) => {
+                const isArray = Array.isArray(getValue(prev));
+                return isArray ? prev : `${prev}.${cur}`;
+            });
             if ((exclusive && projection[path] === 0) || (!exclusive && !projection[path])) {
-                callback(path);
+                restoreValue(path);
             }
-        }
+        };
     };
 
     function onSave({ projection }) {
         if (!projection) return;
-        eachPathRecursive(schema, resetValuesHandler(projection, path => lodash.set(this._doc, path, undefined)));
+        eachPathRecursive(schema, resetValuesHandler(projection, path => _.get(this._doc, path), path => _.set(this._doc, path, undefined)));
     }
 
     function onRead({ where, projection }) {
@@ -101,9 +105,9 @@ const securityPlugin = schema => {
         where && this.or(...where);
         if (!projection) return;
         const existing = await this.model.findOne(this._conditions).setOptions({ lean: true });
-        eachPathRecursive(schema, resetValuesHandler(projection, path => {
-            const prevValue = lodash.get(existing, path);
-            prevValue && lodash.set(this._update, path, prevValue);
+        eachPathRecursive(schema, resetValuesHandler(projection, path => _.get(this._update, path), path => {
+            const prevValue = _.get(existing, path);
+            prevValue && _.set(this._update, path, prevValue);
         }));
     }
 

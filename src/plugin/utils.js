@@ -1,7 +1,4 @@
-export const eachPathRecursive = (schema, handler, path) => {
-    if (!path) {
-        path = [];
-    }
+export const eachPathRecursive = (schema, handler, path = []) => {
     schema.eachPath(function(pathname, schemaType) {
         path.push(pathname);
         if (schemaType.schema) {

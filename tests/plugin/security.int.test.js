@@ -27,7 +27,7 @@ describe("Security plugin", () => {
 
     const departmentSchema = new Schema({ name: String, address: String, number: Number });
     const orderSchema = new Schema({ number: String });
-    const detailsSchema = new Schema({ description: String, amount: Number, account: String });
+    const detailsSchema = new Schema({ description: String, amount: Number, account: String }, { _id: false });
     const invoiceSchema = new Schema({
         number: Number,
         budget: { item: String },
@@ -136,7 +136,8 @@ describe("Security plugin", () => {
             expect(dbInvoice).to.have.nested.property("number");
             expect(dbInvoice).to.have.nested.property("budget.item");
             expect(dbInvoice).to.have.nested.property("order.number");
-            expect(dbInvoice).not.to.have.nested.property("amount", invoiceDoc.amount);
+            expect(dbInvoice).not.to.have.nested.property("amount");
+            expect(dbInvoice).not.to.have.nested.property("details");
         });
 
     });
@@ -287,6 +288,7 @@ describe("Security plugin", () => {
             expect(updated).to.have.nested.property("budget.item", invoiceDoc.budget.item);
             expect(updated).to.have.nested.property("order.number", invoiceDoc.order.number);
             expect(updated).to.have.nested.property("amount", diff.amount);
+            expect(updated.details).to.deep.equal(diff.details);
         });
 
         it("Invoice of department two by manager of department one", async () => {
@@ -310,6 +312,7 @@ describe("Security plugin", () => {
             expect(updated).to.have.nested.property("budget.item", diff.budget.item);
             expect(updated).to.have.nested.property("order.number", diff.order.number);
             expect(updated).to.have.nested.property("amount", invoiceDoc.amount);
+            expect(updated.details).to.deep.equal(invoiceDoc.details);
         });
     
     });
