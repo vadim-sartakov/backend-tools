@@ -50,7 +50,7 @@ export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asy
     const profile = await axios.request(request);
     const account = { provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
     const user = await findOrCreateUser(
-        { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.id": account.id },
+        (res.locals.user && { _id: res.locals.user.id }) || { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.id": account.id },
         "oAuth2",
         account
     );

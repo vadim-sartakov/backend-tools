@@ -4,10 +4,9 @@ export const findOrCreateUser = async (userFindQuery, accountType, account) => {
     const User = mongoose.model("User");
     let user = await User.findOne(userFindQuery);
     if (!user) {
-        user = await new User({
-            roles: ["USER"],
-            accounts: { [accountType]: [account] }
-        }).save();
+        user = new User({ roles: ["USER"] });
     }
+    user.accounts[accountType].push(account);
+    await user.save();
     return user;
 };
