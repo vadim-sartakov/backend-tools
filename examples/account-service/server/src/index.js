@@ -1,3 +1,4 @@
+import fs from "fs";
 import {
     env, // eslint-disable-line no-unused-vars
     createLogger,
@@ -34,14 +35,15 @@ const i18n = createI18n();
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
 
-const JWT_SECRET = "test";
+const PRIVATE_KEY = fs.readFileSync("keys/private.pem");
+const PUBLIC_KEY = fs.readFileSync("keys/public.pem");
 const JWT_EXPIRES_IN = "1h";
 
-app.use(authJwt(JWT_SECRET));
+app.use(authJwt(PUBLIC_KEY));
 
 app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.env.GITHUB_CLIENT_SECRET, axios));
 app.use("/login/windows", winAuthRouter());
-app.use("/login/*", issueJwt(JWT_SECRET, JWT_EXPIRES_IN));
+app.use("/login/*", issueJwt(PRIVATE_KEY, { expiresIn: JWT_EXPIRES_IN, algorithm: "RS256" }));
 
 app.use(permit(["USER", "ADMIN"]));
 
@@ -55,8 +57,8 @@ app.use(notFoundMiddleware((message, ...args) => httpLogger.warn(message, ...arg
 app.use(serverErrorMiddleware(err => httpLogger.error("%s \n %s", err.message, err.stack)));
 
 const mongooseLogger = createLogger("mongoose");
-mongoose.set("debug", (collection, method, query, doc, opts) => {
-    mongooseLogger.debug("%s.%s(%o) doc: %O, opts: %O", collection, method, query, doc, opts);
+mongoose.set("debug", (collection, method, query) => {
+    mongooseLogger.debug("%s.%s(%o)", collection, method, query);
 });
 mongoose.connect(`${process.env.DB_URL}`, { useNewUrlParser: true, bufferCommands: false });
 

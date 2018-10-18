@@ -18,7 +18,7 @@ export const authJwt = key => (req, res, next) => {
 
 };
 
-export const issueJwt = (key, expiresIn) => (req, res, next) => {
+export const issueJwt = (key, options) => (req, res, next) => {
 
     let { user, loggedInUser, account } = res.locals;
     if (!loggedInUser) return next();
@@ -29,7 +29,7 @@ export const issueJwt = (key, expiresIn) => (req, res, next) => {
         user = { id: loggedInUser.id, roles: loggedInUser.roles, accounts: [account] };
     }
 
-    const accessToken = jwt.sign({ user }, key, { expiresIn });
+    const accessToken = jwt.sign({ user }, key, options);
     res.json({ accessToken });
 
 };

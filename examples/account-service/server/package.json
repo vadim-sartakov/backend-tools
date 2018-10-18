@@ -9,6 +9,9 @@
     "clean": "rimraf lib/",
     "compile": "babel src/ --out-dir lib/ --copy-files --source-maps",
     "build": "npm-run-all clean compile",
+    "gen-private-key": "openssl genpkey -algorithm RSA -out keys/private.pem -pkeyopt rsa_keygen_bits:2048",
+    "export-publickey": "openssl rsa -pubout -in keys/private.pem -out keys/public.pem",
+    "genkeypair": "npm-run-all gen-private-key export-publickey",
     "debug": "nodemon src/index.js --ignore *.test.js --inspect --exec babel-node",
     "start": "node lib/index.js"
   },

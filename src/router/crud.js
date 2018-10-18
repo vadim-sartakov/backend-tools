@@ -40,7 +40,7 @@ const createRouteMap = (Model, opts = defaultOpts) => {
 };
 
 const errorHandler = (err, res, next) => {
-    if (err.name !== "ValidationError") next(err);
+    if (err.name !== "ValidationError") return next(err);
     res.status(400).json(err);
 };
 

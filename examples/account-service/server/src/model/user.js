@@ -17,7 +17,7 @@ const userSchema = new Schema({
         set: password => bcrypt.hashSync(password, 10)
     }
 }, { timestamps: true, security: {
-    "ADMIN": { create: true, read: { projection: "-password" }, update: true, delete: true }
+    "ALL": { create: true, read: { projection: "-password" }, update: true, delete: true }
 } });
 
 export default userSchema;

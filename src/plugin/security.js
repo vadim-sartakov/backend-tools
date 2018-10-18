@@ -2,6 +2,7 @@ import _ from "lodash";
 import { eachPathRecursive } from "./utils";
 import AccessDeniedError from "../error/accessDenied";
 
+const ALL = "ALL"
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
 
@@ -21,14 +22,14 @@ export const getPermissions = (security, user, action) => {
     return user.roles.reduce((prevPermission, role) => {
 
         if (prevPermission === true ||
-                (role === ADMIN && !security.ADMIN) ||
-                (action === "read" && role === ADMIN_READ && !security.ADMIN_READ)) {
+                (role === ADMIN && !security.ADMIN && !security.ALL) ||
+                (action === "read" && role === ADMIN_READ && !security.ADMIN_READ && !security.ALL)) {
             return true;
         }
 
         if (!security) return false;
 
-        const rolePermissions = security[role] || {};
+        const rolePermissions = security[ALL] || security[role] || {};
         let permission = rolePermissions[action];
         if (permission === true) {
             return true;
