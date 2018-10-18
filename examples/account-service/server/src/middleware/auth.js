@@ -48,14 +48,10 @@ export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asy
     res.clearCookie("state");
     const request = token.sign({ method: "GET", url: clientOAuth2.options.userInfoUri });
     const profile = await axios.request(request);
-    const account = { provider: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
-    const user = await findOrCreateUser(
-        (res.locals.user && { _id: res.locals.user.id }) || { "accounts.oAuth2.provider": account.provider, "accounts.oAuth2.id": account.id },
-        "oAuth2",
-        account
-    );
+    const account = { type: clientOAuth2.options.provider, ...profileToAccount(profile.data) };
+    const user = await findOrCreateUser(res.locals.user, account);
     res.locals.loggedInUser = user;
-    res.locals.account = { type: account.provider, username: account.username, accessToken: token.accessToken };
+    res.locals.account = { ...account, accessToken: token.accessToken };
     if (token.refreshToken) res.locals.account.refreshToken = token.refreshToken;
     next();
 });
@@ -72,11 +68,11 @@ export const winAuthenticate = (req, res, next) => {
         if (res.finished || res.locals.user) return;
         if (err) return next(err);
 
-        const account = { username: req.connection.user, userSid: req.connection.userSid };
-        const user = await findOrCreateUser({ "accounts.windows.userSid": req.connection.userSid }, "windows", account);
+        const account = { type: "windows", id: req.connection.userSid, username: req.connection.user };
+        const user = await findOrCreateUser(res.locals.user, account);
 
         res.locals.loggedInUser = user;
-        res.locals.account = { type: "windows", username: account.username, userSid: account.userSid };
+        res.locals.account = account;
         next();
 
     })().catch(next));

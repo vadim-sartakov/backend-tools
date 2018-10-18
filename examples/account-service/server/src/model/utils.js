@@ -1,12 +1,23 @@
 import mongoose from "mongoose";
 
-export const findOrCreateUser = async (userFindQuery, accountType, account) => {
+export const findOrCreateUser = async (loggedInUser, account) => {
+
     const User = mongoose.model("User");
-    let user = await User.findOne(userFindQuery);
-    if (!user) {
-        user = new User({ roles: ["USER"] });
+    let user;
+
+    user = await User.findOne({ "accounts.type": account.type, "accounts.id": account.id });
+    if (user) return user;
+
+    if (loggedInUser) {
+        user = await User.findOne({ _id: loggedInUser.id });
+        user.accounts.push(account);
+        await user.save();
+        return user;
     }
-    user.accounts[accountType].push(account);
+
+    // Should define default roles somewhere in settings
+    user = new User({ roles: ["USER"], accounts: [account] });
     await user.save();
     return user;
+
 };

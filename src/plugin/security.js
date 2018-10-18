@@ -21,8 +21,8 @@ export const getPermissions = (security, user, action) => {
     return user.roles.reduce((prevPermission, role) => {
 
         if (prevPermission === true ||
-                role === ADMIN ||
-                (action === "read" && role === ADMIN_READ)) {
+                (role === ADMIN && !security.ADMIN) ||
+                (action === "read" && role === ADMIN_READ && !security.ADMIN_READ)) {
             return true;
         }
 
@@ -35,11 +35,11 @@ export const getPermissions = (security, user, action) => {
         }
         
         if (!permission) {
-            return false;
+            return prevPermission;
         }
 
         if (typeof rolePermissions !== "object") {
-            return false;
+            return prevPermission;
         }
 
         let where;

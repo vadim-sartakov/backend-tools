@@ -43,7 +43,7 @@ app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.
 app.use("/login/windows", winAuthRouter());
 app.use("/login/*", issueJwt(JWT_SECRET, JWT_EXPIRES_IN));
 
-app.use(permit("USER"));
+app.use(permit(["USER", "ADMIN"]));
 
 app.get("/me", (req, res) => res.json(res.locals.user));
 
