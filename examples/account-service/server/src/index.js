@@ -16,12 +16,14 @@ import {
     crudRouter
 } from "backend-tools";  
 import express from "express";
+import session from "express-session";
+import connectRedis from "connect-redis";
 import mongoose from "mongoose";
 import axios from "axios";
 import loadModels from "./model/loader";
 
 import { winAuthRouter, githubAuthRouter } from "./router/auth";
-import { authJwt, issueJwt, permit } from "./middleware/auth";
+import { authSession, logInSession, authJwt, issueJwt, permit } from "./middleware/auth";
 
 mongoose.plugin(autopopulatePlugin);
 mongoose.plugin(securityPlugin);
@@ -39,11 +41,21 @@ const PRIVATE_KEY = fs.readFileSync("keys/private.pem");
 const PUBLIC_KEY = fs.readFileSync("keys/public.pem");
 const JWT_EXPIRES_IN = "1h";
 
+const RedisStore = connectRedis(session);
+
+app.use(session({
+    secret: "test",
+    name: "session",
+    resave: false,
+    store: new RedisStore()
+}));
+
+app.use(authSession());
 app.use(authJwt(PUBLIC_KEY));
 
 app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.env.GITHUB_CLIENT_SECRET, axios));
 app.use("/login/windows", winAuthRouter());
-app.use("/login/*", issueJwt(PRIVATE_KEY, { expiresIn: JWT_EXPIRES_IN, algorithm: "RS256" }));
+app.use("/login/*", logInSession(), issueJwt(PRIVATE_KEY, { expiresIn: JWT_EXPIRES_IN, algorithm: "RS256" }));
 
 app.use(permit(["USER", "ADMIN"]));
 

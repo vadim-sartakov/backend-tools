@@ -4,6 +4,22 @@ import nodeSSPI from "node-sspi";
 import { asyncMiddleware, AccessDeniedError } from "backend-tools";
 import { findOrCreateUser } from "../model/utils";
 
+export const authSession = () => (req, res, next) => {
+    if (req.session.user) res.locals.user = req.session.user;
+    next();
+};
+
+export const logInSession = () => (req, res) => {
+    let { user, loggedInUser, account } = res.locals;
+    if (user && user.id === loggedInUser.id) {
+        user.accounts.push(account);
+    } else {
+        user = { id: loggedInUser.id, roles: loggedInUser.roles, accounts: [account] };
+    }
+    req.session.user = user;
+    res.end();
+};
+
 export const authJwt = key => (req, res, next) => {
 
     if (!req.headers.authorization) return next();
@@ -58,6 +74,13 @@ export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asy
 
 export const winAuthenticate = (req, res, next) => {
 
+    // Somehow "session" key conflicts with node-sspi authentication
+    // We can remove it during authentication and restore it later.
+    let curSession;
+    if (req.session) {
+        curSession = req.session;
+        delete req.session;
+    }
     if (req.headers.authorization && req.headers.authorization.split(" ")[0] !== "NTLM") { 
         throw new Error("Request can't contain authorization header");
     }
@@ -65,7 +88,7 @@ export const winAuthenticate = (req, res, next) => {
     const nodeSSPIInstance = new nodeSSPI();
     nodeSSPIInstance.authenticate(req, res, err => (async () => {
 
-        if (res.finished || res.locals.user) return;
+        if (res.finished) return;
         if (err) return next(err);
 
         const account = { type: "windows", id: req.connection.userSid, username: req.connection.user };
@@ -73,6 +96,10 @@ export const winAuthenticate = (req, res, next) => {
 
         res.locals.loggedInUser = user;
         res.locals.account = account;
+
+        // Restoring session
+        if (curSession) req.session = curSession;
+
         next();
 
     })().catch(next));
