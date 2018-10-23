@@ -20,6 +20,8 @@ import session from "express-session";
 import connectRedis from "connect-redis";
 import mongoose from "mongoose";
 import axios from "axios";
+import OAuthServer from "express-oauth-server";
+import MongooseModel from "./model/oauth2";
 import loadModels from "./model/loader";
 
 import { winAuthRouter, githubAuthRouter } from "./router/auth";
@@ -33,6 +35,16 @@ loadModels();
 
 const app = express();
 const i18n = createI18n();
+
+app.oauth = new OAuthServer({
+    model: new MongooseModel({
+        Token: mongoose.model("Token"),
+        User: mongoose.model("User"),
+        Client: mongoose.model("Client"),
+        AuthorizationCode: mongoose.model("AuthorizationCode")
+    }),
+    useErrorHandler: true
+});
 
 app.disable('x-powered-by');
 app.use(generalMiddlewares);
@@ -51,7 +63,14 @@ app.use(session({
 }));
 
 app.use(authSession());
-app.use(authJwt(PUBLIC_KEY));
+//app.use(authJwt(PUBLIC_KEY));
+
+app.post("/oauth/token", app.oauth.token());
+app.post("/oauth/authorize", app.oauth.authorize({
+    authenticateHandler: {
+        handle: req => req.session.user
+    }
+}));
 
 app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.env.GITHUB_CLIENT_SECRET, axios));
 app.use("/login/windows", winAuthRouter());
@@ -63,6 +82,7 @@ app.get("/me", (req, res) => res.json(res.locals.user));
 
 app.use(createI18nMiddleware(i18n));
 app.use("/users", crudRouter(mongoose.model("User")));
+app.use("/clients", crudRouter(mongoose.model("Client")));
 
 const httpLogger = createLogger("http");
 app.use(notFoundMiddleware((message, ...args) => httpLogger.warn(message, ...args)));

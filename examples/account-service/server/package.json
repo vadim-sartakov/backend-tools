@@ -23,6 +23,7 @@
     "bcryptjs": "^2.4.3",
     "client-oauth2": "^4.2.1",
     "connect-redis": "^3.4.0",
+    "express-oauth-server": "^2.0.0",
     "express-session": "^1.15.6",
     "handlebars": "^4.0.12",
     "jsonwebtoken": "^8.3.0",
