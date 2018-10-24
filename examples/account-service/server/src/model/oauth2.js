@@ -8,18 +8,28 @@ class Model {
         this.AuthorizationCode = AuthorizationCode;
     }
     async getAccessToken(accessToken) {
-        return await this.Token.findOne({ accessToken }).lean();
+        const token = await this.Token.findOne({ accessToken });
+        if (!token) return;
+        const tokenDoc = token.toObject();
+        return tokenDoc;
+    }
+    async revokeToken(token) {
+        return await this.Token.findOneAndRemove({ accessToken: token.accessToken });
     }
     async getClient(_id, secret) {
         const client = await this.Client.findOne({ _id });
+        if (!client) return;
         const clientDoc = client.toObject();
         // In auth code flow secret is null, and we don't want to check it
         if (secret === null) return clientDoc;
         const validSecret = await bcrypt.compare(secret, clientDoc.secret);
         return validSecret && clientDoc;
     }
-    async getRefreshToken(refreshToken) { 
-        return await this.Token.findOne({ refreshToken }).lean();
+    async getRefreshToken(refreshToken) {
+        const token = await this.Token.findOne({ refreshToken });
+        if (!token) return;
+        const tokenDoc = token.toObject();
+        return tokenDoc;
     }
     async getUser(username, password) {
         const user = await this.User.findOne({ username }).lean();
@@ -32,8 +42,7 @@ class Model {
             client: client._id,
             user: user._id
         });
-        await accessToken.save();
-        return accessToken.toJSON();
+        return await accessToken.save();
     }
     async saveAuthorizationCode(authorizationCode, client, user) {
         const authCodeInstance = new this.AuthorizationCode({

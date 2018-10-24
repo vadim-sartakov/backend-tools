@@ -78,6 +78,10 @@ app.use("/login/*", logInSession(), issueJwt(PRIVATE_KEY, { expiresIn: JWT_EXPIR
 
 app.use(permit(["USER", "ADMIN"]));
 
+app.use(app.oauth.authenticate(), (req, res, next) => {
+    res.locals.user = res.locals.oauth.token.user;
+    next();
+});
 app.get("/me", (req, res) => res.json(res.locals.user));
 
 app.use(createI18nMiddleware(i18n));
