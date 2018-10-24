@@ -7,6 +7,14 @@ class Model {
         this.User = User;
         this.AuthorizationCode = AuthorizationCode;
     }
+    async saveToken(token, client, user) {
+        const accessToken = new this.Token({
+            ...token,
+            client: client._id,
+            user: user._id
+        });
+        return await accessToken.save();
+    }
     async getAccessToken(accessToken) {
         const token = await this.Token.findOne({ accessToken });
         if (!token) return;
@@ -35,14 +43,6 @@ class Model {
         const user = await this.User.findOne({ username }).lean();
         const validPassword = await bcrypt.compare(password, user.password);
         return validPassword && user;
-    }
-    async saveToken(token, client, user) {
-        const accessToken = new this.Token({
-            ...token,
-            client: client._id,
-            user: user._id
-        });
-        return await accessToken.save();
     }
     async saveAuthorizationCode(authorizationCode, client, user) {
         const authCodeInstance = new this.AuthorizationCode({
