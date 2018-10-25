@@ -1,6 +1,6 @@
 import { Router } from "express";
 import ClientOAuth2 from "client-oauth2";
-import { oAuth2Redirect, oAuth2Authenticate, winAuthenticate } from "../middleware/auth";
+import { oAuth2Redirect, oAuth2Authenticate } from "../middleware/auth";
 
 export const oAuth2ClientRouter = (clientOAuth2, profileToAccount, axios, opts = {}) => {
     const router = Router();

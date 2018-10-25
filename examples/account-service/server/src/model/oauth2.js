@@ -40,20 +40,23 @@ export class MongoModel {
         return tokenDoc;
     }
     async getUser(username, password) {
-        const user = await this.User.findOne({ "accounts.type" : "local", "accounts.id": username }).lean();
-        const validPassword = await bcrypt.compare(password, user.password);
-        return validPassword && user;
+        const user = await this.User.findOne({ "accounts.type" : "local", "accounts.id": username });
+        if (!user) return;
+        const userDoc = user.toObject();
+        const validPassword = await bcrypt.compare(password, userDoc.password);
+        return validPassword && userDoc;
     }
     async saveAuthorizationCode(authorizationCode, client, user) {
         const authCodeInstance = new this.AuthorizationCode({
             ...authorizationCode,
             client: client._id,
-            user: user.id
+            user: user._id
         });
         return await authCodeInstance.save();
     }
     async getAuthorizationCode(authorizationCode) {
         const code = await this.AuthorizationCode.findOne({ authorizationCode });
+        if (!code) return;
         const codeDoc = code.toObject();
         return codeDoc;
     }
@@ -69,27 +72,30 @@ export class JwtModel extends MongoModel {
         this.jwtOpts = jwtOpts;
         this.tokenLifetime = tokenLifetime;
     }
-    generateToken(client, user, expiresIn) {
-        // TODO: in case of refresh there is no '_id' feild, it's 'id'
+    async generateAccessToken(client, user) {
         return jwt.sign({
-            user: { id: user._id, roles: user.roles },
-            client: { id: client._id, scopes: client.scopes }
+            user: { id: user.id, roles: user.roles },
+            client: { id: client.id, scopes: client.scopes }
         },
         this.keys.private,
-        { expiresIn, ...this.jwtOpts });
-    }
-    async generateAccessToken(client, user) {
-        return this.generateToken(client, user, this.tokenLifetime.accessToken);
+        { expiresIn: this.tokenLifetime.accessToken, ...this.jwtOpts });
     }
     // Refresh token should not reset lifetime
     async generateRefreshToken(client, user) {
-        return this.generateToken(client, user, this.tokenLifetime.refreshToken);
+        return jwt.sign({
+            user: { id: user.id, roles: user.roles },
+            client: { id: client.id, scopes: client.scopes },
+            refresh: true
+        },
+        this.keys.private,
+        { expiresIn: this.tokenLifetime.refreshToken, ...this.jwtOpts });
     }
     saveToken(token, client, user) {
         return { ...token, client, user };
     }
     getAccessToken(accessToken) {
         const payload = jwt.verify(accessToken, this.keys.public);
+        if (payload.refresh) return;
         payload.accessTokenExpiresAt = new Date(payload.exp * 1000);
         return payload;
     }

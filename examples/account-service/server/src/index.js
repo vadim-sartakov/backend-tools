@@ -25,7 +25,7 @@ import { MongoModel, JwtModel } from "./model/oauth2";
 import loadModels from "./model/loader";
 
 import { githubAuthRouter } from "./router/auth";
-import { winAuthenticate, localAuthenticate, authSession, logInSession, authJwt, issueJwt, permit } from "./middleware/auth";
+import { winAuthenticate, localAuthenticate, authSession, logInSession, permit } from "./middleware/auth";
 
 mongoose.plugin(autopopulatePlugin);
 mongoose.plugin(securityPlugin);
@@ -81,15 +81,13 @@ app.use(authSession());
 
 app.post("/oauth/token", app.oauth.token());
 app.post("/oauth/authorize", app.oauth.authorize({
-    authenticateHandler: {
-        handle: (req, res) => res.locals.user
-    }
+    authenticateHandler: { handle: (req, res) => res.locals.user }
 }));
 
 app.post("/login", localAuthenticate());
 app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.env.GITHUB_CLIENT_SECRET, axios));
 app.get("/login/windows", winAuthenticate());
-app.use("/login/*", logInSession());
+app.use("/login*", logInSession());
 
 app.use(app.oauth.authenticate(), (req, res, next) => {
     res.locals.user = res.locals.oauth.token.user;

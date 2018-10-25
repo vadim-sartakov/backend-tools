@@ -19,23 +19,23 @@ const updateAccounts = (account, accounts = []) => {
 };
 
 export const logInSession = () => (req, res) => {
-    req.session.user = res.locals.user;
-    req.session.accounts = res.locals.accounts;
+    if (res.locals.user) req.session.user = res.locals.user;
+    if (res.locals.user) req.session.accounts = res.locals.accounts;
     res.end();
 };
 
 export const oAuth2Redirect = clientOAuth2 => (req, res) => {
     const state = crypto.randomBytes(10).toString("hex");
-    res.cookie("state", state, { httpOnly: true });
+    req.session.oAuth2State = state;
     const uri = clientOAuth2.code.getUri({ state });
     res.redirect(uri);
 };
 
 export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asyncMiddleware(async (req, res, next) => {
     const token = await clientOAuth2.code.getToken(req.originalUrl);
-    const state = req.cookies.state;
+    const state = req.session.oAuth2State;
     if (req.query.state !== state) throw new Error("States are not equal");
-    res.clearCookie("state");
+    delete req.session.oAuth2State;
     const request = token.sign({ method: "GET", url: clientOAuth2.options.userInfoUri });
     const profile = await axios.request(request);
     const account = { type: clientOAuth2.options.provider, ...profileToAccount(profile.data), accessToken: token.accessToken };
@@ -80,13 +80,13 @@ export const winAuthenticate = () => (req, res, next) => {
 
 };
 
-export const localAuthenticate = () => asyncMiddleware(async (req, res) => {
+export const localAuthenticate = () => asyncMiddleware(async (req, res, next) => {
     const account = { type: "local", id: req.body.username };
     const user = await findUserByAccount(account);
     if (!user || !await bcrypt.compare(req.body.password, user.password)) throw new UnauthorizedError();
     res.locals.user = compactUser(user);
-    res.locals.account = updateAccounts(account, res.locals.accounts);
-    res.end();
+    res.locals.accounts = updateAccounts(account, res.locals.accounts);
+    next();
 });
 
 const isPermitted = (res, roles) => {

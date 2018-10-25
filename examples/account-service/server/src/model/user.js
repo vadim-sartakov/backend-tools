@@ -19,5 +19,9 @@ const userSchema = new Schema({
 }, { timestamps: true, security: {
     "ALL": { create: true, read: { projection: "-password" }, update: true, delete: true }
 } });
+userSchema.virtual("id").get(function () {
+    return this._id.toHexString();
+});
+userSchema.set("toObject", { virtuals: true });
 
 export default userSchema;
