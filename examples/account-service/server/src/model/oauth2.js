@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-
-class Model {
+import jwt from "jsonwebtoken";
+export class MongoModel {
     constructor({ Token, Client, User, AuthorizationCode }) {
         this.Token = Token;
         this.Client = Client;
@@ -40,7 +40,7 @@ class Model {
         return tokenDoc;
     }
     async getUser(username, password) {
-        const user = await this.User.findOne({ username }).lean();
+        const user = await this.User.findOne({ "accounts.type" : "local", "accounts.id": username }).lean();
         const validPassword = await bcrypt.compare(password, user.password);
         return validPassword && user;
     }
@@ -62,4 +62,43 @@ class Model {
     }
 }
 
-export default Model;
+export class JwtModel extends MongoModel {
+    constructor(models, keys, jwtOpts, tokenLifetime) {
+        super(models);
+        this.keys = keys;
+        this.jwtOpts = jwtOpts;
+        this.tokenLifetime = tokenLifetime;
+    }
+    generateToken(client, user, expiresIn) {
+        // TODO: in case of refresh there is no '_id' feild, it's 'id'
+        return jwt.sign({
+            user: { id: user._id, roles: user.roles },
+            client: { id: client._id, scopes: client.scopes }
+        },
+        this.keys.private,
+        { expiresIn, ...this.jwtOpts });
+    }
+    async generateAccessToken(client, user) {
+        return this.generateToken(client, user, this.tokenLifetime.accessToken);
+    }
+    // Refresh token should not reset lifetime
+    async generateRefreshToken(client, user) {
+        return this.generateToken(client, user, this.tokenLifetime.refreshToken);
+    }
+    saveToken(token, client, user) {
+        return { ...token, client, user };
+    }
+    getAccessToken(accessToken) {
+        const payload = jwt.verify(accessToken, this.keys.public);
+        payload.accessTokenExpiresAt = new Date(payload.exp * 1000);
+        return payload;
+    }
+    getRefreshToken(refreshToken) {
+        const payload = jwt.verify(refreshToken, this.keys.public);
+        payload.refreshTokenExpiresAt = new Date(payload.exp * 1000);
+        return payload;
+    }
+    revokeToken(token) {
+        return token;
+    }
+}

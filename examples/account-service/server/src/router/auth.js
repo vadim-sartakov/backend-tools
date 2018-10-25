@@ -26,9 +26,3 @@ export const githubAuthRouter = (clientId, clientSecret, axios, opts) => {
         opts
     );
 };
-
-export const winAuthRouter = () => {
-    const router = Router();
-    router.get("/", winAuthenticate);
-    return router;
-};

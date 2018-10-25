@@ -12,4 +12,4 @@ export { default as i18nPlugin } from "./plugin/i18n";
 
 export { default as crudRouter } from "./router/crud";
 
-export { default as AccessDeniedError } from "./error/accessDenied";
+export { AccessDeniedError, UnauthorizedError } from "./error";

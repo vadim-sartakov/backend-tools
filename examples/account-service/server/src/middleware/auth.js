@@ -1,9 +1,9 @@
 import _ from "lodash";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import nodeSSPI from "node-sspi";
-import { asyncMiddleware, AccessDeniedError } from "backend-tools";
-import { findOrCreateUser } from "../model/utils";
+import { asyncMiddleware, AccessDeniedError, UnauthorizedError } from "backend-tools";
+import { findUserByAccount, findOrCreateUser } from "../model/utils";
 
 export const authSession = () => (req, res, next) => {
     res.locals.user = req.session.user;
@@ -22,21 +22,6 @@ export const logInSession = () => (req, res) => {
     req.session.user = res.locals.user;
     req.session.accounts = res.locals.accounts;
     res.end();
-};
-
-export const authJwt = key => (req, res, next) => {
-    if (!req.headers.authorization) return next();
-    const [schema, token] = req.headers.authorization.split(" ");
-    if ((!token) || schema.toLowerCase() !== "bearer") return next();
-    const payload = jwt.verify(token, key);
-    res.locals.user = payload.user;
-    res.locals.accounts = payload.accounts;
-    next();
-};
-
-export const issueJwt = (key, options) => (req, res) => {
-    const accessToken = jwt.sign({ user: res.locals.user, accounts: res.locals.accounts }, key, options);
-    res.json({ accessToken });
 };
 
 export const oAuth2Redirect = clientOAuth2 => (req, res) => {
@@ -61,7 +46,7 @@ export const oAuth2Authenticate = (clientOAuth2, profileToAccount, axios) => asy
     next();
 });
 
-export const winAuthenticate = (req, res, next) => {
+export const winAuthenticate = () => (req, res, next) => {
 
     // Somehow "session" key conflicts with node-sspi authentication
     // We can remove it during authentication and restore it later.
@@ -95,24 +80,28 @@ export const winAuthenticate = (req, res, next) => {
 
 };
 
+export const localAuthenticate = () => asyncMiddleware(async (req, res) => {
+    const account = { type: "local", id: req.body.username };
+    const user = await findUserByAccount(account);
+    if (!user || !await bcrypt.compare(req.body.password, user.password)) throw new UnauthorizedError();
+    res.locals.user = compactUser(user);
+    res.locals.account = updateAccounts(account, res.locals.accounts);
+    res.end();
+});
+
 const isPermitted = (res, roles) => {
     roles = Array.isArray(roles) ? roles : [roles];
     const { user } = res.locals;
     if (!user && roles.includes("ANON")) return true;
     if (!user) return false;
-    return user.roles.some(role => roles.includes(role));
+    return user.roles.some(role => roles.includes(role) || roles.includes("ALL"));
 };
 
+// TODO: looks like the same code
 export const permit = roles => (req, res, next) => {
-    if (isPermitted(res, roles))
-        next();
-    else
-        throw new AccessDeniedError();
+    if (isPermitted(res, roles)) next(); else throw new AccessDeniedError();
 };
 
 export const deny = roles => (req, res, next) => {
-    if (!isPermitted(res, roles))
-        next();
-    else
-        throw new AccessDeniedError();
+    if (!isPermitted(res, roles)) next(); else throw new AccessDeniedError();
 };

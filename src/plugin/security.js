@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { eachPathRecursive } from "./utils";
-import AccessDeniedError from "../error/accessDenied";
+import { AccessDeniedError } from "../error";
 
 const ALL = "ALL"
 const ADMIN = "ADMIN";
