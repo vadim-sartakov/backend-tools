@@ -42,8 +42,8 @@ mongoose.connect(`${process.env.DB_URL}`, { useNewUrlParser: true, bufferCommand
 const app = express();
 const i18n = createI18n();
 
-const PRIVATE_KEY = fs.readFileSync("keys/private.pem");
-const PUBLIC_KEY = fs.readFileSync("keys/public.pem");
+//const PRIVATE_KEY = fs.readFileSync("keys/private.pem");
+//const PUBLIC_KEY = fs.readFileSync("keys/public.pem");
 
 // In seconds
 const ACCESS_TOKEN_LIFETIME = 60 * 60;
@@ -116,6 +116,7 @@ app.get("/me", permit("ALL"), (req, res) => res.json(res.locals.user));
 app.use(createI18nMiddleware(i18n));
 app.use("/users", crudRouter(mongoose.model("User")));
 app.use("/clients", crudRouter(mongoose.model("Client")));
+app.use("/tokens", crudRouter(mongoose.model("Token")));
 app.use("/sessions", crudRouter(mongoose.model("Session")));
 
 const httpLogger = createLogger("http");

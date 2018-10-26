@@ -56,7 +56,7 @@ export const createGetAll = (Model, opts = defaultOpts) => (req, res, next) => (
     size = (size && size * 1) || defaultPageSize;
 
     const query = Model.find()
-        .setOptions({ i18n, user, lean: true })
+        .setOptions({ i18n, user })
         .skip(page * size)
         .limit(size);
 
@@ -94,9 +94,9 @@ export const createAddOne = Model => (req, res, next) => (async () => {
     doc.setOptions && doc.setOptions({ user, i18n });
     
     let instance = await doc.save();
-    let created = await Model.findById(instance._id).setOptions({ user, i18n, lean: true });
+    let created = await Model.findById(instance._id).setOptions({ user, i18n });
 
-    res.status(201).location(getLocation(req, created._id)).json(created);
+    res.status(201).location(getLocation(req, created._id)).json(created.toObject());
 
 })().catch(err => errorHandler(err, res, next));
 

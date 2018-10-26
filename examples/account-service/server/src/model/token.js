@@ -7,7 +7,9 @@ const tokenSchema = new Schema({
     refreshTokenExpiresAt: Date,
     client: { type: Schema.Types.ObjectId, ref: "Client" },
     user: { type: Schema.Types.ObjectId, ref: "User" }
-});
+}, { security: {
+    "ADMIN": { read: true, delete: true }
+} });
 tokenSchema.index({ accessToken: 1, refreshToken: 1 });
 
 export default tokenSchema;
