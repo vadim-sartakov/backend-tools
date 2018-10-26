@@ -49,6 +49,8 @@ Result list is paginated. To traverse the list `page` and `size` query parameter
 ### Autopopulate
 Uses "mongoose-autopopulate" internally but with the idea to not populate fields which are not currently selected in the query and provides ability to set this plugin globally only once.
 
+Default projection used in populate is specified by `populateProjection` property in schema definition.
+
 ```javascript
 import mongoose, { Schema } from "mongoose";
 import { autopopulatePlugin } from "backend-tools";

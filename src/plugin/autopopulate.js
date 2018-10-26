@@ -4,16 +4,19 @@ import { eachPathRecursive } from "./utils";
 
 const autopopulateFunction = function(opts) {
 
-    if (!this._fields) return true; 
-    
     const model = mongoose.model(opts.model);
     const { populateProjection } = model && model.schema.options;
+
+    const result = { maxDepth: 1 };
+    if (populateProjection) result.select = populateProjection;
+    if (!this._fields) return result; 
+    
     const selectFieldValue = this._fields[opts.path] || 0;
     const exclusiveSelect = this._fields[Object.keys(this._fields)[0]] === 0;
 
     if ((exclusiveSelect && selectFieldValue) || (!exclusiveSelect && !selectFieldValue)) return false;
 
-    return { maxDepth: 1, select: populateProjection };
+    return result;
 
 };
 

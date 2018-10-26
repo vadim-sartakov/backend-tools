@@ -16,9 +16,12 @@ const userSchema = new Schema({
         type: String,
         set: password => bcrypt.hashSync(password, 10)
     }
-}, { timestamps: true, security: {
+},
+{ timestamps: true,
+security: {
     "ALL": { create: true, read: { projection: "-password" }, update: true, delete: true }
-} });
+},
+populateProjection: "-password" });
 userSchema.virtual("id").get(function () {
     return this._id.toHexString();
 });

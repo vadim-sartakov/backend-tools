@@ -44,13 +44,13 @@ const ACCESS_TOKEN_LIFETIME = 60 * 60;
 const REFRESH_TOKEN_LIFETIME = 60 * 60 * 5;
 
 app.oauth = new OAuthServer({
-    /*model: new MongoModel({
+    model: new MongoModel({
         Token: mongoose.model("Token"),
         User: mongoose.model("User"),
         Client: mongoose.model("Client"),
         AuthorizationCode: mongoose.model("AuthorizationCode")
-    }),*/
-    model: new JwtModel({
+    }),
+    /*model: new JwtModel({
         Token: mongoose.model("Token"),
         User: mongoose.model("User"),
         Client: mongoose.model("Client"),
@@ -58,7 +58,7 @@ app.oauth = new OAuthServer({
     },
     { private: PRIVATE_KEY, public: PUBLIC_KEY },
     { algorithm: "RS256" },
-    { accessToken: ACCESS_TOKEN_LIFETIME, refreshToken: REFRESH_TOKEN_LIFETIME }),
+    { accessToken: ACCESS_TOKEN_LIFETIME, refreshToken: REFRESH_TOKEN_LIFETIME }),*/
     useErrorHandler: true,
     accessTokenLifetime: ACCESS_TOKEN_LIFETIME,
     refreshTokenLifetime: REFRESH_TOKEN_LIFETIME
