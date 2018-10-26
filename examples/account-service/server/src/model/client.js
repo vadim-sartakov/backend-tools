@@ -11,9 +11,5 @@ const clientSchema = new Schema({
         "ALL": { create: true, read: true, update: true, delete: true }
     }
 });
-clientSchema.virtual("id").get(function () {
-    return this._id.toHexString();
-});
-clientSchema.set("toObject", { virtuals: true });
 
 export default clientSchema;

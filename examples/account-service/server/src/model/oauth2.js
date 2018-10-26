@@ -18,8 +18,8 @@ export class MongoModel {
     async getAccessToken(accessToken) {
         const token = await this.Token.findOne({ accessToken });
         if (!token) return;
-        const tokenDoc = token.toObject();
-        return tokenDoc;
+        token.client.id = token.client._id.toHexString();
+        return token;
     }
     async revokeToken(token) {
         return await this.Token.findOneAndRemove({ accessToken: token.accessToken });
@@ -27,24 +27,23 @@ export class MongoModel {
     async getClient(_id, secret) {
         const client = await this.Client.findOne({ _id });
         if (!client) return;
-        const clientDoc = client.toObject();
+        client.id = client._id.toHexString();
         // In auth code flow secret is null, and we don't want to check it
-        if (secret === null) return clientDoc;
-        const validSecret = await bcrypt.compare(secret, clientDoc.secret);
-        return validSecret && clientDoc;
+        if (secret === null) return client;
+        const validSecret = await bcrypt.compare(secret, client.secret);
+        return validSecret && client;
     }
     async getRefreshToken(refreshToken) {
         const token = await this.Token.findOne({ refreshToken });
         if (!token) return;
-        const tokenDoc = token.toObject();
-        return tokenDoc;
+        token.client.id = token.client._id.toHexString();
+        return token;
     }
     async getUser(username, password) {
         const user = await this.User.findOne({ "accounts.type" : "local", "accounts.id": username });
         if (!user) return;
-        const userDoc = user.toObject();
-        const validPassword = await bcrypt.compare(password, userDoc.password);
-        return validPassword && userDoc;
+        const validPassword = await bcrypt.compare(password, user.password);
+        return validPassword && user;
     }
     async saveAuthorizationCode(authorizationCode, client, user) {
         const authCodeInstance = new this.AuthorizationCode({
@@ -57,8 +56,8 @@ export class MongoModel {
     async getAuthorizationCode(authorizationCode) {
         const code = await this.AuthorizationCode.findOne({ authorizationCode });
         if (!code) return;
-        const codeDoc = code.toObject();
-        return codeDoc;
+        code.client.id = code.client._id.toHexString();
+        return code;
     }
     async revokeAuthorizationCode(authCodeInstance) {
         return await this.AuthorizationCode.findOneAndRemove({ authorizationCode: authCodeInstance.authorizationCode }).lean();
@@ -74,8 +73,8 @@ export class JwtModel extends MongoModel {
     }
     async generateAccessToken(client, user) {
         return jwt.sign({
-            user: { id: user.id, roles: user.roles },
-            client: { id: client.id, scopes: client.scopes }
+            user: { id: user._id, roles: user.roles },
+            client: { id: client._id, scopes: client.scopes }
         },
         this.keys.private,
         { expiresIn: this.tokenLifetime.accessToken, ...this.jwtOpts });
@@ -83,8 +82,8 @@ export class JwtModel extends MongoModel {
     // Refresh token should not reset lifetime
     async generateRefreshToken(client, user) {
         return jwt.sign({
-            user: { id: user.id, roles: user.roles },
-            client: { id: client.id, scopes: client.scopes },
+            user: { id: user._id, roles: user.roles },
+            client: { id: client._id, scopes: client.scopes },
             refresh: true
         },
         this.keys.private,

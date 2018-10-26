@@ -22,9 +22,5 @@ security: {
     "ALL": { create: true, read: { projection: "-password" }, update: true, delete: true }
 },
 populateProjection: "-password" });
-userSchema.virtual("id").get(function () {
-    return this._id.toHexString();
-});
-userSchema.set("toObject", { virtuals: true });
 
 export default userSchema;
