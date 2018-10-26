@@ -3,7 +3,7 @@ import express from "express";
 import mongoose, { Schema } from "mongoose";
 import request from "supertest";
 import { expect } from "chai";
-import generalMiddlewares from "../../src/middleware/general";
+import commonMiddlewares from "../../src/middleware/common";
 import { notFoundMiddleware, serverErrorMiddleware } from "../../src/middleware/http";
 import { createI18n, createI18nMiddleware } from '../../src/config/i18n';
 import crudRouter from "../../src/router/crud";
@@ -25,7 +25,7 @@ describe("General crud integration tests", () => {
         User = connection.model("User", userSchema);
 
         const app = express();
-        app.use(generalMiddlewares);
+        app.use(commonMiddlewares);
         app.use(createI18nMiddleware(createI18n()));
         app.use("/users", crudRouter(User));
         app.use(notFoundMiddleware());

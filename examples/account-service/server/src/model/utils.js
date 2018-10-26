@@ -10,7 +10,7 @@ export const findOrCreateUser = async (loggedInUser, account) => {
     let user = await findUserByAccount(account);
     if (user) return user;
     if (loggedInUser) {
-        user = await User.findOne({ _id: loggedInUser.id });
+        user = await User.findOne({ _id: loggedInUser._id });
         user.accounts.push(account);
         await user.save();
         return user;

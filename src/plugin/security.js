@@ -29,7 +29,7 @@ export const getPermissions = (security, user, action) => {
 
         if (!security) return false;
 
-        const rolePermissions = security[ALL] || security[role] || {};
+        const rolePermissions = security[role] || security[ALL] || {};
         let permission = rolePermissions[action];
         if (permission === true) {
             return true;
@@ -120,6 +120,7 @@ const securityPlugin = schema => {
     schema.pre("findOne", createSecurityHandler("read", onRead));
     schema.pre("findOneAndUpdate", createSecurityHandler("update", onUpdate));
     schema.pre("findOneAndRemove", createSecurityHandler("delete", onRead));
+    schema.pre("findOneAndDelete", createSecurityHandler("delete", onRead));
 
 };
 
