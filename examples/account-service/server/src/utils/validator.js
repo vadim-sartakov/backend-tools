@@ -1,0 +1,1 @@
+export const notEmptyArray = [array => array.length && array.length > 0, "{PATH} must not be empty"];

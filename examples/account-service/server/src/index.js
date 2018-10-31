@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs, { read } from "fs";
 import {
     env, // eslint-disable-line no-unused-vars
     createLogger,
@@ -21,11 +21,14 @@ import session from "express-session";
 import connectMongo from "connect-mongo";
 import axios from "axios";
 import OAuthServer from "express-oauth-server";
-import { MongoModel, JwtModel } from "./model/oauth2";
+import { MongoModel, JwtModel } from "./utils/oauth2";
 import loadModels from "./model/loader";
 
 import { githubAuthRouter } from "./router/auth";
 import { winAuthenticate, localAuthenticate, authSession, logInSession, permit } from "./middleware/auth";
+import { sendConfirmEmail, confirmEmail } from "./middleware/register";
+
+import { mailTransport } from "./utils/mailer";
 
 mongoose.plugin(autopopulatePlugin);
 mongoose.plugin(securityPlugin);
@@ -101,6 +104,9 @@ app.post("/oauth/authorize", app.oauth.authorize({
 app.post("/login", localAuthenticate());
 app.use("/login/github", githubAuthRouter(process.env.GITHUB_CLIENT_ID, process.env.GITHUB_CLIENT_SECRET, axios));
 app.get("/login/windows", winAuthenticate());
+
+app.post("/register/email", sendConfirmEmail());
+app.get("/register/email/confirm", confirmEmail());
 
 app.use((req, res, next) => {
     const oAuth2Authenticate = app.oauth.authenticate();

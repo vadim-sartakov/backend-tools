@@ -1,5 +1,6 @@
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { passwordEncoder } from "../utils/security";
+
 export class MongoModel {
     constructor({ Token, Client, User, AuthorizationCode }) {
         this.Token = Token;
@@ -30,7 +31,7 @@ export class MongoModel {
         client.id = client._id.toHexString();
         // In auth code flow secret is null, and we don't want to check it
         if (secret === null) return client;
-        const validSecret = await bcrypt.compare(secret, client.secret);
+        const validSecret = await passwordEncoder.verify(secret, client.secret);
         return validSecret && client;
     }
     async getRefreshToken(refreshToken) {
@@ -42,7 +43,7 @@ export class MongoModel {
     async getUser(username, password) {
         const user = await this.User.findOne({ "accounts.type" : "local", "accounts.id": username });
         if (!user) return;
-        const validPassword = await bcrypt.compare(password, user.password);
+        const validPassword = await passwordEncoder.verify(password, user.password);
         return validPassword && user;
     }
     async saveAuthorizationCode(authorizationCode, client, user) {

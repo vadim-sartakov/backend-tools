@@ -28,7 +28,8 @@
     "handlebars": "^4.0.12",
     "jsonwebtoken": "^8.3.0",
     "node-sspi": "^0.2.3",
-    "nodemailer": "^4.6.8"
+    "nodemailer": "^4.6.8",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

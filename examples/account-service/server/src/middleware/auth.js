@@ -1,9 +1,8 @@
-import _ from "lodash";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
 import nodeSSPI from "node-sspi";
 import { asyncMiddleware, AccessDeniedError, UnauthorizedError } from "backend-tools";
 import { findUserByAccount, findOrCreateUser } from "../model/utils";
+import { passwordEncoder } from "../utils/security";
 
 export const authSession = () => (req, res, next) => {
     res.locals.user = req.session.user;
@@ -63,7 +62,7 @@ export const winAuthenticate = () => (req, res, next) => {
 export const localAuthenticate = () => asyncMiddleware(async (req, res) => {
     const account = { type: "local", id: req.body.username };
     const user = await findUserByAccount(account);
-    if (!user || !await bcrypt.compare(req.body.password, user.password)) throw new UnauthorizedError();
+    if (!user || !await passwordEncoder.verify(req.body.password, user.password)) throw new UnauthorizedError();
     req.session.user = user._id;
     res.end();
 });
