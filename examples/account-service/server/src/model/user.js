@@ -31,24 +31,13 @@ const userSchema = new Schema({
         type: [{ type: String }],
         validate: notEmptyArray
     },
-    password: {
-        type: String,
-        match: /^(?=.*[A-Za-z])(?=.*[0-9])(?=.{6,})/,
-        required: true,
-        set: password => passwordEncoder.encodeSync(password)
-    }
+    password: String,
+    requirePasswordChange: Boolean
 },
 { timestamps: true,
 security: {
-    "ALL": { create: true, read: { projection: "-password" }, update: true, delete: true }
+    "ALL": { create: true, read: { projection: "-password" }, update: { projection: "-password" }, delete: true }
 },
 populateProjection: "-password" });
-
-userSchema.virtual("plainPassword").set(function(password) {
-    this.password = passwordEncoder.encodeSync(password);
-});
-userSchema.path("password").validate(function(password) {
-
-});
 
 export default userSchema;
