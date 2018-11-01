@@ -1,27 +1,48 @@
 import { Schema } from "mongoose";
-import { passwordEncoder } from "../utils/security";
 import { notEmptyArray } from "../utils/validator";
+import { accountValidators, accountTranslations, accountMongooseSchema } from "./account";
 
-const accountSchema = new Schema({
-    type: {
-        type: String,
-        required: true,
-        lowercase: true
-    },
-    id: {
-        type: String,
-        required: true,
-        // Should be customizable property
-        lowercase: true,
-    },
-    username: String,
-    code: { type: String, index: true },
-    disabled: { type: Boolean, default: false }
-}, { _id: false });
-accountSchema.index({ type: 1, id: 1 }, { unique: true });
+export const userSecurity = {
+    "ADMIN": { modify: { fields: {  } } },
+    "MODERATOR": {},
+    "ALL": { 
+        read: {
+            fields: { password: 0 },
+            where: (req, res) => ({ user: res.locals.user })
+        }
+    }
+};
 
-const userSchema = new Schema({
-    accounts: [accountSchema],
+export const userValidators = {
+    accounts: [ accountValidators ],
+    disabled: {},
+    roles: {},
+    password: {},
+    requirePasswordChange: {}
+};
+
+export const userTranslations = {
+    accounts: [accountTranslations],
+    disabled: {
+        en: "Disabled",
+        ru: "Отключен"
+    },
+    roles: {
+        en: "Roles",
+        ru: "Роли"
+    },
+    password: {
+        en: "Password",
+        ru: "Пароль"
+    },
+    requirePasswordChange: {
+        en: "Require password change",
+        ru: "Требовать изменение пароля"
+    }
+};
+
+export const userMongooseSchema = new Schema({
+    accounts: [accountMongooseSchema],
     disabled: {
         type: Boolean,
         default: false,
@@ -39,5 +60,3 @@ security: {
     "ALL": { create: true, read: { projection: "-password" }, update: { projection: "-password" }, delete: true }
 },
 populateProjection: "-password" });
-
-export default userSchema;
