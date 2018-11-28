@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../src/locale/http/en.js"],"names":["notFound","internalError"],"mappings":";;;;;kBAAe;AACdA,WAAU,WADI;AAEdC,gBAAe;AAFD,C","file":"en.js","sourcesContent":["export default {\r\n\tnotFound: \"Not found\",\r\n\tinternalError: \"Internal server error\"\r\n};"]}

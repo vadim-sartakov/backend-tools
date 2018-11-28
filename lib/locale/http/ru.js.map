@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../src/locale/http/ru.js"],"names":["notFound","internalError"],"mappings":";;;;;kBAAe;AACdA,WAAU,kBADI;AAEdC,gBAAe;AAFD,C","file":"ru.js","sourcesContent":["export default {\r\n\tnotFound: \"Ресурс не найден\",\r\n\tinternalError: \"Произошла внутренняя ошибка сервера\"\r\n};"]}
