@@ -2,7 +2,7 @@ import _ from "lodash";
 import { eachPathRecursive } from "./utils";
 import { AccessDeniedError } from "../error";
 
-const ALL = "ALL"
+const ALL = "ALL";
 const ADMIN = "ADMIN";
 const ADMIN_READ = "ADMIN_READ";
 
