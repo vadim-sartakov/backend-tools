@@ -1,1 +1,2 @@
 export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;
+export const asyncMiddleware = (fn, errHandler) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch((errHandler && (err => errHandler(err, req, res, next))) || next);

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
-import { getCurrentUrl } from "../utils/http";
+import { getCurrentUrl, asyncMiddleware } from "../utils/http";
 
 const crudRouter = (Model, opts) => {
 
@@ -45,7 +45,7 @@ const errorHandler = (err, res, next) => {
     res.status(400).json(err);
 };
 
-export const createGetAll = (Model, opts = defaultOpts) => (req, res, next) => (async () => {
+export const createGetAll = (Model, opts = defaultOpts) => asyncMiddleware(async (req, res) => {
 
     opts = { ...defaultOpts, ...opts };
 
@@ -85,9 +85,9 @@ export const createGetAll = (Model, opts = defaultOpts) => (req, res, next) => (
     res.set("Link", link.toString());
     res.json(result);
 
-})().catch(err => errorHandler(err, res, next));
+}, (err, req, res, next) => errorHandler(err, res, next));
 
-export const createAddOne = Model => (req, res, next) => (async () => {
+export const createAddOne = Model => asyncMiddleware(async (req, res) => {
 
     const { user, i18n } = res.locals;
     const doc = new Model(req.body);
@@ -99,28 +99,28 @@ export const createAddOne = Model => (req, res, next) => (async () => {
 
     res.status(201).location(getLocation(req, created._id)).json(created.toObject());
 
-})().catch(err => errorHandler(err, res, next));
+}, (err, req, res, next) => errorHandler(err, res, next));
 
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 
-export const createGetOne = Model => (req, res, next) => (async () => {
+export const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
     const { user, i18n } = res.locals;
     let instance = await Model.findOne({ _id: req.params.id }).setOptions({ user, i18n });
     instance ? res.json(instance) : next();
-})().catch(err => errorHandler(err, res, next));
+}, (err, req, res, next) => errorHandler(err, res, next));
 
-export const createUpdateOne = Model => (req, res, next) => (async () => {
+export const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
     const { user, i18n } = res.locals;
     const instance = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, { runValidators: true, context: 'query', i18n, user });
     if (!instance) return next();
     const updatedInstance = await Model.findById(instance._id).setOptions({ user, i18n });
     updatedInstance && res.json(updatedInstance);
-})().catch(err => errorHandler(err, res, next));
+}, (err, req, res, next) => errorHandler(err, res, next));
 
-export const createDeleteOne = Model => (req, res, next) => (async () => {
+export const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
     const { user, i18n } = res.locals;
     const instance = await Model.findOneAndDelete({ _id: req.params.id }).setOptions({ user, i18n });
     instance ? res.status(204).send() : next();
-})().catch(err => errorHandler(err, res, next));
+}, (err, req, res, next) => errorHandler(err, res, next));
 
 export default crudRouter;
