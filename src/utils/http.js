@@ -1,0 +1,1 @@
+export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;

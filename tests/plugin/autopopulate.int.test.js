@@ -1,4 +1,4 @@
-import env from "../../src/config/env"; // eslint-disable-line no-unused-vars
+import "../../src/utils/env"; // eslint-disable-line no-unused-vars
 import mongoose, { Schema } from "mongoose";
 import { expect } from "chai";
 import autopopulate from "../../src/plugin/autopopulate";

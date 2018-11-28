@@ -1,6 +1,7 @@
 import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
+import { getCurrentUrl } from "../utils/http";
 
 const crudRouter = (Model, opts) => {
 
@@ -101,7 +102,6 @@ export const createAddOne = Model => (req, res, next) => (async () => {
 })().catch(err => errorHandler(err, res, next));
 
 export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
-export const getCurrentUrl = req => `${req.protocol}://${req.get('host')}${req.baseUrl}`;
 
 export const createGetOne = Model => (req, res, next) => (async () => {
     const { user, i18n } = res.locals;

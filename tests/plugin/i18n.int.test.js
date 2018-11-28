@@ -1,9 +1,9 @@
-import env from "../../src/config/env"; // eslint-disable-line no-unused-vars
+import "../../src/utils/env";
 import mongoose, { Schema } from "mongoose";
 import mongooseUniqueValidator from "mongoose-unique-validator";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { createI18n } from '../../src/config/i18n';
+import { createI18n } from '../../src/utils/i18n';
 import i18nPlugin from "../../src/plugin/i18n";
 
 chai.use(chaiAsPromised);
