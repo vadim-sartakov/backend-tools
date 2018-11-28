@@ -3,7 +3,7 @@ export { default as createLogger } from "./config/logger";
 export { createI18n, createI18nMiddleware } from "./config/i18n";
 
 export { default as commonMiddlewares } from "./middleware/common";
-export { notFoundMiddleware, serverErrorMiddleware } from "./middleware/http";
+export { notFound, internalError } from "./middleware/http";
 export { asyncMiddleware } from "./middleware/utils";
 
 export { default as autopopulatePlugin } from "./plugin/autopopulate";
