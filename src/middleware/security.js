@@ -18,7 +18,7 @@ export const updateFilter = securitySchema => (req, res, next) => {
 
 /**
  * Validates body against validation schema.
- * ValidationError is thrown in case of validation fails.
+ * ValidationError is thrown in case if validation fails.
  * @param {*} validationSchema 
  */
 export const validator = validationSchema => (req, res, next) => {
