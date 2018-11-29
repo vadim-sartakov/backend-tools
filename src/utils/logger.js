@@ -2,9 +2,9 @@ import fs from 'fs';
 import createDebug from 'debug';
 import winston from 'winston';
 
-export const logDirectory = process.env.LOG_PATH || "./log";
+const logDirectory = process.env.LOG_PATH || "./log";
 
-export const createLogger = labelName => {
+const createLogger = labelName => {
     
     if (!fs.existsSync(logDirectory)) {
         fs.mkdirSync(logDirectory);
