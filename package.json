@@ -4,8 +4,8 @@
   "description": "Set of useful tools for building backend applications",
   "main": "lib/index.js",
   "scripts": {
-    "unit-test": "mocha **/*unit.test.js --require babel-core/register --require babel-polyfill",
-    "int-test": "cross-env NODE_ENV=test mocha **/*int.test.js --require babel-core/register --require babel-polyfill --timeout 10000",
+    "unit-test": "mocha tests/**/*unit.test.js --require babel-core/register --require babel-polyfill",
+    "int-test": "cross-env NODE_ENV=test mocha tests/**/*int.test.js --require babel-core/register --require babel-polyfill --timeout 10000",
     "eslint": "eslint --ignore-path .gitignore ./",
     "clean": "rimraf lib/",
     "compile": "babel src/ --out-dir lib/ --copy-files --source-maps",
