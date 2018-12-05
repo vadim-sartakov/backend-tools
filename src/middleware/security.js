@@ -1,3 +1,11 @@
+import { getPermissions } from "shared-tools";
+
+export const securityFilter = (securitySchema, ...accessModifiers) => (req, res, next) => {
+    const { user } = res.locals;
+    const result = getPermissions(user, securitySchema, ...accessModifiers);
+    next();
+};
+
 /**
  * Checks current user sotred in "user.local" against security schema.
  * Resulted filter stored in "res.locals.readFilter" parameter
