@@ -8,12 +8,20 @@ chai.use(sinonChai);
 describe("Security middleware", () => {
     it("Read permission", () => {
         const user = { roles: ["USER", "MODERATOR"] };
-        const schema = { "USER": { read: true } };
-        const middleware = securityFilter(schema, "read", "write");
+        const schema = { "USER": { read: true }, "MODERATOR": { modify: true } };
+        const middleware = securityFilter(schema);
         const res = { locals: { user } };
         const next = fake();
         middleware({ }, res, next);
-        expect(res).to.have.nested.property("locals.security");
+        expect(res.locals.security).to.be.ok;
+        expect(res.locals.security).to.deep.equal({
+            "read": true,
+            "modify": true,
+            "readFilter": false,
+            "modifyFilter": false,
+            "readFields": false,
+            "modifyFields": false
+        });
         expect(next).to.have.been.called;
     });
 });

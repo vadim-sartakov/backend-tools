@@ -2,74 +2,42 @@ import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
 import { getCurrentUrl, asyncMiddleware } from "../utils/http";
+import { securityFilter } from "../middleware";
 
-const crudRouter = (Model, opts) => {
+const defaultOptions = {
+    defaultPageSize: 20
+};
 
+const createMiddlewareChain = (createMiddleware, Model, options) => {
+    const { securitySchema } = options;
+    const middleware = createMiddleware(Model, options);
+    return securitySchema ? [securityFilter(securitySchema), middleware] : middleware;
+};
+
+const crudRouter = (Model, options) => {
+    options = { ...defaultOptions, options };
     const router = Router();
-    const routeMap = createRouteMap(Model, opts);
-
     const rootRouter = router.route("/");
-    routeMap.getAll && rootRouter.get(routeMap.getAll);
-    routeMap.addOne && rootRouter.post(routeMap.addOne);
-
+    !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, options));
+    !options.disableAddOne && rootRouter.post(createMiddlewareChain(createAddOne, Model, options));
     const idRouter = router.route("/:id");
-    routeMap.getOne && idRouter.get(routeMap.getOne);
-    routeMap.updateOne && idRouter.put(routeMap.updateOne);
-    routeMap.deleteOne && idRouter.delete(routeMap.deleteOne);
-
+    !options.disableGetOne && idRouter.get(createMiddlewareChain(createGetOne, Model, options));
+    !options.disableUpdateOne && idRouter.put(createMiddlewareChain(createUpdateOne, Model, options));
+    !options.disableDeleteOne && idRouter.delete(createMiddlewareChain(createDeleteOne, Model, options));
     return router;
-
 };
 
-const defaultOpts = {
-    defaultPageSize: 20,
-    delimiter: ","
-};
+const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
-const createRouteMap = (Model, opts = defaultOpts) => {
-
-    const routeMap = {
-        getAll: createGetAll(Model, opts),
-        addOne: createAddOne(Model, opts),
-        getOne: createGetOne(Model, opts),
-        updateOne: createUpdateOne(Model, opts),
-        deleteOne: createDeleteOne(Model, opts)
-    };
-
-    return routeMap;
-
-};
-
-const errorHandler = (err, res, next) => {
-    if (err.name !== "ValidationError") return next(err);
-    res.status(400).json(err);
-};
-
-export const createGetAll = (Model, opts = defaultOpts) => asyncMiddleware(async (req, res) => {
-
-    opts = { ...defaultOpts, ...opts };
-
-    const { defaultPageSize } = opts;
-    const { user, i18n } = res.locals;
+    const { defaultPageSize } = options;
 
     let { page, size, filter, sort } = req.query;
+    // Converting to number by multiplying by 1
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
 
-    const query = Model.find()
-        .setOptions({ i18n, user })
-        .skip(page * size)
-        .limit(size);
-
-    if (filter) query.where(filter);
-    if (sort) query.sort(sort);
-
-    let result = await query.exec();
-
-    const countQuery = Model.count().setOptions({ i18n, user });
-    if (filter) countQuery.where(filter);
-
-    let totalCount = await countQuery.exec();
+    const result = await Model.getAll({ page, size, filter, sort });
+    let totalCount = await Model.count(filter);
     
     const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
     const prev = Math.max(page - 1, 0);
@@ -85,42 +53,28 @@ export const createGetAll = (Model, opts = defaultOpts) => asyncMiddleware(async
     res.set("Link", link.toString());
     res.json(result);
 
-}, (err, req, res, next) => errorHandler(err, res, next));
+});
 
-export const createAddOne = Model => asyncMiddleware(async (req, res) => {
+const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 
-    const { user, i18n } = res.locals;
-    const doc = new Model(req.body);
-    
-    doc.setOptions && doc.setOptions({ user, i18n });
-    
-    let instance = await doc.save();
-    let created = await Model.findById(instance._id).setOptions({ user, i18n });
+const createAddOne = Model => asyncMiddleware(async (req, res) => {
+    let instance = await Model.addOne(req.body);
+    res.status(201).location(getLocation(req, instance._id)).json(instance.toObject());
+});
 
-    res.status(201).location(getLocation(req, created._id)).json(created.toObject());
-
-}, (err, req, res, next) => errorHandler(err, res, next));
-
-export const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
-
-export const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
-    const { user, i18n } = res.locals;
-    let instance = await Model.findOne({ _id: req.params.id }).setOptions({ user, i18n });
+const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
+    let instance = await Model.getOne({ id: req.params.id });
     instance ? res.json(instance) : next();
-}, (err, req, res, next) => errorHandler(err, res, next));
+});
 
-export const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
-    const { user, i18n } = res.locals;
-    const instance = await Model.findOneAndUpdate({ _id: req.params.id }, req.body, { runValidators: true, context: 'query', i18n, user });
-    if (!instance) return next();
-    const updatedInstance = await Model.findById(instance._id).setOptions({ user, i18n });
-    updatedInstance && res.json(updatedInstance);
-}, (err, req, res, next) => errorHandler(err, res, next));
+const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
+    const instance = await Model.updateOne({ id: req.params.id }, req.body);
+    return instance ? res.json(instance) : next();
+});
 
-export const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
-    const { user, i18n } = res.locals;
-    const instance = await Model.findOneAndDelete({ _id: req.params.id }).setOptions({ user, i18n });
-    instance ? res.status(204).send() : next();
-}, (err, req, res, next) => errorHandler(err, res, next));
+const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
+    const instance = await Model.deleteOne({ id: req.params.id });
+    return instance ? res.status(204).send() : next();
+});
 
 export default crudRouter;
