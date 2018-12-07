@@ -6,12 +6,14 @@ class MongooseCrudModel {
 
     async getAll({ page, size, filter, sort }) {
         if (filter.id) filter._id = filter.id;
-        const query = this.Model.find()
+        const getAllQuery = this.Model.find()
             .skip(page * size)
             .limit(size);
-        if (filter) query.where(filter);
-        if (sort) query.sort(sort);
-        return await query.exec();
+        if (filter) getAllQuery.where(filter);
+        if (sort) getAllQuery.sort(sort);
+        //const result = await getAllQuery.exec();
+        //const
+        return await getAllQuery.exec();
     }
 
     async count(filter) {
