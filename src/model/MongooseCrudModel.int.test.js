@@ -2,24 +2,18 @@ import mongoose, { Schema } from "mongoose";
 import { expect } from "chai";
 import MongooseCrudModel from "./MongooseCrudModel";
 
-mongoose.set("debug", true);
-
 describe("Mongoose crud model tests", () => {
 
-    const subdocumentSchema = new Schema({
-
-    });
-
-    const arraySchema = new Schema({
-        
-    });
+    const subdocumentSchema = new Schema({ firstField: String, secondField: String });
+    const arraySchema = new Schema({ rowCounter: Number, field: String });
 
     const entrySchema = new Schema({
         counter: Number,
         date: Date,
+        embedded: subdocumentSchema,
+        array: [arraySchema]
+    }, { versionKey: false });
 
-    });
-    
     let Entry, connection, model;
 
     before(async () => {
@@ -35,18 +29,23 @@ describe("Mongoose crud model tests", () => {
 
     const cleanDatabase = async () => await Entry.remove({ });
 
-    beforeEach(cleanDatabase);
-
     const populateDatabase = async entryCount => {
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
             date = new Date(date);
             date.setDate(date.getDate() + 1);
-            await new Entry({ counter, date }).save();
+            const embedded = { firstField: counter.toString(), secondField: counter.toString() };
+            const array = [];
+            for (let rowCounter = 0; rowCounter < 10; rowCounter++) {
+                array.push({ rowCounter, field: rowCounter.toString() });
+            }
+            await new Entry({ counter, date, embedded, array }).save();
         }
     };
 
-    describe("GetAll", () => {
+    describe("Get all", () => {
+
+        afterEach(cleanDatabase);
 
         it("Empty page", async () => {
             const result = await model.getAll({ page: 0, size: 20 });
@@ -65,21 +64,21 @@ describe("Mongoose crud model tests", () => {
             expect(result.length).to.equal(2);
         });
 
-        it("Get page 1 with size 5 and count 12 with wide number filter and sort by counter asc", async () => {
+        it("Get page 1 with size 5 and count 12 with wide filter and sort by counter asc", async () => {
             await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: 1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(2);
         });
 
-        it("Get page 1 with size 5 and count 12 with wide number filter and sort by counter desc", async () => {
+        it("Get page 1 with size 5 and count 12 with wide filter and sort by counter desc", async () => {
             await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: -1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(11);
         });
 
-        it("Get page 1 with size 5 and count 12 with narrow number filter", async () => {
+        it("Get page 1 with size 5 and count 12 with narrow filter", async () => {
             await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 2 } });
             expect(result.length).to.equal(1);
@@ -87,60 +86,66 @@ describe("Mongoose crud model tests", () => {
 
         it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to restricted entry", async () => {
             await populateDatabase(12);
-            const permissions = { "readFilter": { counter: 2 } };
+            const permissions = { readFilter: { counter: 2 } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(0);
         });
 
-    });
-
-    /*describe('Filtering', () => {
-
-        it('Date range', async () => {
-            const startDate = new Date(now);
-            const endDate = new Date(now);
-            startDate.setDate(startDate.getDate() + 5);
-            endDate.setDate(endDate.getDate() + 10);
-            const res = await request(server).get("/users")
-                    .query(qs.stringify({ filter: { createdAt: { $gt: startDate, $lt: endDate } } }))
-                    .expect(200).send();
-            expect(res.get("X-Total-Count")).to.equal("4");
+        it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to allowed entry", async () => {
+            await populateDatabase(12);
+            const permissions = { readFilter: { counter: 5 } };
+            const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
+            expect(result.length).to.equal(1);
         });
 
-        it('Date before', async () => {
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 10);
-            const res = await request(server).get("/users")
-                    .query(qs.stringify({ filter: { createdAt: { $lt: endDate } } }))
-                    .expect(200).send();
-            expect(res.get("X-Total-Count")).to.equal("9");
-        });
-
-        it('Number great or equals', async () => {
-            const res = await request(server).get("/users")
-                    .query(qs.stringify({ filter: { number: { $gte: 12 } } }))
-                    .expect(200).send();
-            expect(res.get("X-Total-Count")).to.equal("30");
-        });
-
-        it('Or condition', async () => {
-            const res = await request(server).get("/users")
-                    .query(qs.stringify({ filter: { $or: [ { number: 12 }, { email: "mail1@mail.com" } ] } }))
-                    .expect(200).send();
-            expect(res.get("X-Total-Count")).to.equal("2");
+        it("Get page 1 with size 5 and count 12 with specified read fields permission", async () => {
+            await populateDatabase(12);
+            const permissions = { readFields: { counter: 1 } };
+            const result = await model.getAll({ page: 0, size: 5 }, permissions);
+            expect(result[1].counter).to.be.ok;
+            expect(result[1].date).not.to.be.ok;
         });
 
     });
 
-    describe('Sorting', () => {
+    // TODO: count tests
 
-        it ('Desc number', async () => {
-            const res = await request(server).get("/users")
-                .query(qs.stringify({ sort: { number: -1 } }))
-                .expect(200).send();
-            expect(res.body[0].number).to.equal(41);
+    describe("Add one", () => {
+
+        afterEach(cleanDatabase);
+
+        const instance = { counter: 5, date: new Date() };
+
+        it("Creating", async () => {
+            const result = await model.addOne(instance);
+            expect(result).to.be.ok;
+            expect(result._doc).not.to.be.ok;
         });
 
-    });*/
+        it("Creating with specified exclusive modify field permission", async () => {
+            const permissions = { modifyFields: { counter: 0 } };
+            const result = await model.addOne(instance, permissions);
+            expect(result).to.be.ok;
+            expect(result.counter).not.to.be.ok;
+            expect(result.date).to.be.ok;
+            const saved = await Entry.findOne({ });
+            expect(saved).to.be.ok;
+            expect(saved.counter).not.to.be.ok;
+            expect(saved.date).to.be.ok;
+        });
+
+        it("Creating with specified inclusive modify field permission", async () => {
+            const permissions = { modifyFields: { counter: 1 } };
+            const result = await model.addOne(instance, permissions);
+            expect(result).to.be.ok;
+            expect(result.counter).to.be.ok;
+            expect(result.date).not.to.be.ok;
+            const saved = await Entry.findOne({ });
+            expect(saved).to.be.ok;
+            expect(saved.counter).to.be.ok;
+            expect(saved.date).not.to.be.ok;
+        });
+
+    });
 
 });

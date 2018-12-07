@@ -1,4 +1,5 @@
 import { flatten } from "flat";
+import _ from "lodash";
 
 class MongooseCrudModel {
 
@@ -6,16 +7,10 @@ class MongooseCrudModel {
         this.Model = Model;
     }
 
-    async getAll({ page, size, filter, sort }, permissions = { }) {
-
-        const { readFilter } = permissions;
-        const getAllQuery = this.Model.find()
-            .skip(page * size)
-            .limit(size);
+    getResultFilter(queryFilter, readFilter) {
         const filterArray = [];
         if (readFilter) filterArray.push(readFilter);
-        if (filter) filterArray.push(filter);
-
+        if (queryFilter) filterArray.push(queryFilter);
         let resultFilter;
         switch(filterArray.length) {
             case 1:
@@ -26,49 +21,74 @@ class MongooseCrudModel {
                 break;
             default:
         }
+        return resultFilter;
+    }
 
+    async getAll({ page, size, filter, sort }, permissions = { }) {
+        const { readFilter, readFields } = permissions;
+        const getAllQuery = this.Model.find()
+            .skip(page * size)
+            .limit(size);
+        if (readFields) getAllQuery.select(readFields);
+        const resultFilter = this.getResultFilter(filter, readFilter);
         if (resultFilter) getAllQuery.where(resultFilter);
-
         if (sort) getAllQuery.sort(sort);
         return await getAllQuery.exec();
-
     }
 
-    async count(filter, permissions) {
-        const query = this.Model.count();
-        if (filter) query.where(filter);
-        return await query.exec();
+    async count(filter, permissions = { }) {
+        const { readFilter } = permissions;
+        const countQuery = this.Model.count();
+        const resultFilter = this.getResultFilter(filter, readFilter);
+        if (resultFilter) countQuery.where(resultFilter);
+        return await countQuery.exec();
     }
 
-    async addOne(payload, permissions) {
+    isExclusiveProjection(fields) {
+        return fields[Object.keys(fields)[0]] === 0;
+    }
+
+    filterModifyPayload(payload, permissions, handler) {
+        const { modifyFields } = permissions;
+        if (!modifyFields) return payload;
+        payload = _.cloneDeep(payload);
+        if (modifyFields) {
+            const flattened = flatten(payload);
+            const exclusive = this.isExclusiveProjection(modifyFields);
+            Object.keys(flattened).forEach(flatProperty => {
+                // If there is array, reducing property path to this array
+                flatProperty = flatProperty.split(".")
+                        .reduce((prev, cur) => Array.isArray(prev) ? prev : `${prev}.${cur}`);
+                if ( ( exclusive && modifyFields[flatProperty] === 0 ) || ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
+                    handler(payload, flatProperty);
+                }
+            });
+        }
+        return payload;
+    }
+
+    async addOne(payload, permissions = { }) {
+        payload = this.filterModifyPayload(payload, permissions, (object, property) => _.set(object, property, undefined));
         const doc = new this.Model(payload);
-        return await doc.save();
+        const saved = await doc.save();
+        return saved.toObject();
     }
 
-    async getOne(filter, permissions) {
+    async getOne(filter, permissions = { }) {
         if (filter && filter.id) filter._id = filter.id;
         return await this.Model.findOne(filter);
     }
 
-    async updateOne(filter, payload, permissions) {
-
-        if (filter && filter.id) filter._id = filter.id;
-        const { modifyFields } = permissions;
-
-        let $set;
-        if (modifyFields) {
-            const flattened = flatten(payload);
-            $set = Object.keys(flattened)
-                .reduce((prev, property) => !modifyFields[property] ? prev : { ...prev, [property]: flattened.property }, { });
-        } else {
-            $set = payload;
+    async updateOne(filter, payload, permissions = { }) {
+        if (filter && filter.id) {
+            filter._id = filter.id;
+            delete filter.id;
         }
-
-        return await this.Model.findOneAndUpdate(filter, { $set }, { runValidators: true, context: 'query' });
-
+        const $set = this.filterModifyPayload(payload, permissions);
+        return await this.Model.findOneAndUpdate(filter, { $set });
     }
 
-    async deleteOne(filter, permissions) {
+    async deleteOne(filter, permissions = { }) {
         if (filter && filter.id) filter._id = filter.id;
         return await this.Model.findOneAndDelete(filter);
     }
