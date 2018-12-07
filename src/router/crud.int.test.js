@@ -71,7 +71,7 @@ describe("Crud router", () => {
             const res = await request(app).get("/").query({ page: 0, size: 5 }).expect(200);
             expect(model.getAll).to.have.been.calledWith({ page: 0, size: 5, filter: undefined, sort: undefined });
             expect(model.count).to.have.been.calledWith(undefined);
-            expect(res.get("Link")).to.match(new RegExp( expectedLinks({ first: 0, next: 1, last: 8, size: 5 }) ) );
+            expect(res.get("Link")).to.match( new RegExp( expectedLinks({ first: 0, next: 1, last: 8, size: 5 }) ) );
             expect(res.get("X-Total-Count")).to.equal("42");
             expect(res.body.length).to.equal(5);
         });

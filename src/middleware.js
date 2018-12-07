@@ -25,7 +25,7 @@ export const internalError = logger => (err, req, res, next) => { // eslint-disa
  * Resulted filter stored in "res.locals.security" parameter
  * @param {Object} securitySchema
  */
-export const securityFilter = (securitySchema) => (req, res, next) => {
+export const permissions = securitySchema => (req, res, next) => {
     const { user } = res.locals;
     const security = getPermissions(
         user,
