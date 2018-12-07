@@ -59,7 +59,7 @@ const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 
 const createAddOne = Model => asyncMiddleware(async (req, res) => {
     let instance = await Model.addOne(req.body);
-    res.status(201).location(getLocation(req, instance._id)).json(instance.toObject());
+    res.status(201).location(getLocation(req, instance.id)).json(instance);
 });
 
 const createGetOne = Model => asyncMiddleware(async (req, res, next) => {

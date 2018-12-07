@@ -11,8 +11,6 @@ class MongooseCrudModel {
             .limit(size);
         if (filter) getAllQuery.where(filter);
         if (sort) getAllQuery.sort(sort);
-        //const result = await getAllQuery.exec();
-        //const
         return await getAllQuery.exec();
     }
 
