@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "unit-test": "mocha src/**/*unit.test.js --watch --require babel-core/register --require babel-polyfill",
-    "int-test": "cross-env NODE_ENV=test mocha src/**/*int.test.js --watch --require babel-core/register --require babel-polyfill --timeout 10000",
+    "int-test": "cross-env mocha src/**/*int.test.js --watch --require dotenv/config --require babel-core/register --require babel-polyfill --timeout 10000",
     "eslint": "eslint --ignore-path .gitignore ./",
     "clean": "rimraf lib/",
     "compile": "babel src/ --ignore **/*.test.js --out-dir lib/ --copy-files --source-maps",
@@ -20,13 +20,14 @@
     "debug": "^3.2.6",
     "dotenv": "^6.1.0",
     "express": "^4.16.4",
+    "flat": "^4.1.0",
     "helmet": "^3.15.0",
     "http-link-header": "^0.8.0",
     "lodash": "^4.17.11",
     "mongoose-autopopulate": "^0.8.2",
     "mongoose-unique-validator": "^2.0.2",
-    "shared-tools": "git+https://github.com/vadim-sartakov/shared-tools.git#0.0.1",
     "qs": "^6.6.0",
+    "shared-tools": "git+https://github.com/vadim-sartakov/shared-tools.git#0.0.1",
     "winston": "^3.1.0"
   },
   "devDependencies": {
