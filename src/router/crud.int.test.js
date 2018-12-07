@@ -50,8 +50,8 @@ describe("Crud router", () => {
         it("Get empty page", async () => {
             const { model, app } = initialize({ getAllResult: [], countResult: 0 });
             const res = await request(app).get("/").expect(200, []);
-            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined });
-            expect(model.count).to.have.been.calledWith(undefined);
+            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(undefined, undefined);
             expect(res.get("Link")).to.match( new RegExp( expectedLinks({ first: 0, last: 0, size: 20 }) ) );
             expect(res.get("X-Total-Count")).to.equal("0");
         });
@@ -59,8 +59,8 @@ describe("Crud router", () => {
         it("Get default page", async () => {
             const { model, app } = initialize({ getAllResult: getBulkResult(20), countResult: 50 });
             const res = await request(app).get("/").expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined });
-            expect(model.count).to.have.been.calledWith(undefined);
+            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(undefined, undefined);
             expect(res.get("Link")).to.match( new RegExp( expectedLinks({ first: 0, next: 1, last: 2, size: 20 }) ) );
             expect(res.get("X-Total-Count")).to.equal("50");
             expect(res.body.length).to.equal(20);
@@ -69,8 +69,8 @@ describe("Crud router", () => {
         it("Get user page 0 with size 5", async () => {
             const { model, app } = initialize({ getAllResult: getBulkResult(5), countResult: 42 });
             const res = await request(app).get("/").query({ page: 0, size: 5 }).expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 5, filter: undefined, sort: undefined });
-            expect(model.count).to.have.been.calledWith(undefined);
+            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 5, filter: undefined, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(undefined, undefined);
             expect(res.get("Link")).to.match( new RegExp( expectedLinks({ first: 0, next: 1, last: 8, size: 5 }) ) );
             expect(res.get("X-Total-Count")).to.equal("42");
             expect(res.body.length).to.equal(5);
@@ -79,8 +79,8 @@ describe("Crud router", () => {
         it("Get user page 3 with size 5", async () => {
             const { model, app } = initialize({ getAllResult: getBulkResult(5), countResult: 42 });
             const res = await request(app).get("/").query({ page: 3, size: 5 }).expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 3, size: 5, filter: undefined, sort: undefined });
-            expect(model.count).to.have.been.calledWith(undefined);
+            expect(model.getAll).to.have.been.calledWith({ page: 3, size: 5, filter: undefined, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(undefined, undefined);
             expect(res.get("Link")).to.match( new RegExp( expectedLinks({ first: 0, prev: 2, next: 4, last: 8, size: 5 }) ) );
             expect(res.get("X-Total-Count")).to.equal("42");
             expect(res.body.length).to.equal(5);
@@ -89,8 +89,8 @@ describe("Crud router", () => {
         it("Get user last page with size 5", async () => {
             const { model, app } = initialize({ getAllResult: getBulkResult(2), countResult: 42 });
             const res = await request(app).get("/").query(qs.stringify({ page: 8, size: 5 })).expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 8, size: 5, filter: undefined, sort: undefined });
-            expect(model.count).to.have.been.calledWith(undefined);
+            expect(model.getAll).to.have.been.calledWith({ page: 8, size: 5, filter: undefined, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(undefined, undefined);
             expect(res.get("Link")).to.match( new RegExp(expectedLinks({ first: 0, prev: 7, last: 8, size: 5 }) ) );
             expect(res.get("X-Total-Count")).to.equal("42");
             expect(res.body.length).to.equal(2);
@@ -102,8 +102,8 @@ describe("Crud router", () => {
             const res = await request(app).get("/")
                     .query(qs.stringify({ filter }))
                     .expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter, sort: undefined });
-            expect(model.count).to.have.been.calledWith(filter);
+            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(filter, undefined);
             expect(res.get("X-Total-Count")).to.equal("1");
             expect(res.body.length).to.equal(1);
         });
@@ -114,8 +114,8 @@ describe("Crud router", () => {
             const res = await request(app).get("/")
                     .query(qs.stringify({ filter, page: 1, size: 5 }))
                     .expect(200);
-            expect(model.getAll).to.have.been.calledWith({ page: 1, size: 5, filter, sort: undefined });
-            expect(model.count).to.have.been.calledWith(filter);
+            expect(model.getAll).to.have.been.calledWith({ page: 1, size: 5, filter, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(filter, undefined);
             expect(res.get("X-Total-Count")).to.equal("50");
             expect(res.body.length).to.equal(1);
         });
@@ -135,7 +135,7 @@ describe("Crud router", () => {
             const res = await request(app).post("/").send(instance).expect(201, instance);
             const id = getIdFromLocation(res.headers.location);
             expect(id).to.equal(instance.id);
-            expect(model.addOne).to.have.been.calledWith(instance);
+            expect(model.addOne).to.have.been.calledWith(instance, undefined);
         });
 
     });
@@ -145,14 +145,14 @@ describe("Crud router", () => {
         it("Get missing user", async () => {
             const { model, app } = initialize({ getOneResult: null });
             await request(app).get("/0").expect(404);
-            expect(model.getOne).to.have.been.calledWith({ id: "0" });
+            expect(model.getOne).to.have.been.calledWith({ id: "0" }, undefined);
         });
 
         it("Get one user", async () => {
             const instance = { firstName: "Steve" };
             const { model, app } = initialize({ getOneResult: instance });
             await request(app).get("/0").expect(200, instance);
-            expect(model.getOne).to.have.been.calledWith({ id: "0" });
+            expect(model.getOne).to.have.been.calledWith({ id: "0" }, undefined);
         });
 
     });
@@ -163,14 +163,14 @@ describe("Crud router", () => {
             const instance = { firstName: "Steve" };
             const { model, app } = initialize({ updateOneResult: null });
             await request(app).put("/0").send(instance).expect(404);
-            expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance);
+            expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
         });
 
         it("Update user", async () => {      
             const instance = { firstName: "Steve" };
             const { model, app } = initialize({ updateOneResult: instance });
             await request(app).put("/0").send(instance).expect(200, instance);
-            expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance);
+            expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
         });
 
     });  
@@ -180,14 +180,14 @@ describe("Crud router", () => {
         it("Delete missing user", async () => {
             const { model, app } = initialize({ deleteOneResult: null });
             await request(app).delete("/0").expect(404);
-            expect(model.deleteOne).to.have.been.calledWith({ id: "0" });
+            expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);
         });
 
         it("Delete user", async () => {
             const instance = { firstName: "Steve" };
             const { model, app } = initialize({ deleteOneResult: instance });
             await request(app).delete("/0").expect(204);
-            expect(model.deleteOne).to.have.been.calledWith({ id: "0" });   
+            expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);   
         });
 
     });

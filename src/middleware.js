@@ -22,12 +22,12 @@ export const internalError = logger => (err, req, res, next) => { // eslint-disa
 
 /**
  * Checks current user sotred in "user.local" against security schema.
- * Resulted filter stored in "res.locals.security" parameter
+ * Resulted filter stored in "res.locals.permissions" parameter
  * @param {Object} securitySchema
  */
 export const permissions = securitySchema => (req, res, next) => {
     const { user } = res.locals;
-    const security = getPermissions(
+    const permissions = getPermissions(
         user,
         securitySchema,
         "read",
@@ -37,6 +37,6 @@ export const permissions = securitySchema => (req, res, next) => {
         "readFields",
         "modifyFields"
     );
-    res.locals.security = security;
+    res.locals.permissions = permissions;
     next();
 };

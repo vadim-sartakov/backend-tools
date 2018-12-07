@@ -30,14 +30,15 @@ const crudRouter = (Model, options) => {
 const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
     const { defaultPageSize } = options;
+    const { permissions } = res.locals;
 
     let { page, size, filter, sort } = req.query;
     // Converting to number by multiplying by 1
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
 
-    const result = await Model.getAll({ page, size, filter, sort });
-    let totalCount = await Model.count(filter);
+    const result = await Model.getAll({ page, size, filter, sort }, permissions);
+    let totalCount = await Model.count(filter, undefined);
     
     const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
     const prev = Math.max(page - 1, 0);
@@ -58,22 +59,26 @@ const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
 const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 
 const createAddOne = Model => asyncMiddleware(async (req, res) => {
-    let instance = await Model.addOne(req.body);
+    const { permissions } = res.locals;
+    let instance = await Model.addOne(req.body, permissions);
     res.status(201).location(getLocation(req, instance.id)).json(instance);
 });
 
 const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
-    let instance = await Model.getOne({ id: req.params.id });
+    const { permissions } = res.locals;
+    let instance = await Model.getOne({ id: req.params.id }, permissions);
     instance ? res.json(instance) : next();
 });
 
 const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
-    const instance = await Model.updateOne({ id: req.params.id }, req.body);
+    const { permissions } = res.locals;
+    const instance = await Model.updateOne({ id: req.params.id }, req.body, permissions);
     return instance ? res.json(instance) : next();
 });
 
 const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
-    const instance = await Model.deleteOne({ id: req.params.id });
+    const { permissions } = res.locals;
+    const instance = await Model.deleteOne({ id: req.params.id }, permissions);
     return instance ? res.status(204).send() : next();
 });
 
