@@ -84,7 +84,7 @@ class MongooseCrudModel {
             filter._id = filter.id;
             delete filter.id;
         }
-        const $set = this.filterModifyPayload(payload, permissions);
+        const $set = this.filterModifyPayload(payload, permissions, (object, property) => delete object[property]);
         return await this.Model.findOneAndUpdate(filter, { $set });
     }
 
