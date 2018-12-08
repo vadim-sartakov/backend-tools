@@ -29,17 +29,20 @@ describe("Mongoose crud model tests", () => {
 
     const cleanDatabase = async () => await Entry.remove({ });
 
+    const createDoc = (counter, date) => {
+        const embedded = { firstField: counter.toString(), secondField: counter.toString() };
+        const array = [];
+        for (let rowCounter = 0; rowCounter < 10; rowCounter++) {
+            array.push({ rowCounter, field: rowCounter.toString() });
+        }
+        return { counter, date, embedded, array };
+    };
+
     const populateDatabase = async entryCount => {
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
             date = new Date(date);
-            date.setDate(date.getDate() + 1);
-            const embedded = { firstField: counter.toString(), secondField: counter.toString() };
-            const array = [];
-            for (let rowCounter = 0; rowCounter < 10; rowCounter++) {
-                array.push({ rowCounter, field: rowCounter.toString() });
-            }
-            await new Entry({ counter, date, embedded, array }).save();
+            await new Entry(createDoc(counter, date)).save();
         }
     };
 
@@ -139,9 +142,9 @@ describe("Mongoose crud model tests", () => {
 
     describe("Add one", () => {
 
+        let instance;
+        beforeEach(() => instance = createDoc(5, new Date()));
         afterEach(cleanDatabase);
-
-        const instance = { counter: 5, date: new Date() };
 
         it("Creating", async () => {
             const result = await model.addOne(instance);
@@ -150,27 +153,40 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Creating with specified exclusive modify field permission", async () => {
-            const permissions = { modifyFields: { counter: 0 } };
+            const permissions = { modifyFields: { "counter": 0, "embedded.firstField": 0, "array": 0 } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
             expect(result.counter).not.to.be.ok;
+            expect(result.embedded.firstField).not.to.be.ok;
+            expect(result.array).to.be.empty;
             expect(result.date).to.be.ok;
+            expect(result.embedded.secondField).to.be.ok;
             const saved = await Entry.findOne({ });
             expect(saved).to.be.ok;
             expect(saved.counter).not.to.be.ok;
+            expect(saved.embedded.firstField).not.to.be.ok;
+            expect(saved.array).to.be.empty;
             expect(saved.date).to.be.ok;
+            expect(saved.embedded.secondField).to.be.ok;
         });
 
         it("Creating with specified inclusive modify field permission", async () => {
-            const permissions = { modifyFields: { counter: 1 } };
+            const permissions = { modifyFields: { "counter": 1 } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
             expect(result.counter).to.be.ok;
             expect(result.date).not.to.be.ok;
+            expect(result.embedded.firstField).not.to.be.ok;
+            expect(result.array).to.be.empty;
+            expect(result.date).not.to.be.ok;
+            expect(result.embedded.secondField).not.to.be.ok;
             const saved = await Entry.findOne({ });
             expect(saved).to.be.ok;
             expect(saved.counter).to.be.ok;
+            expect(saved.embedded.firstField).not.to.be.ok;
+            expect(saved.array).to.be.empty;
             expect(saved.date).not.to.be.ok;
+            expect(saved.embedded.secondField).not.to.be.ok;
         });
 
     });

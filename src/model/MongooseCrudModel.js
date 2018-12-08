@@ -53,13 +53,11 @@ class MongooseCrudModel {
         if (!modifyFields) return payload;
         payload = _.cloneDeep(payload);
         if (modifyFields) {
-            const flattened = flatten(payload);
+            const flattened = flatten(payload, { safe: true });
             const exclusive = this.isExclusiveProjection(modifyFields);
             Object.keys(flattened).forEach(flatProperty => {
-                // If there is array, reducing property path to this array
-                flatProperty = flatProperty.split(".")
-                        .reduce((prev, cur) => Array.isArray(prev) ? prev : `${prev}.${cur}`);
-                if ( ( exclusive && modifyFields[flatProperty] === 0 ) || ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
+                if ( ( exclusive && modifyFields[flatProperty] === 0 ) ||
+                        ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
                     handler(payload, flatProperty);
                 }
             });
