@@ -108,7 +108,34 @@ describe("Mongoose crud model tests", () => {
 
     });
 
-    // TODO: count tests
+    describe("Count", () => {
+        
+        beforeEach(async () => await populateDatabase(10));
+        afterEach(cleanDatabase);
+
+        it("Simple count", async () => {
+            const result = await model.count();
+            expect(result).to.equal(10);
+        });
+
+        it("Count with filter", async () => {
+            const result = await model.count({ counter: 5 });
+            expect(result).to.equal(1);
+        });
+
+        it("Count with permission and filter to allowed entry", async () => {
+            const permissions = { readFilter: { counter: 5 } };
+            const result = await model.count({ counter: 5 }, permissions);
+            expect(result).to.equal(1);
+        });
+
+        it("Count with permission and filter to prohibited entry", async () => {
+            const permissions = { readFilter: { counter: 3 } };
+            const result = await model.count({ counter: 5 }, permissions);
+            expect(result).to.equal(0);
+        });
+
+    });
 
     describe("Add one", () => {
 
