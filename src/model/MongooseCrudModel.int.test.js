@@ -86,14 +86,14 @@ describe("Mongoose crud model tests", () => {
 
         it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to restricted entry", async () => {
             await populateDatabase(12);
-            const permissions = { readFilter: { counter: 2 } };
+            const permissions = { filter: { counter: 2 } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(0);
         });
 
         it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to allowed entry", async () => {
             await populateDatabase(12);
-            const permissions = { readFilter: { counter: 5 } };
+            const permissions = { filter: { counter: 5 } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(1);
         });
@@ -124,13 +124,13 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Count with permission and filter to allowed entry", async () => {
-            const permissions = { readFilter: { counter: 5 } };
+            const permissions = { filter: { counter: 5 } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(1);
         });
 
         it("Count with permission and filter to prohibited entry", async () => {
-            const permissions = { readFilter: { counter: 3 } };
+            const permissions = { filter: { counter: 3 } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(0);
         });

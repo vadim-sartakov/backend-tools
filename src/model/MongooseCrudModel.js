@@ -7,9 +7,9 @@ class MongooseCrudModel {
         this.Model = Model;
     }
 
-    getResultFilter(queryFilter, readFilter) {
+    getResultFilter(queryFilter, permissionFilter) {
         const filterArray = [];
-        if (readFilter) filterArray.push(readFilter);
+        if (permissionFilter) filterArray.push(permissionFilter);
         if (queryFilter) filterArray.push(queryFilter);
         let resultFilter;
         switch(filterArray.length) {
@@ -25,21 +25,21 @@ class MongooseCrudModel {
     }
 
     async getAll({ page, size, filter, sort }, permissions = { }) {
-        const { readFilter, readFields } = permissions;
+        const { filter: permissionFilter, readFields } = permissions;
         const getAllQuery = this.Model.find()
             .skip(page * size)
             .limit(size);
         if (readFields) getAllQuery.select(readFields);
-        const resultFilter = this.getResultFilter(filter, readFilter);
+        const resultFilter = this.getResultFilter(filter, permissionFilter);
         if (resultFilter) getAllQuery.where(resultFilter);
         if (sort) getAllQuery.sort(sort);
         return await getAllQuery.exec();
     }
 
     async count(filter, permissions = { }) {
-        const { readFilter } = permissions;
+        const { filter: permissionFilter } = permissions;
         const countQuery = this.Model.count();
-        const resultFilter = this.getResultFilter(filter, readFilter);
+        const resultFilter = this.getResultFilter(filter, permissionFilter);
         if (resultFilter) countQuery.where(resultFilter);
         return await countQuery.exec();
     }
