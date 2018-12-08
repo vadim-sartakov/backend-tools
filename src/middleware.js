@@ -32,11 +32,17 @@ export const permissions = securitySchema => (req, res, next) => {
         securitySchema,
         "read",
         "modify",
-        "readFilter",
-        "modifyFilter",
+        "filter",
         "readFields",
         "modifyFields"
     );
+    const { method } = req;
+    if ( ( method === "GET" && !permissions.read ) || 
+            (( method === "POST" || method === "PUT"|| method === "DELETE" ) && !permissions.modify)) {
+        res.status(403);
+        res.json({ message: "Access is denied" });
+        return;
+    }
     res.locals.permissions = permissions;
     next();
 };
