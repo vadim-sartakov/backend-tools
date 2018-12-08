@@ -30,15 +30,19 @@ export const permissions = securitySchema => (req, res, next) => {
     const permissions = getPermissions(
         user,
         securitySchema,
+        "create",
         "read",
-        "modify",
+        "update",
+        "delete",
         "filter",
         "readFields",
         "modifyFields"
     );
     const { method } = req;
-    if ( ( method === "GET" && !permissions.read ) || 
-            (( method === "POST" || method === "PUT"|| method === "DELETE" ) && !permissions.modify)) {
+    if (( method === "POST" && !permissions.create ) ||
+            ( method === "GET" && !permissions.read ) ||
+            ( method === "PUT" && !permissions.update ) ||
+            ( method === "DELETE" && !permissions.delete )) {
         res.status(403);
         res.json({ message: "Access is denied" });
         return;
