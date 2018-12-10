@@ -48,17 +48,42 @@ class MongooseCrudModel {
         return fields[Object.keys(fields)[0]] === 0;
     }
 
-    filterModifyPayload(payload, permissions, handler) {
+    /**
+     * Removes indexes from path if there are arrays
+     */
+    normalizeFlatProperty(object, flatProperty) {
+        return flatProperty.split(".").reduce((prev, cur, index, array) => {
+            const curProperty = `${prev}.${cur}`;
+            Array.isArray(curProperty)
+            return Array.isArray()
+        });
+    }
+
+    checkModifyPayload(payload, permissions) {
         const { modifyFields } = permissions;
-        if (!modifyFields) return payload;
-        payload = _.cloneDeep(payload);
         if (modifyFields) {
-            const flattened = flatten(payload, { safe: true });
+            const flattened = flatten(payload);
+            const exclusive = this.isExclusiveProjection(modifyFields);
+            Object.keys(flattened).some(flatProperty => {
+                flatProperty = this.normalizeFlatProperty(payload, flatProperty);
+                if ( ( exclusive && modifyFields[flatProperty] === 0 ) ||
+                        ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
+                    payload = _.omit(payload, flatProperty);
+                }
+            });
+        }
+
+    }
+
+    filterModifyPayload(payload, permissions) {
+        const { modifyFields } = permissions;
+        if (modifyFields) {
+            const flattened = flatten(payload);
             const exclusive = this.isExclusiveProjection(modifyFields);
             Object.keys(flattened).forEach(flatProperty => {
                 if ( ( exclusive && modifyFields[flatProperty] === 0 ) ||
                         ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
-                    handler(payload, flatProperty);
+                    payload = _.omit(payload, flatProperty);
                 }
             });
         }
@@ -66,7 +91,7 @@ class MongooseCrudModel {
     }
 
     async addOne(payload, permissions = { }) {
-        payload = this.filterModifyPayload(payload, permissions, (object, property) => _.set(object, property, undefined));
+        payload = this.filterModifyPayload(payload, permissions);
         const doc = new this.Model(payload);
         const saved = await doc.save();
         return saved.toObject();
@@ -82,7 +107,7 @@ class MongooseCrudModel {
             filter._id = filter.id;
             delete filter.id;
         }
-        const $set = this.filterModifyPayload(payload, permissions, (object, property) => delete object[property]);
+        const $set = this.filterModifyPayload(payload, permissions);
         return await this.Model.findOneAndUpdate(filter, { $set });
     }
 
