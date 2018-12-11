@@ -156,21 +156,31 @@ describe("Mongoose crud model tests", () => {
             expect(result._doc).not.to.be.ok;
         });
 
-        it("Creating with specified exclusive modify field permission", async () => {
-            const permissions = { modifyFields: { "counter": 0, "embedded.firstField": 0, "simpleArray": 0, "complexArray.nested.field": 0 } };
+        it("Creating with specified exclusive read and modify field permission", async () => {
+            const permissions = {
+                readFields: { "simpleArray": 0, "complexArray": 0 },
+                modifyFields: { "counter": 0, "embedded.firstField": 0, "simpleArray": 0, "complexArray.nested.field": 0 }
+            };
+
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
             expect(result.counter).not.to.be.ok;
             expect(result.date).to.be.ok;
-            expect(result.embedded.firstField).not.to.be.ok;
-            expect(result.embedded.secondField).to.be.ok;
-            expect(result.simpleArray).to.be.empty;
-            expect(result.complexArray).to.be.ok;
-            expect(result.complexArray[0].nested).to.be.ok;
-            expect(result.complexArray[0].nested[0].id).to.be.ok;
-            expect(result.complexArray[0].nested[0].field).not.to.be.ok;
+            expect(result.embedded).to.be.ok;
+            expect(result.simpleArray).not.to.be.ok;
+            expect(result.complexArray).not.to.be.ok;
+
             const saved = await Entry.findOne({ }).lean();
-            expect(result).to.deep.equal(saved);
+            expect(saved).to.be.ok;
+            expect(saved.counter).not.to.be.ok;
+            expect(saved.date).to.be.ok;
+            expect(saved.embedded.firstField).not.to.be.ok;
+            expect(saved.embedded.secondField).to.be.ok;
+            expect(saved.simpleArray).to.be.empty;
+            expect(saved.complexArray).to.be.ok;
+            expect(saved.complexArray[0].nested).to.be.ok;
+            expect(saved.complexArray[0].nested[0].id).to.be.ok;
+            expect(saved.complexArray[0].nested[0].field).not.to.be.ok;
         });
 
         it("Creating with specified inclusive modify field permission", async () => {

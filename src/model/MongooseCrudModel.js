@@ -14,7 +14,7 @@ class MongooseCrudModel {
         let resultFilter;
         switch(filterArray.length) {
             case 1:
-                resultFilter = filterArray[0]
+                resultFilter = filterArray[0];
                 break;
             case 2:
                 resultFilter = { $and: filterArray };
@@ -64,7 +64,7 @@ class MongooseCrudModel {
             }  else {
                 result = payloadValue;
             }
-            return { ...prev, [payloadProperty]: result };
+            return ( result && { ...prev, [payloadProperty]: result } ) || prev;
         }, { });
     }
 
@@ -88,11 +88,13 @@ class MongooseCrudModel {
     }
 
     async addOne(payload, permissions = { }) {
-        const { modifyFields } = permissions;
-        if (modifyFields) payload = this.filterPayload(payload, { }, modifyFields);
+        const { readFields, modifyFields } = permissions;
+        if (modifyFields) payload = this.filterPayload(payload, {}, modifyFields);
         const doc = new this.Model(payload);
-        const saved = await doc.save();
-        return saved.toObject();
+        let saved = await doc.save();
+        saved = saved.toObject();
+        if (readFields) saved = this.filterPayload(saved, {}, readFields);
+        return saved;
     }
 
     async getOne(filter, permissions = { }) {
