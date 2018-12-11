@@ -50,8 +50,7 @@ class MongooseCrudModel {
             const mergeValue = toMerge[payloadProperty];
             const fullProperty = `${rootProperty ? rootProperty + "." : ""}${payloadProperty}`;
             let result;
-            if ( ( exclusive && fields[fullProperty] === 0 ) ||
-                    ( !exclusive && fields[fullProperty] === undefined && !Object.keys(fields).some(field => field.includes(fullProperty)) ) ) {
+            if ( this.shouldRestoreValue(fullProperty, { fields, exclusive }) ) {
                 result = mergeValue;
             } else if(Array.isArray(payloadValue)) {
                 result = payloadValue.map( ( payloadItem, index ) => {
@@ -67,6 +66,12 @@ class MongooseCrudModel {
             }
             return { ...prev, [payloadProperty]: result };
         }, { });
+    }
+
+    shouldRestoreValue(fullProperty, { exclusive, fields }) {
+        return ( exclusive && fields[fullProperty] === 0 ) ||
+                ( !exclusive && fields[fullProperty] === undefined &&
+                        !Object.keys(fields).some(field => field.startsWith(fullProperty)) );
     }
 
     isPlainObject(value) {
