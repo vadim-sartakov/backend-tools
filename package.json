@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "unit-test": "mocha src/**/*unit.test.js --watch --require babel-core/register --require babel-polyfill",
-    "int-test": "cross-env mocha src/**/*int.test.js --watch --require dotenv/config --require babel-core/register --require babel-polyfill --timeout 10000",
+    "int-test": "mocha src/**/*int.test.js --watch --require dotenv/config --require babel-core/register --require babel-polyfill --timeout 10000",
     "eslint": "eslint --ignore-path .gitignore ./",
     "clean": "rimraf lib/",
     "compile": "babel src/ --ignore **/*.test.js --out-dir lib/ --copy-files --source-maps",

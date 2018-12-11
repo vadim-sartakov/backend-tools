@@ -9,7 +9,7 @@ describe("Mongoose crud model tests", () => {
         date: Date,
         embedded: new Schema({ firstField: String, secondField: String }),
         simpleArray: [{ id: Number, field: String }],
-        complexArray: [{ id: Number, field: String, nested: { id: Number, field: String } }]
+        complexArray: [{ id: Number, field: String, nested: [{ id: Number, field: String }] }]
     }, { versionKey: false });
 
     let Entry, connection, model;
@@ -36,7 +36,7 @@ describe("Mongoose crud model tests", () => {
             simpleArray.push(element);
             complexArray.push({
                 ...element,
-                nestedArray: [ { id: 1, field: "1" }, { id: 2, field: "2" } ]
+                nested: [ { id: 1, field: "1" }, { id: 2, field: "2" } ]
             });
         }
         return { counter, date, embedded, simpleArray, complexArray };
@@ -157,27 +157,40 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Creating with specified exclusive modify field permission", async () => {
-            const permissions = { modifyFields: { "counter": 0, "embedded.firstField": 0, "simpleArray": 0 } };
+            const permissions = { modifyFields: { "counter": 0, "embedded.firstField": 0, "simpleArray": 0, "complexArray.nested.field": 0 } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
             expect(result.counter).not.to.be.ok;
             expect(result.date).to.be.ok;
             expect(result.embedded.firstField).not.to.be.ok;
-            //expect(result.simpleArray).not.to.be.ok;
             expect(result.embedded.secondField).to.be.ok;
+            expect(result.simpleArray).to.be.empty;
+            expect(result.complexArray).to.be.ok;
+            expect(result.complexArray[0].nested).to.be.ok;
+            expect(result.complexArray[0].nested[0].id).to.be.ok;
+            expect(result.complexArray[0].nested[0].field).not.to.be.ok;
             const saved = await Entry.findOne({ }).lean();
             expect(result).to.deep.equal(saved);
         });
 
         it("Creating with specified inclusive modify field permission", async () => {
-            const permissions = { modifyFields: { "counter": 1 } };
+            const permissions = { modifyFields: { "counter": 1, "embedded.firstField": 1, "simpleArray.field": 1, "complexArray.nested.field": 1 } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
             expect(result.counter).to.be.ok;
             expect(result.date).not.to.be.ok;
-            expect(result.embedded.firstField).not.to.be.ok;
-            //expect(result.simpleArray).not.to.be.ok;
+            expect(result.embedded).to.be.ok;
+            expect(result.embedded.firstField).to.be.ok;
             expect(result.embedded.secondField).not.to.be.ok;
+            expect(result.simpleArray).not.to.be.empty;
+            expect(result.simpleArray[0].id).not.to.be.ok;
+            expect(result.simpleArray[0].field).to.be.ok;
+            expect(result.complexArray).not.to.be.empty;
+            expect(result.complexArray[0].id).not.to.be.ok;
+            expect(result.complexArray[0].field).not.to.be.ok;
+            expect(result.complexArray[0].nested).not.to.be.empty;
+            expect(result.complexArray[0].nested[0].id).not.to.be.ok;
+            expect(result.complexArray[0].nested[0].field).to.be.ok;
             const saved = await Entry.findOne({ }).lean();
             expect(result).to.deep.equal(saved);
         });

@@ -44,54 +44,47 @@ class MongooseCrudModel {
         return await countQuery.exec();
     }
 
+    filterObject(payload, toMerge = {}, rootProperty, { fields, exclusive }) {
+        return Object.keys(payload).reduce((prev, payloadProperty) => {
+            const payloadValue = payload[payloadProperty];
+            const mergeValue = toMerge[payloadProperty];
+            const fullProperty = `${rootProperty ? rootProperty + "." : ""}${payloadProperty}`;
+            let result;
+            if ( ( exclusive && fields[fullProperty] === 0 ) ||
+                    ( !exclusive && fields[fullProperty] === undefined && !Object.keys(fields).some(field => field.includes(fullProperty)) ) ) {
+                result = mergeValue;
+            } else if(Array.isArray(payloadValue)) {
+                result = payloadValue.map( ( payloadItem, index ) => {
+                    if (!this.isPlainObject) return payloadItem;
+                    // Looking row with same id in `toMerge` object
+                    const rowToMerge = mergeValue && mergeValue.find(mergeItem => mergeItem.id === payloadItem.id);
+                    return this.filterObject(payloadValue[index], rowToMerge, fullProperty, { fields, exclusive });
+                });
+            } else if (this.isPlainObject(payloadValue)) {
+                result = this.filterObject(payloadValue, mergeValue, fullProperty, { fields, exclusive });
+            }  else {
+                result = payloadValue;
+            }
+            return { ...prev, [payloadProperty]: result };
+        }, { });
+    }
+
+    isPlainObject(value) {
+        return typeof(value) === "object" && !(value instanceof Date);
+    }
+
+    filterPayload(payload, toMerge, fields) {
+        const exclusive = this.isExclusiveProjection(fields);
+        return this.filterObject(payload, toMerge, "", { fields, exclusive });
+    }
+
     isExclusiveProjection(fields) {
         return fields[Object.keys(fields)[0]] === 0;
     }
 
-    /**
-     * Removes indexes from path if there are arrays
-     */
-    normalizeFlatProperty(object, flatProperty) {
-        return flatProperty.split(".").reduce((prev, cur, index, array) => {
-            const curProperty = `${prev}.${cur}`;
-            Array.isArray(curProperty)
-            return Array.isArray()
-        });
-    }
-
-    checkModifyPayload(payload, permissions) {
-        const { modifyFields } = permissions;
-        if (modifyFields) {
-            const flattened = flatten(payload);
-            const exclusive = this.isExclusiveProjection(modifyFields);
-            Object.keys(flattened).some(flatProperty => {
-                flatProperty = this.normalizeFlatProperty(payload, flatProperty);
-                if ( ( exclusive && modifyFields[flatProperty] === 0 ) ||
-                        ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
-                    payload = _.omit(payload, flatProperty);
-                }
-            });
-        }
-
-    }
-
-    filterModifyPayload(payload, permissions) {
-        const { modifyFields } = permissions;
-        if (modifyFields) {
-            const flattened = flatten(payload);
-            const exclusive = this.isExclusiveProjection(modifyFields);
-            Object.keys(flattened).forEach(flatProperty => {
-                if ( ( exclusive && modifyFields[flatProperty] === 0 ) ||
-                        ( !exclusive && modifyFields[flatProperty] === undefined ) ) {
-                    payload = _.omit(payload, flatProperty);
-                }
-            });
-        }
-        return payload;
-    }
-
     async addOne(payload, permissions = { }) {
-        payload = this.filterModifyPayload(payload, permissions);
+        const { modifyFields } = permissions;
+        if (modifyFields) payload = this.filterPayload(payload, { }, modifyFields);
         const doc = new this.Model(payload);
         const saved = await doc.save();
         return saved.toObject();
