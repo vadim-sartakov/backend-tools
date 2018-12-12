@@ -89,9 +89,9 @@ class MongooseCrudModel {
         filter = this.convertFitlerId(filter);
         const { filter: permissionFilter, readFields } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
-        const result = await this.Model.findOneAndDelete(resultFilter).lean();
-        const filtered = filterObject(result, readFields);
-        return filtered;
+        let deleted = await this.Model.findOneAndDelete(resultFilter).lean();
+        if (readFields) deleted = filterObject(deleted, readFields);
+        return deleted;
     }
 
 }

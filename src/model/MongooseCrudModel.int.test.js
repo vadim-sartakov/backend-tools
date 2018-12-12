@@ -264,6 +264,48 @@ describe("Mongoose crud model tests", () => {
 
     describe("Delete one", () => {
         
+        let instance;
+
+        beforeEach(async () => {
+            await populateDatabase(1);
+            instance = await Entry.findOne({}).lean();
+        });
+        afterEach(cleanDatabase);
+
+        it("Simple delete", async () => {
+            const result = await model.deleteOne({ id: instance._id });
+            expect(result).to.be.ok;
+            expect(result.counter).to.equal(0);
+            const deleted = await Entry.findOne({ _id: instance._id });
+            expect(deleted).not.to.be.ok;
+        });
+
+        it("Delete denied entry", async () => {
+            const permission = { filter: { counter: 10 } };
+            const result = await model.deleteOne({ id: instance._id }, permission);
+            expect(result).not.to.be.ok;
+            const deleted = await Entry.findOne({ _id: instance._id });
+            expect(deleted).to.be.ok;
+        });
+
+        it("Delete allowed entry", async () => {
+            const permission = { filter: { counter: 0 } };
+            const result = await model.deleteOne({ id: instance._id }, permission);
+            expect(result).to.be.ok;
+            const deleted = await Entry.findOne({ _id: instance._id });
+            expect(deleted).not.to.be.ok;
+        });
+
+        it("Delete with exclusive read projection", async () => {
+            const permission = { readFields: { counter: 0 } };
+            const result = await model.deleteOne({ id: instance._id }, permission);
+            expect(result).to.be.ok;
+            expect(result.counter).not.to.be.ok;
+            expect(result.string).to.be.ok;
+            const deleted = await Entry.findOne({ _id: instance._id });
+            expect(deleted).not.to.be.ok;
+        });
+
     });
 
 });
