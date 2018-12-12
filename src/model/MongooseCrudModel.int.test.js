@@ -240,6 +240,26 @@ describe("Mongoose crud model tests", () => {
             expect(saved.string).to.equal("5");
         });
 
+        it("Update with exclusive fields modify and read permission", async () => {
+            const permission = { readFields: { counter: 0 }, modifyFields: { string: 0 } };
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
+            expect(result.counter).not.to.be.ok;
+            expect(result.string).to.equal("0");
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(10);
+            expect(saved.string).to.equal("0");
+        });
+
+        it("Update with inclusive fields modify and read permission", async () => {
+            const permission = { readFields: { counter: 1 }, modifyFields: { string: 1 } };
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
+            expect(result.counter).to.equal(0);
+            expect(result.string).not.to.be.ok;
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(0);
+            expect(saved.string).to.equal("5");
+        });
+
     });
 
     describe("Delete one", () => {

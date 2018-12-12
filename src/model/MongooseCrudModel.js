@@ -78,10 +78,10 @@ class MongooseCrudModel {
         filter = this.convertFitlerId(filter);
         const { filter: permissionFilter, readFields, modifyFields } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
-        payload = ( modifyFields && filterObject(payload, modifyFields) ) || payload;
-        let updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
         const initialObject = modifyFields && await this.Model.findOne(resultFilter).lean();
-        if (readFields) updated =  filterObject(updated, readFields, initialObject);
+        payload = ( modifyFields && filterObject(payload, modifyFields, initialObject) ) || payload;
+        let updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
+        if (readFields) updated = filterObject(updated, readFields);
         return updated;
     }
 
