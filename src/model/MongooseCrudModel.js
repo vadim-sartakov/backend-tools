@@ -1,5 +1,4 @@
-import { flatten } from "flat";
-import _ from "lodash";
+import { filterObject } from "shared-tools";
 
 class MongooseCrudModel {
 
@@ -33,6 +32,7 @@ class MongooseCrudModel {
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         if (resultFilter) getAllQuery.where(resultFilter);
         if (sort) getAllQuery.sort(sort);
+        getAllQuery.setOptions({ lean: true });
         return await getAllQuery.exec();
     }
 
@@ -44,76 +44,54 @@ class MongooseCrudModel {
         return await countQuery.exec();
     }
 
-    filterObject(payload, toMerge = {}, rootProperty, { fields, exclusive }) {
-        return Object.keys(payload).reduce((prev, payloadProperty) => {
-            const payloadValue = payload[payloadProperty];
-            const mergeValue = toMerge[payloadProperty];
-            const fullProperty = `${rootProperty ? rootProperty + "." : ""}${payloadProperty}`;
-            let result;
-            if ( this.shouldRestoreValue(fullProperty, { fields, exclusive }) ) {
-                result = mergeValue;
-            } else if(Array.isArray(payloadValue)) {
-                result = payloadValue.map( ( payloadItem, index ) => {
-                    if (!this.isPlainObject) return payloadItem;
-                    // Looking row with same id in `toMerge` object
-                    const rowToMerge = mergeValue && mergeValue.find(mergeItem => mergeItem.id === payloadItem.id);
-                    return this.filterObject(payloadValue[index], rowToMerge, fullProperty, { fields, exclusive });
-                });
-            } else if (this.isPlainObject(payloadValue)) {
-                result = this.filterObject(payloadValue, mergeValue, fullProperty, { fields, exclusive });
-            }  else {
-                result = payloadValue;
-            }
-            return ( result && { ...prev, [payloadProperty]: result } ) || prev;
-        }, { });
-    }
-
-    shouldRestoreValue(fullProperty, { exclusive, fields }) {
-        return ( exclusive && fields[fullProperty] === 0 ) ||
-                ( !exclusive && fields[fullProperty] === undefined &&
-                        !Object.keys(fields).some(field => field.startsWith(fullProperty)) );
-    }
-
-    isPlainObject(value) {
-        return typeof(value) === "object" && !(value instanceof Date);
-    }
-
-    filterPayload(payload, toMerge, fields) {
-        const exclusive = this.isExclusiveProjection(fields);
-        return this.filterObject(payload, toMerge, "", { fields, exclusive });
-    }
-
-    isExclusiveProjection(fields) {
-        return fields[Object.keys(fields)[0]] === 0;
-    }
-
     async addOne(payload, permissions = { }) {
         const { readFields, modifyFields } = permissions;
-        if (modifyFields) payload = this.filterPayload(payload, {}, modifyFields);
+        if (modifyFields) payload = filterObject(payload, modifyFields);
         const doc = new this.Model(payload);
         let saved = await doc.save();
         saved = saved.toObject();
-        if (readFields) saved = this.filterPayload(saved, {}, readFields);
+        if (readFields) saved = filterObject(saved, readFields);
         return saved;
     }
 
     async getOne(filter, permissions = { }) {
-        if (filter && filter.id) filter._id = filter.id;
-        return await this.Model.findOne(filter);
+        filter = this.convertFitlerId(filter);
+        const { filter: permissionFilter, readFields } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const query = this.Model.findOne(resultFilter);
+        if (readFields) query.select(readFields);
+        query.setOptions({ lean: true });
+        return await query.exec();
+    }
+
+    convertFitlerId(filter) {
+        let result;
+        if (filter && filter.id) {
+            result = { ...filter };
+            result._id = result.id;
+            delete result.id;
+        }
+        return result;
     }
 
     async updateOne(filter, payload, permissions = { }) {
-        if (filter && filter.id) {
-            filter._id = filter.id;
-            delete filter.id;
-        }
-        const $set = this.filterModifyPayload(payload, permissions);
-        return await this.Model.findOneAndUpdate(filter, { $set });
+        filter = this.convertFitlerId(filter);
+        const { filter: permissionFilter, readFields, modifyFields } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const $set = filterObject(payload, modifyFields);
+        const result = await this.Model.findOneAndUpdate(resultFilter, { $set }, { new: true, lean: true });
+        const initialObject = await this.Model.findOne(resultFilter).lean();
+        const filtered = filterObject(result, readFields, initialObject);
+        return filtered;
     }
 
     async deleteOne(filter, permissions = { }) {
-        if (filter && filter.id) filter._id = filter.id;
-        return await this.Model.findOneAndDelete(filter);
+        filter = this.convertFitlerId(filter);
+        const { filter: permissionFilter, readFields } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const result = await this.Model.findOneAndDelete(resultFilter).lean();
+        const filtered = filterObject(result, readFields);
+        return filtered;
     }
 
 }
