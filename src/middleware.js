@@ -40,8 +40,8 @@ export const permissions = securitySchema => (req, res, next) => {
     );
     const { method } = req;
     if (( method === "POST" && !permissions.create ) ||
-            ( method === "GET" && !permissions.read ) ||
-            ( method === "PUT" && !permissions.update ) ||
+            ( method === "GET" && !permissions.read && !permissions.filter ) ||
+            ( method === "PUT" && !permissions.update && !permissions.filter ) ||
             ( method === "DELETE" && !permissions.delete )) {
         res.status(403);
         res.json({ message: "Access is denied" });
