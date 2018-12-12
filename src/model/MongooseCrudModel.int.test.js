@@ -169,4 +169,44 @@ describe("Mongoose crud model tests", () => {
 
     });
 
+    describe("Get one", () => {
+        
+        let prepopulated;
+
+        before(async () => {
+            await populateDatabase(10);
+            prepopulated = await Entry.find({}).sort({ counter: 1 }).exec();
+        });
+        after(cleanDatabase);
+
+        it("Get single entry without filters", async () => {
+            const result = await model.getOne({ id: prepopulated[0]._id });
+            expect(result).to.be.ok;
+            expect(result.counter).to.equal(0);
+        });
+
+        it("Get single entry with filter to prohibited entry", async () => {
+            const permissions = { filter: { counter: 0 } };
+            const result = await model.getOne({ id: prepopulated[5]._id }, permissions);
+            expect(result).not.to.be.ok;
+        });
+
+        it("Get single entry with filter to allowed entry and fields permissions", async () => {
+            const permissions = { filter: { counter: 1 }, readFields: { "date": 0 } };
+            const result = await model.getOne({ id: prepopulated[1]._id }, permissions);
+            expect(result).to.be.ok;
+            expect(result.counter).to.be.ok;
+            expect(result.date).not.to.be.ok;
+        });
+
+    });
+
+    describe("Update one", () => {
+        
+    });
+
+    describe("Delete one", () => {
+        
+    });
+
 });
