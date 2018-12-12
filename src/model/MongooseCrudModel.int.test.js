@@ -29,7 +29,7 @@ describe("Mongoose crud model tests", () => {
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
             date = new Date(date);
-            await new Entry({ counter, date }).save();
+            await new Entry({ counter, date, string: counter }).save();
         }
     };
 
@@ -203,6 +203,43 @@ describe("Mongoose crud model tests", () => {
 
     describe("Update one", () => {
         
+        let instances;
+
+        beforeEach(async () => {
+            await cleanDatabase();
+            await populateDatabase(10);
+            instances = await Entry.find({}).lean();
+        });
+
+        after(cleanDatabase);
+
+        it("Simple update", async () => {
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" });
+            expect(result.counter).to.equal(10);
+            expect(result.string).to.equal("5");
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(10);
+            expect(saved.string).to.equal("5");
+        });
+
+        it("Update denied with permission filter to denied entry", async () => {
+            const permission = { filter: { counter: 5 } };
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
+            expect(result).not.to.be.ok;
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(0);
+            expect(saved.string).to.equal("0");
+        });
+
+        it("Update denied with permission filter to allowed entry", async () => {
+            const permission = { filter: { counter: 0 } };
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
+            expect(result).to.be.ok;
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(10);
+            expect(saved.string).to.equal("5");
+        });
+
     });
 
     describe("Delete one", () => {

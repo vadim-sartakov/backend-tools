@@ -78,11 +78,11 @@ class MongooseCrudModel {
         filter = this.convertFitlerId(filter);
         const { filter: permissionFilter, readFields, modifyFields } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
-        const $set = filterObject(payload, modifyFields);
-        const result = await this.Model.findOneAndUpdate(resultFilter, { $set }, { new: true, lean: true });
-        const initialObject = await this.Model.findOne(resultFilter).lean();
-        const filtered = filterObject(result, readFields, initialObject);
-        return filtered;
+        payload = ( modifyFields && filterObject(payload, modifyFields) ) || payload;
+        let updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
+        const initialObject = modifyFields && await this.Model.findOne(resultFilter).lean();
+        if (readFields) updated =  filterObject(updated, readFields, initialObject);
+        return updated;
     }
 
     async deleteOne(filter, permissions = { }) {
