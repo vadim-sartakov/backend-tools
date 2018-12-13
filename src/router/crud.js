@@ -2,6 +2,7 @@ import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
 import { getCurrentUrl, asyncMiddleware } from "../utils/http";
+import { permissions, validator } from "../middleware";
 
 const defaultOptions = {
     defaultPageSize: 20
@@ -11,14 +12,14 @@ const createMiddlewareChain = (createMiddleware, Model, options) => {
     const { securitySchema, validationSchema } = options;
     const crudMiddleware = createMiddleware(Model, options);
     const chain = [];
-    if (securitySchema) chain.push(securitySchema);
+    if (securitySchema) chain.push(permissions(securitySchema));
+    if (validationSchema) chain.push(validator(validationSchema));
     chain.push(crudMiddleware);
-    if (validationSchema) chain.push(validationSchema);
     return chain;
 };
 
 const crudRouter = (Model, options) => {
-    options = { ...defaultOptions, options };
+    options = { ...defaultOptions, ...options };
     const router = Router();
     const rootRouter = router.route("/");
     !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, options));

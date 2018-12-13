@@ -36,11 +36,15 @@ describe("Crud router", () => {
         return result;
     };
 
-    const initialize = (modelArgs, options) => {
+    const initialize = (modelArgs, routerOptions, user) => {
         const model = new StubModel(modelArgs);
-        const router = crudRouter(model, options);
+        const router = crudRouter(model, routerOptions);
         const app = express();
         app.use(bodyParser.json());
+        user && app.use((req, res, next) => {
+            res.locals.user = user;
+            next();
+        });
         app.use(router);
         return { model, app };
     };
@@ -188,6 +192,29 @@ describe("Crud router", () => {
             const { model, app } = initialize({ deleteOneResult: instance });
             await request(app).delete("/0").expect(204);
             expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);   
+        });
+
+    });
+
+    describe("Security and validation", () => {
+
+        it("Granted read", async () => {
+            const securitySchema = { "USER": { read: true } };
+            const { app } = initialize({ getAllResult: getBulkResult(1), countResult: 50 }, { securitySchema }, { roles: ["USER"] });
+            await request(app).get("/").expect(200);
+        });
+
+        it("Denied update", async () => {
+            const securitySchema = { "USER": { read: true } };
+            const { app } = initialize({ updateOneResult: { firstName: "Steve" } }, { securitySchema }, { roles: ["USER"] });
+            await request(app).put("/1").send({}).expect(403);
+        });
+
+        it("Allowed update with validation fail", async () => {
+            const securitySchema = { "USER": { update: true } };
+            const validationSchema = { firstName: { format: /\w+/ } };
+            const { app } = initialize({ updateOneResult: { firstName: "Steve" } }, { securitySchema, validationSchema }, { roles: ["USER"] });
+            await request(app).put("/1").send({ firstName: "_=*" }).expect(400);
         });
 
     });

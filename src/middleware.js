@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import validate from "validate.js";
 import { getPermissions } from "shared-tools";
 
-export const common = [
+export const commonMiddlewares = [
     helmet(),
     cookieParser(),
     bodyParser.urlencoded({ extended: true }),
