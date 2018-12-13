@@ -1,6 +1,7 @@
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
+import validate from "validate.js";
 import { getPermissions } from "shared-tools";
 
 export const common = [
@@ -23,13 +24,13 @@ export const internalError = logger => (err, req, res, next) => { // eslint-disa
 /**
  * Checks current user sotred in "user.local" against security schema.
  * Resulted filter stored in "res.locals.permissions" parameter
- * @param {Object} securitySchema
+ * @param {Object} schema
  */
-export const permissions = securitySchema => (req, res, next) => {
+export const permissions = schema => (req, res, next) => {
     const { user } = res.locals;
     const permissions = getPermissions(
         user,
-        securitySchema,
+        schema,
         "create",
         "read",
         "update",
@@ -48,5 +49,14 @@ export const permissions = securitySchema => (req, res, next) => {
         return;
     }
     res.locals.permissions = permissions;
+    next();
+};
+
+export const validator = (constraints, opts) => (req, res, next) => {
+    const errors = validate(req.body, constraints, opts);
+    if (errors) {
+        res.status(400);
+        return res.json({ message: "Validation failed", errors });
+    }
     next();
 };

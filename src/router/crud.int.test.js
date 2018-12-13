@@ -36,9 +36,9 @@ describe("Crud router", () => {
         return result;
     };
 
-    const initialize = modelArgs => {
+    const initialize = (modelArgs, options) => {
         const model = new StubModel(modelArgs);
-        const router = crudRouter(model);
+        const router = crudRouter(model, options);
         const app = express();
         app.use(bodyParser.json());
         app.use(router);

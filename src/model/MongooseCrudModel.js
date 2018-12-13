@@ -6,9 +6,9 @@ class MongooseCrudModel {
         this.Model = Model;
     }
 
-    getResultFilter(queryFilter, permissionFilter) {
+    getResultFilter(queryFilter, permissionFilter, masterPermission) {
         const filterArray = [];
-        if (permissionFilter) filterArray.push(permissionFilter);
+        if (permissionFilter && !masterPermission) filterArray.push(permissionFilter);
         if (queryFilter) filterArray.push(queryFilter);
         let resultFilter;
         switch(filterArray.length) {
@@ -24,12 +24,12 @@ class MongooseCrudModel {
     }
 
     async getAll({ page, size, filter, sort }, permissions = { }) {
-        const { filter: permissionFilter, readFields } = permissions;
+        const { filter: permissionFilter, read, readFields } = permissions;
         const getAllQuery = this.Model.find()
             .skip(page * size)
             .limit(size);
         if (readFields) getAllQuery.select(readFields);
-        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const resultFilter = this.getResultFilter(filter, permissionFilter, read);
         if (resultFilter) getAllQuery.where(resultFilter);
         if (sort) getAllQuery.sort(sort);
         getAllQuery.setOptions({ lean: true });
@@ -37,9 +37,9 @@ class MongooseCrudModel {
     }
 
     async count(filter, permissions = { }) {
-        const { filter: permissionFilter } = permissions;
+        const { filter: permissionFilter, read } = permissions;
         const countQuery = this.Model.count();
-        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const resultFilter = this.getResultFilter(filter, permissionFilter, read);
         if (resultFilter) countQuery.where(resultFilter);
         return await countQuery.exec();
     }
@@ -56,8 +56,8 @@ class MongooseCrudModel {
 
     async getOne(filter, permissions = { }) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, readFields } = permissions;
-        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const { filter: permissionFilter, readFields, read } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter, read);
         const query = this.Model.findOne(resultFilter);
         if (readFields) query.select(readFields);
         query.setOptions({ lean: true });
@@ -76,8 +76,8 @@ class MongooseCrudModel {
 
     async updateOne(filter, payload, permissions = { }) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, readFields, modifyFields } = permissions;
-        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const { filter: permissionFilter, readFields, modifyFields, update } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter, update);
         const initialObject = modifyFields && await this.Model.findOne(resultFilter).lean();
         payload = ( modifyFields && filterObject(payload, modifyFields, initialObject) ) || payload;
         let updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
@@ -87,8 +87,8 @@ class MongooseCrudModel {
 
     async deleteOne(filter, permissions = { }) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, readFields } = permissions;
-        const resultFilter = this.getResultFilter(filter, permissionFilter);
+        const { filter: permissionFilter, readFields, delete: permissionDelete } = permissions;
+        const resultFilter = this.getResultFilter(filter, permissionFilter, permissionDelete);
         let deleted = await this.Model.findOneAndDelete(resultFilter).lean();
         if (readFields) deleted = filterObject(deleted, readFields);
         return deleted;

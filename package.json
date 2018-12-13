@@ -28,6 +28,7 @@
     "mongoose-unique-validator": "^2.0.2",
     "qs": "^6.6.0",
     "shared-tools": "git+https://github.com/vadim-sartakov/shared-tools.git#0.0.1",
+    "validate.js": "^0.12.0",
     "winston": "^3.1.0"
   },
   "devDependencies": {

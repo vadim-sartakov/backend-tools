@@ -96,6 +96,13 @@ describe("Mongoose crud model tests", () => {
             expect(result[1].date).not.to.be.ok;
         });
 
+        it("Get page 1 with size 20 and count 12 with filter and master read", async () => {
+            await populateDatabase(12);
+            const permissions = { filter: { counter: 0 }, read: true };
+            const result = await model.getAll({ page: 0, size: 20 }, permissions);
+            expect(result.length).to.equal(12);
+        });
+
     });
 
     describe("Count", () => {
@@ -123,6 +130,12 @@ describe("Mongoose crud model tests", () => {
             const permissions = { filter: { counter: 3 } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(0);
+        });
+
+        it("Count with filter and master read", async () => {
+            const permissions = { filter: { counter: 0 }, read: true };
+            const result = await model.count({ }, permissions);
+            expect(result).to.equal(10);
         });
 
     });
@@ -199,6 +212,12 @@ describe("Mongoose crud model tests", () => {
             expect(result.date).not.to.be.ok;
         });
 
+        it("Get single entry with filter and read permission", async () => {
+            const permissions = { filter: { counter: 0 }, read: true };
+            const result = await model.getOne({ id: prepopulated[5]._id }, permissions);
+            expect(result).to.be.ok;
+        });
+
     });
 
     describe("Update one", () => {
@@ -260,6 +279,15 @@ describe("Mongoose crud model tests", () => {
             expect(saved.string).to.equal("5");
         });
 
+        it("Update with filter and granted update permission", async () => {
+            const permission = { filter: { counter: 5 }, update: true };
+            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
+            expect(result).to.be.ok;
+            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
+            expect(saved.counter).to.equal(10);
+            expect(saved.string).to.equal("5");
+        });
+
     });
 
     describe("Delete one", () => {
@@ -302,6 +330,14 @@ describe("Mongoose crud model tests", () => {
             expect(result).to.be.ok;
             expect(result.counter).not.to.be.ok;
             expect(result.string).to.be.ok;
+            const deleted = await Entry.findOne({ _id: instance._id });
+            expect(deleted).not.to.be.ok;
+        });
+
+        it("Delete with filter and granted delete", async () => {
+            const permission = { filter: { counter: 1 }, delete: true };
+            const result = await model.deleteOne({ id: instance._id }, permission);
+            expect(result).to.be.ok;
             const deleted = await Entry.findOne({ _id: instance._id });
             expect(deleted).not.to.be.ok;
         });
