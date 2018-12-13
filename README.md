@@ -52,6 +52,7 @@ Model wrapper should be passed to the router constructor. There is implemented `
 
 Each model method has `permissions` parameter. It is the object of `getPermissions` function of `shared-tools` package and it's not required.
 Model should have following methods:
+
 |Method                                             |Description|
 |---------------------------------------------------|-----------------------------------------|
 |`getAll({ page, size, filter, sort }, permissions)`| Retrieves entry according to options.   |
