@@ -103,6 +103,14 @@ describe("Mongoose crud model tests", () => {
             expect(result.length).to.equal(12);
         });
 
+        it("Get page 1 with size 20 and count 12 with getAllFields permission", async () => {
+            await populateDatabase(12);
+            const permissions = { getAllFields: { counter: 1 } };
+            const result = await model.getAll({ page: 0, size: 20 }, permissions);
+            expect(result[1].counter).to.be.ok;
+            expect(result[1].date).not.to.be.ok;
+        });
+
     });
 
     describe("Count", () => {
@@ -216,6 +224,14 @@ describe("Mongoose crud model tests", () => {
             const permissions = { filter: { counter: 0 }, read: true };
             const result = await model.getOne({ id: prepopulated[5]._id }, permissions);
             expect(result).to.be.ok;
+        });
+
+        it("Get single entry with getOne fields permission", async () => {
+            const permissions = { getOneFields: { "date": 0 } };
+            const result = await model.getOne({ id: prepopulated[1]._id }, permissions);
+            expect(result).to.be.ok;
+            expect(result.counter).to.be.ok;
+            expect(result.date).not.to.be.ok;
         });
 
     });

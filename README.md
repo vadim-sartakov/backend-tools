@@ -15,6 +15,23 @@ Function accepts logger label and returns winston logger with suitable decorator
 To determine the level of Logger "debug" library is used. So environment variable `DEBUG` is taking in count.
 
 ### Middleware
+
+#### Permissions
+Reads permissions of the current user from `res.locals` and places result to the `res.locals.permissions`.
+
+Middleware reads the folowing permissions:
+- "create",
+- "read",
+- "update",
+- "delete",
+- "filter",
+- "readFields",
+- "modifyFields",
+- "getAllFields",
+- "getOneFields"
+
+It also checks current request method against user's permissions. For example, if user doesn't have "read" permission and no "filter" specified and "GET" request is exceuting, middleware will end response with `403` status code.
+
 #### Common
 Array of commonly used middlewares, which can be placed in front of your middleware chain
 ```javascript
@@ -55,12 +72,12 @@ Model should have following methods:
 
 |Method                                             |Description|
 |---------------------------------------------------|-----------------------------------------|
-|`getAll({ page, size, filter, sort }, permissions)`| Retrieves entry according to options.   |
-|`count(filter, permissions)`                       | Counts entries                          |
-|`addOne(payload, permissions)`                     | Create entry                            |
-|`getOne(filter, permissions)`                      | Retrieve one entry by id filter. `{ id: "1" }`|
-|`updateOne(filter, payload, permissions)`          | Update one entry by id filter.          |
-|`deleteOne(filter, permissions)`                   | Delete one entry by id filter.          |
+|getAll({ page, size, filter, sort }, permissions)| Retrieves entry according to options.   |
+|count(filter, permissions)                       | Counts entries                          |
+|addOne(payload, permissions)                     | Create entry                            |
+|getOne(filter, permissions)                      | Retrieve one entry by id filter. `{ id: "1" }|
+|updateOne(filter, payload, permissions)          | Update one entry by id filter.          |
+|deleteOne(filter, permissions)`                  | Delete one entry by id filter.          |
 
 ```javascript
 import express from "express";

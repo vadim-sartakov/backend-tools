@@ -37,7 +37,9 @@ export const permissions = schema => (req, res, next) => {
         "delete",
         "filter",
         "readFields",
-        "modifyFields"
+        "modifyFields",
+        "getAllFields",
+        "getOneFields"
     );
     const { method } = req;
     if (( method === "POST" && !permissions.create ) ||

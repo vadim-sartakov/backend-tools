@@ -2,8 +2,9 @@ import { filterObject } from "shared-tools";
 
 class MongooseCrudModel {
 
-    constructor(Model) {
+    constructor(Model, permissions) {
         this.Model = Model;
+        this.permissions = permissions;
     }
 
     getResultFilter(queryFilter, permissionFilter, masterPermission) {
@@ -24,11 +25,12 @@ class MongooseCrudModel {
     }
 
     async getAll({ page, size, filter, sort }, permissions = { }) {
-        const { filter: permissionFilter, read, readFields } = permissions;
+        const { filter: permissionFilter, read, readFields, getAllFields } = permissions;
         const getAllQuery = this.Model.find()
             .skip(page * size)
             .limit(size);
-        if (readFields) getAllQuery.select(readFields);
+        const projection = readFields || getAllFields;
+        if (projection) getAllQuery.select(projection);
         const resultFilter = this.getResultFilter(filter, permissionFilter, read);
         if (resultFilter) getAllQuery.where(resultFilter);
         if (sort) getAllQuery.sort(sort);
@@ -56,10 +58,11 @@ class MongooseCrudModel {
 
     async getOne(filter, permissions = { }) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, readFields, read } = permissions;
+        const { filter: permissionFilter, read, readFields, getOneFields } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter, read);
         const query = this.Model.findOne(resultFilter);
-        if (readFields) query.select(readFields);
+        const projection = readFields || getOneFields;
+        if (projection) query.select(projection);
         query.setOptions({ lean: true });
         return await query.exec();
     }
