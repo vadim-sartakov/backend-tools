@@ -36,6 +36,7 @@ export const permissions = schema => (req, res, next) => {
         "update",
         "delete",
         "filter",
+        "fields",
         "readFields",
         "modifyFields",
         "getAllFields",

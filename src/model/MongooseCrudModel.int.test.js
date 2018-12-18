@@ -35,61 +35,55 @@ describe("Mongoose crud model tests", () => {
 
     describe("Get all", () => {
 
+        beforeEach(async () => await populateDatabase(12));
         afterEach(cleanDatabase);
 
         it("Empty page", async () => {
+            await cleanDatabase();
             const result = await model.getAll({ page: 0, size: 20 });
             expect(result).to.deep.equal([ ]);
         });
 
         it("Get page 2 with size 5 and count 12", async () => {
-            await populateDatabase(12);
             const result = await model.getAll({ page: 1, size: 5 });
             expect(result.length).to.equal(5);
         });
 
         it("Get page 3 with size 5 and count 12", async () => {
-            await populateDatabase(12);
             const result = await model.getAll({ page: 2, size: 5 });
             expect(result.length).to.equal(2);
         });
 
         it("Get page 1 with size 5 and count 12 with wide filter and sort by counter asc", async () => {
-            await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: 1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(2);
         });
 
         it("Get page 1 with size 5 and count 12 with wide filter and sort by counter desc", async () => {
-            await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: -1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(11);
         });
 
         it("Get page 1 with size 5 and count 12 with narrow filter", async () => {
-            await populateDatabase(12);
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 2 } });
             expect(result.length).to.equal(1);
         });
 
         it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to restricted entry", async () => {
-            await populateDatabase(12);
             const permissions = { filter: { counter: 2 } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(0);
         });
 
         it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to allowed entry", async () => {
-            await populateDatabase(12);
             const permissions = { filter: { counter: 5 } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(1);
         });
 
         it("Get page 1 with size 5 and count 12 with specified read fields permission", async () => {
-            await populateDatabase(12);
             const permissions = { readFields: { counter: 1 } };
             const result = await model.getAll({ page: 0, size: 5 }, permissions);
             expect(result[1].counter).to.be.ok;
@@ -97,19 +91,26 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Get page 1 with size 20 and count 12 with filter and master read", async () => {
-            await populateDatabase(12);
             const permissions = { filter: { counter: 0 }, read: true };
             const result = await model.getAll({ page: 0, size: 20 }, permissions);
             expect(result.length).to.equal(12);
         });
 
         it("Get page 1 with size 20 and count 12 with getAllFields permission", async () => {
-            await populateDatabase(12);
             const permissions = { getAllFields: { counter: 1 } };
             const result = await model.getAll({ page: 0, size: 20 }, permissions);
             expect(result[1].counter).to.be.ok;
             expect(result[1].date).not.to.be.ok;
         });
+
+        /*it("Get page 1 with size 20 and count 12 with getAllFields permission", async () => {
+            const permissions = {
+                Entry: { fields:  }
+            };
+            const result = await model.getAll({ page: 0, size: 20 }, permissions);
+            expect(result[1].counter).to.be.ok;
+            expect(result[1].date).not.to.be.ok;
+        });*/
 
     });
 
