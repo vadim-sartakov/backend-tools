@@ -4,16 +4,21 @@ import MongooseCrudModel from "./MongooseCrudModel";
 
 describe("Mongoose crud model tests", () => {
 
+    const deepNestedSchema = new Schema({ counter: Number, string: String });
+    const nestedSchema = new Schema({ counter: Number, string: String, deepNested: [{ type: Schema.Types.ObjectId, ref: "DeepNested" }] });
     const entrySchema = new Schema({
         counter: Number,
         date: Date,
-        string: String
-    }, { versionKey: false });
+        string: String,
+        nested: { type: Schema.Types.ObjectId, ref: "Nested" }
+    });
 
-    let Entry, connection, model;
+    let DeepNested, Nested, Entry, connection, model;
 
     before(async () => {
         connection = await mongoose.createConnection(process.env.DB_URL, { useNewUrlParser: true });
+        DeepNested = connection.model("DeepNested", deepNestedSchema);
+        Nested = connection.model("Nested", nestedSchema);
         Entry = connection.model("Entry", entrySchema);
         model = new MongooseCrudModel(Entry);
     });
@@ -23,13 +28,23 @@ describe("Mongoose crud model tests", () => {
         await connection.close(true);
     });
 
-    const cleanDatabase = async () => await Entry.remove({ });
+    const cleanDatabase = async () => {
+        await DeepNested.remove({ });
+        await Nested.remove({ });
+        await Entry.remove({ });
+    };
 
     const populateDatabase = async entryCount => {
+        const nested = new Nested({ counter: 0, string: "Nested field" });
+        for (let counter = 0; counter < entryCount; counter++) {
+            const deepNested = await new DeepNested({ counter, string: "Deep nested field " + counter }).save();
+            nested.deepNested.push(deepNested);
+        }
+        await nested.save();
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
             date = new Date(date);
-            await new Entry({ counter, date, string: counter }).save();
+            await new Entry({ counter, date, string: counter, nested }).save();
         }
     };
 
@@ -103,14 +118,24 @@ describe("Mongoose crud model tests", () => {
             expect(result[1].date).not.to.be.ok;
         });
 
-        /*it("Get page 1 with size 20 and count 12 with getAllFields permission", async () => {
+        it.skip("Deep nested population", async () => {
             const permissions = {
-                Entry: { fields:  }
+                DeepNested: { fields: { counter: 1 }, filter: { counter: 2 } },
+                Nested: { fields: { counter: 1, deepNested: 1 } },
+                Entry: { fields: { counter: 1 } }
             };
+            model = new MongooseCrudModel(Entry);
             const result = await model.getAll({ page: 0, size: 20 }, permissions);
-            expect(result[1].counter).to.be.ok;
-            expect(result[1].date).not.to.be.ok;
-        });*/
+            expect(result.length).to.equal(12);
+            const entry = result[0];
+            expect(entry.nested).to.be.ok;
+            expect(entry.nested.counter).to.be.ok;
+            expect(entry.nested.string).not.to.be.ok;
+            expect(entry.nested.deepNested).to.be.ok;
+            expect(entry.nested.deepNested.length).to.equal(1);
+            expect(entry.nested.deepNested[0].counter).to.be.ok;
+            expect(entry.nested.deepNested[0].string).not.to.be.ok;
+        });
 
     });
 

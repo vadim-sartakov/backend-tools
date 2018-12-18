@@ -2,9 +2,8 @@ import { filterObject } from "shared-tools";
 
 class MongooseCrudModel {
 
-    constructor(Model, permissions) {
+    constructor(Model) {
         this.Model = Model;
-        this.permissions = permissions;
     }
 
     getResultFilter(queryFilter, permissionFilter, masterPermission) {
