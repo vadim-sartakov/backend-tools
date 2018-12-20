@@ -41,24 +41,20 @@ class MongooseCrudModel {
         return await getAllQuery.exec();
     }
 
-    async count(filter, permissions = { }) {
-        const { filter: permissionFilter } = permissions;
+    async count(filter, permissions = { read: { } }) {
+        const { read: { filter: permissionFilter } } = permissions;
         const countQuery = this.Model.count();
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         if (resultFilter) countQuery.where(resultFilter);
         return await countQuery.exec();
     }
 
-    async addOne(payload, permissions = { }) {
-        const { fields, readFields, modifyFields } = permissions;
-        const modifyProjection = fields || modifyFields;
-        const readProjection = fields || readFields;
-        if (modifyProjection) payload = filterObject(payload, modifyProjection);
+    async addOne(payload, permissions = { update: { } }) {
+        const { update: { projection } } = permissions;
+        if (projection) payload = filterObject(payload, projection);
         const doc = new this.Model(payload);
         let saved = await doc.save();
-        saved = saved.toObject();
-        if (readProjection) saved = filterObject(saved, readProjection);
-        return saved;
+        return saved.toObject();
     }
 
     async getOne(filter, permissions = { }) {

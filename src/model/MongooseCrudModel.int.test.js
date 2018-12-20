@@ -131,13 +131,13 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Count with permission and filter to allowed entry", async () => {
-            const permissions = { filter: { counter: 5 } };
+            const permissions = { read: { filter: { counter: 5 } } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(1);
         });
 
         it("Count with permission and filter to prohibited entry", async () => {
-            const permissions = { filter: { counter: 3 } };
+            const permissions = { read: { filter: { counter: 3 } } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(0);
         });
@@ -157,12 +157,9 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Creating with specified exclusive read and modify field permission", async () => {
-            const permissions = { readFields: { "counter": 0 }, modifyFields: { "date": 0 } };
+            const permissions = { update: { projection: { date: 0 } } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
-            expect(result.counter).not.to.be.ok;
-            expect(result.date).not.to.be.ok;
-            expect(result.string).to.be.ok;
             const saved = await Entry.findOne({ }).lean();
             expect(saved).to.be.ok;
             expect(saved.counter).to.be.ok;
@@ -171,12 +168,9 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Creating with specified inclusive modify field permission", async () => {
-            const permissions = { readFields: { "counter": 1, "date": 1 }, modifyFields: { "date": 1 } };
+            const permissions = { update: { projection: { date: 1 } } };
             const result = await model.addOne(instance, permissions);
             expect(result).to.be.ok;
-            expect(result.counter).not.to.be.ok;
-            expect(result.date).to.be.ok;
-            expect(result.string).not.to.be.ok;  
             const saved = await Entry.findOne({ }).lean();
             expect(saved).to.be.ok;
             expect(saved.counter).not.to.be.ok;
