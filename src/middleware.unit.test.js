@@ -1,4 +1,4 @@
-import { permissions, validator } from "./middleware";
+import { security, validator } from "./middleware";
 import chai, { expect } from "chai";
 import sinonChai from "sinon-chai";
 import { fake } from "sinon";
@@ -27,7 +27,7 @@ describe("Middleware", () => {
 
         it("Granted read", () => {
             const schema = { "USER": { read: true } };
-            const middleware = permissions(schema);
+            const middleware = security(schema);
             middleware({ }, res, next);
             expect(res.locals.permissions).to.be.ok;
             expect(next).to.have.been.called;
@@ -36,7 +36,7 @@ describe("Middleware", () => {
         describe("Denied", () => {
 
             const schema = { };
-            const middleware = permissions(schema);
+            const middleware = security(schema);
 
             const checkIfAccessIsDenied = (middleware, res, method) => {
                 middleware({ method }, res, next);

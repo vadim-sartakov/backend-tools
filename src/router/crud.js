@@ -2,7 +2,7 @@ import { Router } from "express";
 import querystring from "querystring";
 import LinkHeader from "http-link-header";
 import { getCurrentUrl, asyncMiddleware } from "../utils/http";
-import { permissions, validator } from "../middleware";
+import { security, validator } from "../middleware";
 
 const defaultOptions = {
     defaultPageSize: 20
@@ -12,7 +12,7 @@ const createMiddlewareChain = (createMiddleware, Model, options) => {
     const { securitySchema, validationSchema } = options;
     const crudMiddleware = createMiddleware(Model, options);
     const chain = [];
-    if (securitySchema) chain.push(permissions(securitySchema));
+    if (securitySchema) chain.push(security(securitySchema));
     if (validationSchema) chain.push(validator(validationSchema));
     chain.push(crudMiddleware);
     return chain;
@@ -76,9 +76,9 @@ const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
     instance ? res.json(instance) : next();
 });
 
-const returnInstanceOrContinue = async (Model, instance, id, res, next) => {
+const returnInstanceOrContinue = async (Model, instance, req, res, next) => {
     if (instance) {
-        instance = await Model.getOne({ id }, permissions);
+        instance = await Model.getOne({ id: req.params.id }, res.locals.permissions);
         res.json(instance);
     } else {
         next();
@@ -88,13 +88,13 @@ const returnInstanceOrContinue = async (Model, instance, id, res, next) => {
 const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
     let instance = await Model.updateOne({ id: req.params.id }, req.body, permissions);
-    await returnInstanceOrContinue(Model, instance, req.params.id, res, next);
+    await returnInstanceOrContinue(Model, instance, req, res, next);
 });
 
 const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
     let instance = await Model.deleteOne({ id: req.params.id }, permissions);
-    await returnInstanceOrContinue(Model, instance, req.params.id, res, next);
+    await returnInstanceOrContinue(Model, instance, req, res, next);
 });
 
 export default crudRouter;
