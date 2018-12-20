@@ -25,24 +25,12 @@ describe("Middleware", () => {
             next = new fake();
         });
 
-        describe("Granted", () => {
-
-            it("Granted read", () => {
-                const schema = { "USER": { read: true } };
-                const middleware = permissions(schema);
-                middleware({ }, res, next);
-                expect(res.locals.permissions).to.be.ok;
-                expect(next).to.have.been.called;
-            });
-
-            it("Granted read with filter only", () => {
-                const schema = { "USER": { filter: () => {} } };
-                const middleware = permissions(schema);
-                middleware({ method: "GET" }, res, next);
-                expect(res.locals.permissions).to.be.ok;
-                expect(next).to.have.been.called;
-            }); 
-
+        it("Granted read", () => {
+            const schema = { "USER": { read: true } };
+            const middleware = permissions(schema);
+            middleware({ }, res, next);
+            expect(res.locals.permissions).to.be.ok;
+            expect(next).to.have.been.called;
         });
 
         describe("Denied", () => {
