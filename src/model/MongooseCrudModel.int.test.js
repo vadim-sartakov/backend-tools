@@ -106,7 +106,7 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Population", async () => {
-            model = new MongooseCrudModel(Entry, { populate: { path: "nested", select: { counter: 1 } } });
+            model = new MongooseCrudModel(Entry, { populate: { nested: "counter" } });
             const result = await model.getAll({ page: 0, size: 20 });
             expect(result[0].nested).to.be.ok;
             expect(result[0].nested.counter).to.equal(0);
@@ -208,6 +208,14 @@ describe("Mongoose crud model tests", () => {
             expect(result).to.be.ok;
             expect(result.counter).to.be.ok;
             expect(result.date).not.to.be.ok;
+        });
+
+        it("Populate", async () => {
+            model = new MongooseCrudModel(Entry, { populate: { nested: "counter" } });
+            const result = await model.getOne({ id: prepopulated[1]._id });
+            expect(result.nested).to.be.ok;
+            expect(result.nested.counter).to.equal(0);
+            expect(result.nested.string).not.to.be.ok;
         });
 
     });

@@ -39,9 +39,13 @@ class MongooseCrudModel {
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         if (resultFilter) getAllQuery.where(resultFilter);
         if (sort) getAllQuery.sort(sort);
-        if (this.populate) getAllQuery.populate(this.populate);
+        this.applyPopulateIfRequired(getAllQuery);
         getAllQuery.setOptions({ lean: true });
         return await getAllQuery.exec();
+    }
+
+    applyPopulateIfRequired(query) {
+        if (this.populate) Object.keys(this.populate).forEach(path => query.populate({ path, select: this.populate[path] }));
     }
 
     async count(filter, permissions) {
@@ -69,6 +73,7 @@ class MongooseCrudModel {
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         const query = this.Model.findOne(resultFilter);
         if (projection) query.select(projection);
+        this.applyPopulateIfRequired(query);
         query.setOptions({ lean: true });
         return await query.exec();
     }
