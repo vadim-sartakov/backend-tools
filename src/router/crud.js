@@ -88,13 +88,13 @@ const returnInstanceOrContinue = async (Model, instance, id, res, next) => {
 const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
     let instance = await Model.updateOne({ id: req.params.id }, req.body, permissions);
-    returnInstanceOrContinue(Model, instance, req.params.id, res, next);
+    await returnInstanceOrContinue(Model, instance, req.params.id, res, next);
 });
 
 const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
     let instance = await Model.deleteOne({ id: req.params.id }, permissions);
-    returnInstanceOrContinue(Model, instance, req.params.id, res, next);
+    await returnInstanceOrContinue(Model, instance, req.params.id, res, next);
 });
 
 export default crudRouter;
