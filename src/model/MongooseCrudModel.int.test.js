@@ -4,8 +4,7 @@ import MongooseCrudModel from "./MongooseCrudModel";
 
 describe("Mongoose crud model tests", () => {
 
-    const deepNestedSchema = new Schema({ counter: Number, string: String });
-    const nestedSchema = new Schema({ counter: Number, string: String, deepNested: [{ type: Schema.Types.ObjectId, ref: "DeepNested" }] });
+    const nestedSchema = new Schema({ counter: Number, string: String });
     const entrySchema = new Schema({
         counter: Number,
         date: Date,
@@ -13,11 +12,10 @@ describe("Mongoose crud model tests", () => {
         nested: { type: Schema.Types.ObjectId, ref: "Nested" }
     });
 
-    let DeepNested, Nested, Entry, connection, model;
+    let Nested, Entry, connection, model;
 
     before(async () => {
         connection = await mongoose.createConnection(process.env.DB_URL, { useNewUrlParser: true });
-        DeepNested = connection.model("DeepNested", deepNestedSchema);
         Nested = connection.model("Nested", nestedSchema);
         Entry = connection.model("Entry", entrySchema);
         model = new MongooseCrudModel(Entry);
@@ -29,17 +27,12 @@ describe("Mongoose crud model tests", () => {
     });
 
     const cleanDatabase = async () => {
-        await DeepNested.remove({ });
         await Nested.remove({ });
         await Entry.remove({ });
     };
 
     const populateDatabase = async entryCount => {
         const nested = new Nested({ counter: 0, string: "Nested field" });
-        for (let counter = 0; counter < entryCount; counter++) {
-            const deepNested = await new DeepNested({ counter, string: "Deep nested field " + counter }).save();
-            nested.deepNested.push(deepNested);
-        }
         await nested.save();
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
@@ -69,72 +62,55 @@ describe("Mongoose crud model tests", () => {
             expect(result.length).to.equal(2);
         });
 
-        it("Get page 1 with size 5 and count 12 with wide filter and sort by counter asc", async () => {
+        it("Wide filter and sort by counter asc", async () => {
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: 1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(2);
         });
 
-        it("Get page 1 with size 5 and count 12 with wide filter and sort by counter desc", async () => {
+        it("Wide filter and sort by counter desc", async () => {
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: { $gte: 2 } }, sort: { counter: -1 } });
             expect(result.length).to.equal(5);
             expect(result[0].counter).to.equal(11);
         });
 
-        it("Get page 1 with size 5 and count 12 with narrow filter", async () => {
+        it("Narrow filter", async () => {
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 2 } });
             expect(result.length).to.equal(1);
         });
 
-        it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to restricted entry", async () => {
-            const permissions = { filter: { counter: 2 } };
+        it("Permission read filter and regular filter to restricted entry", async () => {
+            const permissions = { read: { filter: { counter: 2 } } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(0);
         });
 
-        it("Get page 1 with size 5 and count 12 with permission read filter and regular filter to allowed entry", async () => {
-            const permissions = { filter: { counter: 5 } };
+        it("Permission read filter and regular filter to allowed entry", async () => {
+            const permissions = { read: { filter: { counter: 5 } } };
             const result = await model.getAll({ page: 0, size: 5, filter: { counter: 5 } }, permissions);
             expect(result.length).to.equal(1);
         });
 
-        it("Get page 1 with size 5 and count 12 with specified read fields permission", async () => {
-            const permissions = { readFields: { counter: 1 } };
+        it("Specified read fields permission", async () => {
+            const permissions = { read: { projection: { counter: 1 } } };
             const result = await model.getAll({ page: 0, size: 5 }, permissions);
             expect(result[1].counter).to.be.ok;
             expect(result[1].date).not.to.be.ok;
         });
 
-        it("Get page 1 with size 20 and count 12 with filter and master read", async () => {
-            const permissions = { filter: { counter: 0 }, read: true };
-            const result = await model.getAll({ page: 0, size: 20 }, permissions);
-            expect(result.length).to.equal(12);
-        });
-
-        it("Get page 1 with size 20 and count 12 with getAllFields permission", async () => {
-            const permissions = { getAllFields: { counter: 1 } };
-            const result = await model.getAll({ page: 0, size: 20 }, permissions);
+        it("Excerpt projection", async () => {
+            model = new MongooseCrudModel(Entry, { excerptProjection: { counter: 1 } });
+            const result = await model.getAll({ page: 0, size: 20 });
             expect(result[1].counter).to.be.ok;
             expect(result[1].date).not.to.be.ok;
         });
 
-        it.skip("Deep nested population", async () => {
-            const permissions = {
-                DeepNested: { fields: { counter: 1 }, filter: { counter: 2 } },
-                Nested: { fields: { counter: 1, deepNested: 1 } },
-                Entry: { fields: { counter: 1 } }
-            };
-            model = new MongooseCrudModel(Entry);
-            const result = await model.getAll({ page: 0, size: 20 }, permissions);
-            expect(result.length).to.equal(12);
-            const entry = result[0];
-            expect(entry.nested).to.be.ok;
-            expect(entry.nested.counter).to.be.ok;
-            expect(entry.nested.string).not.to.be.ok;
-            expect(entry.nested.deepNested).to.be.ok;
-            expect(entry.nested.deepNested.length).to.equal(1);
-            expect(entry.nested.deepNested[0].counter).to.be.ok;
-            expect(entry.nested.deepNested[0].string).not.to.be.ok;
+        it("Population", async () => {
+            model = new MongooseCrudModel(Entry, { populate: { path: "nested", select: { counter: 1 } } });
+            const result = await model.getAll({ page: 0, size: 20 });
+            expect(result[0].nested).to.be.ok;
+            expect(result[0].nested.counter).to.equal(0);
+            expect(result[0].nested.string).not.to.be.ok;
         });
 
     });
@@ -164,12 +140,6 @@ describe("Mongoose crud model tests", () => {
             const permissions = { filter: { counter: 3 } };
             const result = await model.count({ counter: 5 }, permissions);
             expect(result).to.equal(0);
-        });
-
-        it("Count with filter and master read", async () => {
-            const permissions = { filter: { counter: 0 }, read: true };
-            const result = await model.count({ }, permissions);
-            expect(result).to.equal(10);
         });
 
     });
@@ -246,12 +216,6 @@ describe("Mongoose crud model tests", () => {
             expect(result.date).not.to.be.ok;
         });
 
-        it("Get single entry with filter and read permission", async () => {
-            const permissions = { filter: { counter: 0 }, read: true };
-            const result = await model.getOne({ id: prepopulated[5]._id }, permissions);
-            expect(result).to.be.ok;
-        });
-
         it("Get single entry with getOne fields permission", async () => {
             const permissions = { getOneFields: { "date": 0 } };
             const result = await model.getOne({ id: prepopulated[1]._id }, permissions);
@@ -321,15 +285,6 @@ describe("Mongoose crud model tests", () => {
             expect(saved.string).to.equal("5");
         });
 
-        it("Update with filter and granted update permission", async () => {
-            const permission = { filter: { counter: 5 }, update: true };
-            const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
-            expect(result).to.be.ok;
-            const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
-            expect(saved.counter).to.equal(10);
-            expect(saved.string).to.equal("5");
-        });
-
     });
 
     describe("Delete one", () => {
@@ -372,14 +327,6 @@ describe("Mongoose crud model tests", () => {
             expect(result).to.be.ok;
             expect(result.counter).not.to.be.ok;
             expect(result.string).to.be.ok;
-            const deleted = await Entry.findOne({ _id: instance._id });
-            expect(deleted).not.to.be.ok;
-        });
-
-        it("Delete with filter and granted delete", async () => {
-            const permission = { filter: { counter: 1 }, delete: true };
-            const result = await model.deleteOne({ id: instance._id }, permission);
-            expect(result).to.be.ok;
             const deleted = await Entry.findOne({ _id: instance._id });
             expect(deleted).not.to.be.ok;
         });
