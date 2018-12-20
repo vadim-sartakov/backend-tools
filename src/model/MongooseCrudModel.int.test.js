@@ -197,21 +197,13 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Get single entry with filter to prohibited entry", async () => {
-            const permissions = { filter: { counter: 0 } };
+            const permissions = { read: { filter: { counter: 0 } } };
             const result = await model.getOne({ id: prepopulated[5]._id }, permissions);
             expect(result).not.to.be.ok;
         });
 
         it("Get single entry with filter to allowed entry and fields permissions", async () => {
-            const permissions = { filter: { counter: 1 }, readFields: { "date": 0 } };
-            const result = await model.getOne({ id: prepopulated[1]._id }, permissions);
-            expect(result).to.be.ok;
-            expect(result.counter).to.be.ok;
-            expect(result.date).not.to.be.ok;
-        });
-
-        it("Get single entry with getOne fields permission", async () => {
-            const permissions = { getOneFields: { "date": 0 } };
+            const permissions = { read: { filter: { counter: 1 }, projection: { "date": 0 } } };
             const result = await model.getOne({ id: prepopulated[1]._id }, permissions);
             expect(result).to.be.ok;
             expect(result.counter).to.be.ok;
@@ -242,7 +234,7 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Update denied with permission filter to denied entry", async () => {
-            const permission = { filter: { counter: 5 } };
+            const permission = { read: { filter: { counter: 5 } } };
             const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
             expect(result).not.to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
@@ -251,7 +243,7 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Update denied with permission filter to allowed entry", async () => {
-            const permission = { filter: { counter: 0 } };
+            const permission = { read: { filter: { counter: 0 } } };
             const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
             expect(result).to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
@@ -260,20 +252,18 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Update with exclusive fields modify and read permission", async () => {
-            const permission = { readFields: { counter: 0 }, modifyFields: { string: 0 } };
+            const permission = { update: { projection: { string: 0 } } };
             const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
-            expect(result.counter).not.to.be.ok;
-            expect(result.string).to.equal("0");
+            expect(result.counter).to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
             expect(saved.counter).to.equal(10);
             expect(saved.string).to.equal("0");
         });
 
         it("Update with inclusive fields modify and read permission", async () => {
-            const permission = { readFields: { counter: 1 }, modifyFields: { string: 1 } };
+            const permission = { update: { projection: { string: 1 } } };
             const result = await model.updateOne({ id: instances[0]._id }, { counter: 10, string: "5" }, permission);
-            expect(result.counter).to.equal(0);
-            expect(result.string).not.to.be.ok;
+            expect(result).to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
             expect(saved.counter).to.equal(0);
             expect(saved.string).to.equal("5");
@@ -300,7 +290,7 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Delete denied entry", async () => {
-            const permission = { filter: { counter: 10 } };
+            const permission = { read: { filter: { counter: 10 } } };
             const result = await model.deleteOne({ id: instance._id }, permission);
             expect(result).not.to.be.ok;
             const deleted = await Entry.findOne({ _id: instance._id });

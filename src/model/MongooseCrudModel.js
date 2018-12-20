@@ -1,5 +1,7 @@
 import { filterObject } from "shared-tools";
 
+const defaultPermissions = { create: { }, read: { }, update: { }, delete: { } };
+
 class MongooseCrudModel {
 
     constructor(Model, opts = {}) {
@@ -26,7 +28,8 @@ class MongooseCrudModel {
         return resultFilter;
     }
 
-    async getAll({ page, size, filter, sort }, permissions = { read: { } }) {
+    async getAll({ page, size, filter, sort }, permissions) {
+        permissions = { ...defaultPermissions, ...permissions };
         const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
         const getAllQuery = this.Model.find()
             .skip(page * size)
@@ -41,7 +44,8 @@ class MongooseCrudModel {
         return await getAllQuery.exec();
     }
 
-    async count(filter, permissions = { read: { } }) {
+    async count(filter, permissions) {
+        permissions = { ...defaultPermissions, ...permissions };
         const { read: { filter: permissionFilter } } = permissions;
         const countQuery = this.Model.count();
         const resultFilter = this.getResultFilter(filter, permissionFilter);
@@ -49,7 +53,8 @@ class MongooseCrudModel {
         return await countQuery.exec();
     }
 
-    async addOne(payload, permissions = { update: { } }) {
+    async addOne(payload, permissions) {
+        permissions = { ...defaultPermissions, ...permissions };
         const { update: { projection } } = permissions;
         if (projection) payload = filterObject(payload, projection);
         const doc = new this.Model(payload);
@@ -57,12 +62,12 @@ class MongooseCrudModel {
         return saved.toObject();
     }
 
-    async getOne(filter, permissions = { }) {
+    async getOne(filter, permissions) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, fields, readFields, getOneFields } = permissions;
+        permissions = { ...defaultPermissions, ...permissions };
+        const { read: { filter: permissionFilter, projection } } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         const query = this.Model.findOne(resultFilter);
-        const projection = fields || readFields || getOneFields;
         if (projection) query.select(projection);
         query.setOptions({ lean: true });
         return await query.exec();
@@ -78,26 +83,25 @@ class MongooseCrudModel {
         return result;
     }
 
-    async updateOne(filter, payload, permissions = { }) {
+    async updateOne(filter, payload, permissions) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, fields, readFields, modifyFields } = permissions;
+        permissions = { ...defaultPermissions, ...permissions };
+        const { read: { filter: permissionFilter }, update: { projection } } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
-        const modifyProjection = fields || modifyFields;
-        const readProjection = fields || readFields;
-        const initialObject = modifyProjection && await this.Model.findOne(resultFilter).lean();
-        payload = ( modifyProjection && filterObject(payload, modifyProjection, initialObject) ) || payload;
-        let updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
-        if (readProjection) updated = filterObject(updated, readProjection);
+        if (projection) {
+            const initialObject = await this.Model.findOne(resultFilter).lean();
+            payload = filterObject(payload, projection, initialObject);
+        }
+        const updated = await this.Model.findOneAndUpdate(resultFilter, payload, { new: true, lean: true });
         return updated;
     }
 
-    async deleteOne(filter, permissions = { }) {
+    async deleteOne(filter, permissions) {
         filter = this.convertFitlerId(filter);
-        const { filter: permissionFilter, fields, readFields } = permissions;
+        permissions = { ...defaultPermissions, ...permissions };
+        const { read: { filter: permissionFilter } } = permissions;
         const resultFilter = this.getResultFilter(filter, permissionFilter);
         let deleted = await this.Model.findOneAndDelete(resultFilter).lean();
-        const projection = fields || readFields;
-        if (projection) deleted = filterObject(deleted, projection);
         return deleted;
     }
 
