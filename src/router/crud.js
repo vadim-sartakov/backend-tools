@@ -65,7 +65,9 @@ const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 const createAddOne = Model => asyncMiddleware(async (req, res) => {
     const { permissions } = res.locals;
     let instance = await Model.addOne(req.body, permissions);
-    res.status(201).location(getLocation(req, instance.id)).json(instance);
+    const id = instance._id || instance.id;
+    instance = await Model.getOne({ id }, permissions);
+    res.status(201).location(getLocation(req, instance._id || instance.id)).json(instance);
 });
 
 const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
@@ -74,16 +76,25 @@ const createGetOne = Model => asyncMiddleware(async (req, res, next) => {
     instance ? res.json(instance) : next();
 });
 
+const returnInstanceOrContinue = async (Model, instance, id, res, next) => {
+    if (instance) {
+        instance = await Model.getOne({ id }, permissions);
+        res.json(instance);
+    } else {
+        next();
+    }
+};
+
 const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
-    const instance = await Model.updateOne({ id: req.params.id }, req.body, permissions);
-    return instance ? res.json(instance) : next();
+    let instance = await Model.updateOne({ id: req.params.id }, req.body, permissions);
+    returnInstanceOrContinue(Model, instance, req.params.id, res, next);
 });
 
 const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
-    const instance = await Model.deleteOne({ id: req.params.id }, permissions);
-    return instance ? res.status(204).send() : next();
+    let instance = await Model.deleteOne({ id: req.params.id }, permissions);
+    returnInstanceOrContinue(Model, instance, req.params.id, res, next);
 });
 
 export default crudRouter;

@@ -130,13 +130,13 @@ describe("Crud router", () => {
 
         it("Add new user", async () => {
             const instance = { id: "0" };
-            const { model, app } = initialize({ addOneResult: instance });
+            const { model, app } = initialize({ addOneResult: instance, getOneResult: { ...instance, created: true } });
             const getIdFromLocation = location => {
                 const regex = /.+\/(.+)/g;
                 const id = regex.exec(location)[1];
                 return id;
             };
-            const res = await request(app).post("/").send(instance).expect(201, instance);
+            const res = await request(app).post("/").send(instance).expect(201, { ...instance, created: true });
             const id = getIdFromLocation(res.headers.location);
             expect(id).to.equal(instance.id);
             expect(model.addOne).to.have.been.calledWith(instance, undefined);
@@ -172,8 +172,8 @@ describe("Crud router", () => {
 
         it("Update user", async () => {      
             const instance = { firstName: "Steve" };
-            const { model, app } = initialize({ updateOneResult: instance });
-            await request(app).put("/0").send(instance).expect(200, instance);
+            const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } });
+            await request(app).put("/0").send(instance).expect(200, { ...instance, updated: true });
             expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
         });
 
@@ -189,8 +189,8 @@ describe("Crud router", () => {
 
         it("Delete user", async () => {
             const instance = { firstName: "Steve" };
-            const { model, app } = initialize({ deleteOneResult: instance });
-            await request(app).delete("/0").expect(204);
+            const { model, app } = initialize({ deleteOneResult: instance, getOneResult: { ...instance, deleted: true } });
+            await request(app).delete("/0").expect(200, { ...instance, deleted: true });
             expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);   
         });
 
