@@ -88,7 +88,7 @@ request(app).get("/").expect(500, { message: "Failure" })
 
 ### Crud router
 Creates CRUD Express `Route` object which is ready to bind to your app.
-Model wrapper should be passed to the router constructor. There is default implementation `MongooseCrudModel` for `MongoDB`
+Model wrapper should be passed to the router constructor.
 
 Each model method has `permissions` parameter. It is the object of `getPermissions` function of `shared-tools` package and it's not required.
 Model should have following methods:
@@ -105,7 +105,19 @@ Model should have following methods:
 Crud controller integrated with `security` and `validation` middlewares.
 Just provide required schemas to the crud controller constructor.
 
-##### Example
+### Mongo crud model
+The default implementation for `MongoDB` is mongoose-based class `MongooseCrudModel`. Excerpt projection and default populatable fields could specified in constructor options.
+```javascript
+const Model = mongoose.model("Model");
+const options = {
+    excerptProjection: { field: 1 },
+    // Key is path and value is projection
+    populate: { user: { firstName: 1, lastName: 1 } }
+};
+const model = new MongooseCrudModel(Model, options);
+```
+
+##### Full example
 
 ```javascript
 import express from "express";
@@ -116,12 +128,12 @@ const userSchema = new Schema({ firstName: String, lastName: String });
 User = mongoose.model("User", userSchema);
 
 const model = new MongooseCrudModel(User);
-const options = {
+const routerOptions = {
     securitySchema: { /*...*/ },
     validationSchema: { /*...*/ }
 };
 
-const Route = crudRouter(model, options);
+const Route = crudRouter(model, routerOptions);
 
 const app = express();
 app.use("/users", Route);
