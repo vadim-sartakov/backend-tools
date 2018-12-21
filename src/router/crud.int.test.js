@@ -217,6 +217,18 @@ describe("Crud router", () => {
             await request(app).put("/1").send({ firstName: "_=*" }).expect(400);
         });
 
+        it("No triggered validation on get", async () => {
+            const validationSchema = { firstName: { format: /\w+/ } };
+            const { app } = initialize({ getOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
+            await request(app).get("/1").send({ firstName: "_=*" }).expect(200);
+        });
+
+        it("Triggered validation on post", async () => {
+            const validationSchema = { firstName: { format: /\w+/ } };
+            const { app } = initialize({ addOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
+            await request(app).post("/").send({ firstName: "_=*" }).expect(400);
+        });
+
     });
 
 });

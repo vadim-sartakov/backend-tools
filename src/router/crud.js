@@ -8,9 +8,8 @@ const defaultOptions = {
     defaultPageSize: 20
 };
 
-const createMiddlewareChain = (createMiddleware, Model, options) => {
-    const { securitySchema, validationSchema } = options;
-    const crudMiddleware = createMiddleware(Model, options);
+const createMiddlewareChain = (createMiddleware, Model, crudOptions, securitySchema, validationSchema) => {
+    const crudMiddleware = createMiddleware(Model, crudOptions);
     const chain = [];
     if (securitySchema) chain.push(security(securitySchema));
     if (validationSchema) chain.push(validator(validationSchema));
@@ -22,12 +21,13 @@ const crudRouter = (Model, options) => {
     options = { ...defaultOptions, ...options };
     const router = Router();
     const rootRouter = router.route("/");
-    !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, options));
-    !options.disableAddOne && rootRouter.post(createMiddlewareChain(createAddOne, Model, options));
+    const { securitySchema, validationSchema, ...crudOptions } = options;
+    !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, crudOptions, securitySchema));
+    !options.disableAddOne && rootRouter.post(createMiddlewareChain(createAddOne, Model, crudOptions, securitySchema, validationSchema));
     const idRouter = router.route("/:id");
-    !options.disableGetOne && idRouter.get(createMiddlewareChain(createGetOne, Model, options));
-    !options.disableUpdateOne && idRouter.put(createMiddlewareChain(createUpdateOne, Model, options));
-    !options.disableDeleteOne && idRouter.delete(createMiddlewareChain(createDeleteOne, Model, options));
+    !options.disableGetOne && idRouter.get(createMiddlewareChain(createGetOne, Model, crudOptions, securitySchema));
+    !options.disableUpdateOne && idRouter.put(createMiddlewareChain(createUpdateOne, Model, crudOptions, securitySchema, validationSchema));
+    !options.disableDeleteOne && idRouter.delete(createMiddlewareChain(createDeleteOne, Model, crudOptions, securitySchema));
     return router;
 };
 
