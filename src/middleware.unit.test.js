@@ -1,4 +1,4 @@
-import { security, validator } from "./middleware";
+import { security, validator, unauthorized } from "./middleware";
 import chai, { expect } from "chai";
 import sinonChai from "sinon-chai";
 import { fake } from "sinon";
@@ -87,6 +87,30 @@ describe("Middleware", () => {
             middleware({ body: { } }, res, next);
             expect(res.status).to.have.been.calledWith(400);
             expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: ["Field can't be blank"] });
+            expect(next).to.not.have.been.called;
+        });
+
+    });
+
+    describe("Unauthorized", () => {
+
+        it("Success", () => {
+            const next = fake();
+            const middleware = unauthorized();
+            const res = new StubResponse({});
+            middleware({}, res, next);
+            expect(res.status).to.not.have.been.called;
+            expect(res.json).to.not.have.been.called;
+            expect(next).to.have.been.called;
+        });
+
+        it("Fail", () => {
+            const next = fake();
+            const middleware = unauthorized();
+            const res = new StubResponse();
+            middleware({}, res, next);
+            expect(res.status).to.have.been.calledWith(401);
+            expect(res.json).to.have.been.calledWith({ message: "Unathorized" });
             expect(next).to.not.have.been.called;
         });
 

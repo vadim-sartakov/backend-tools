@@ -68,6 +68,9 @@ commonMiddlewares === [
 ];
 ```
 
+#### Unauthorized
+Checks current user in `res.locals.user`. If there is no any, throws `401` error with `{ message: "Unathorized" }`
+
 #### Not found
 Basic json response of status `404` and body `{ message: "Not found" }`. Should be placed in the end of the middleware chain. Logger could be passed to constructor. It should have `warn` method. Logger from current library can be used.
 ```javascript

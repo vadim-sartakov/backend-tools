@@ -26,7 +26,7 @@ export const internalError = logger => (err, req, res, next) => { // eslint-disa
  * Resulted filter stored in "res.locals.permissions" parameter
  * @param {Object} schema
  */
-export const security = schema => (req, res, next) => {
+export const security = (schema, logger) => (req, res, next) => {
     const { user } = res.locals;
     const permissions = getPermissions(
         user,
@@ -43,6 +43,7 @@ export const security = schema => (req, res, next) => {
             ( method === "DELETE" && !permissions.delete )) {
         res.status(403);
         res.json({ message: "Access is denied" });
+        logger && logger.warn("Access denied for %s to %s", req.ip, req.originalUrl);
         return;
     }
     res.locals.permissions = permissions;
@@ -56,4 +57,11 @@ export const validator = (constraints, opts) => (req, res, next) => {
         return res.json({ message: "Validation failed", errors });
     }
     next();
+};
+
+export const unauthorized = logger => (req, res, next) => {
+    if (res.locals.user) return next();
+    logger && logger.warn("Unauthorized access from %s to %s", req.ip, req.originalUrl);
+    res.status(401);
+    res.json({ message: "Unathorized" });
 };
