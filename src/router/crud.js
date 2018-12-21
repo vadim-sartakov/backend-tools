@@ -10,8 +10,9 @@ const defaultOptions = {
 
 const createMiddlewareChain = (createMiddleware, Model, crudOptions, securitySchema, validationSchema) => {
     const crudMiddleware = createMiddleware(Model, crudOptions);
+    const { logger } = crudOptions;
     const chain = [];
-    if (securitySchema) chain.push(security(securitySchema));
+    if (securitySchema) chain.push(security(securitySchema, logger));
     if (validationSchema) chain.push(validator(validationSchema));
     chain.push(crudMiddleware);
     return chain;
@@ -93,8 +94,8 @@ const createUpdateOne = Model => asyncMiddleware(async (req, res, next) => {
 
 const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
     const { permissions } = res.locals;
-    let instance = await Model.deleteOne({ id: req.params.id }, permissions);
-    await returnInstanceOrContinue(Model, instance, req, res, next);
+    const instance = await Model.deleteOne({ id: req.params.id }, permissions);
+    return instance ? res.status(204).end() : next();
 });
 
 export default crudRouter;

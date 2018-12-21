@@ -189,9 +189,9 @@ describe("Crud router", () => {
 
         it("Delete user", async () => {
             const instance = { firstName: "Steve" };
-            const { model, app } = initialize({ deleteOneResult: instance, getOneResult: { ...instance, deleted: true } });
-            await request(app).delete("/0").expect(200, { ...instance, deleted: true });
-            expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);   
+            const { model, app } = initialize({ deleteOneResult: instance });
+            await request(app).delete("/0").expect(204);
+            expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);
         });
 
     });
