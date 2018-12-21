@@ -49,7 +49,12 @@ request(app).delete("/secured").expect(403, { message: "Access is denied" });
 Uses `validate.js` package to check data validity against constraints
 ```javascript
 const constraints = { field: { presence: true } };
-const options = { };
+const options = {
+    // Custom validators may be specified on 'validators' key
+    validators: { custom: (value, options, key, attributes) => "is wrong" },
+    // validate.js options goes here
+    { format: "flat" }
+};
 app.post("/resource", validator(constraints, options));
 request(app).post("/resource").send({}).expect(403, {
     message: "Validation failed",

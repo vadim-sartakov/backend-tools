@@ -8,12 +8,12 @@ const defaultOptions = {
     defaultPageSize: 20
 };
 
-const createMiddlewareChain = (createMiddleware, Model, crudOptions, securitySchema, validationSchema) => {
-    const crudMiddleware = createMiddleware(Model, crudOptions);
-    const { logger } = crudOptions;
+const createMiddlewareChain = (createMiddleware, Model, options, applyValidator) => {
+    const crudMiddleware = createMiddleware(Model, options);
+    const { securitySchema, validationSchema, validators, logger } = options;
     const chain = [];
     if (securitySchema) chain.push(security(securitySchema, logger));
-    if (validationSchema) chain.push(validator(validationSchema));
+    if (applyValidator && validationSchema) chain.push(validator(validationSchema, { validators }));
     chain.push(crudMiddleware);
     return chain;
 };
@@ -22,13 +22,12 @@ const crudRouter = (Model, options) => {
     options = { ...defaultOptions, ...options };
     const router = Router();
     const rootRouter = router.route("/");
-    const { securitySchema, validationSchema, ...crudOptions } = options;
-    !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, crudOptions, securitySchema));
-    !options.disableAddOne && rootRouter.post(createMiddlewareChain(createAddOne, Model, crudOptions, securitySchema, validationSchema));
+    !options.disableGetAll && rootRouter.get(createMiddlewareChain(createGetAll, Model, options));
+    !options.disableAddOne && rootRouter.post(createMiddlewareChain(createAddOne, Model, options, true));
     const idRouter = router.route("/:id");
-    !options.disableGetOne && idRouter.get(createMiddlewareChain(createGetOne, Model, crudOptions, securitySchema));
-    !options.disableUpdateOne && idRouter.put(createMiddlewareChain(createUpdateOne, Model, crudOptions, securitySchema, validationSchema));
-    !options.disableDeleteOne && idRouter.delete(createMiddlewareChain(createDeleteOne, Model, crudOptions, securitySchema));
+    !options.disableGetOne && idRouter.get(createMiddlewareChain(createGetOne, Model, options));
+    !options.disableUpdateOne && idRouter.put(createMiddlewareChain(createUpdateOne, Model, options, true));
+    !options.disableDeleteOne && idRouter.delete(createMiddlewareChain(createDeleteOne, Model, options));
     return router;
 };
 

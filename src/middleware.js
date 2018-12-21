@@ -50,7 +50,10 @@ export const security = (schema, logger) => (req, res, next) => {
     next();
 };
 
-export const validator = (constraints, opts) => (req, res, next) => {
+export const validator = (constraints, opts = {}) => (req, res, next) => {
+    const { validators } = opts;
+    validators && Object.keys(validators)
+            .forEach(validator => validate.validators[validator] = validators[validator]);
     const errors = validate(req.body, constraints, opts);
     if (errors) {
         res.status(400);

@@ -229,6 +229,13 @@ describe("Crud router", () => {
             await request(app).post("/").send({ firstName: "_=*" }).expect(400);
         });
 
+        it("Custom validator", async () => {
+            const custom = () => "is wrong";
+            const validationSchema = { firstName: { custom: true } };
+            const { app } = initialize({ addOneResult: { firstName: "Steve" } }, { validationSchema, validators: { custom } }, { roles: ["USER"] });
+            await request(app).post("/").send({ firstName: "Bill" }).expect(400);
+        });
+
     });
 
 });
