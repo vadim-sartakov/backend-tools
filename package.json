@@ -23,7 +23,7 @@
     "flat": "^4.1.0",
     "helmet": "^3.15.0",
     "http-link-header": "^0.8.0",
-    "shared-tools": "git+https://github.com/vadim-sartakov/shared-tools.git#0.0.2",
+    "shared-tools": "git+https://github.com/vadim-sartakov/shared-tools.git#master",
     "validate.js": "^0.12.0",
     "winston": "^3.1.0"
   },
