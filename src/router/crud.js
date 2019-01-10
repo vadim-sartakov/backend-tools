@@ -10,10 +10,10 @@ const defaultOptions = {
 
 const createMiddlewareChain = (createMiddleware, Model, options, applyValidator) => {
     const crudMiddleware = createMiddleware(Model, options);
-    const { securitySchema, validationSchema, validators, logger } = options;
+    const { securitySchema, validationSchema, logger } = options;
     const chain = [];
     if (securitySchema) chain.push(security(securitySchema, logger));
-    if (applyValidator && validationSchema) chain.push(validator(validationSchema, { validators }));
+    if (applyValidator && validationSchema) chain.push(validator(validationSchema));
     chain.push(crudMiddleware);
     return chain;
 };

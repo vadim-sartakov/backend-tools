@@ -1,7 +1,7 @@
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
-import validate from "validate.js";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
+import bodyParser from "body-parser";
+import { validate } from "shared-tools";
 import { getPermissions } from "shared-tools";
 
 export const commonMiddlewares = [
@@ -50,11 +50,8 @@ export const security = (schema, logger) => (req, res, next) => {
     next();
 };
 
-export const validator = (constraints, opts = {}) => (req, res, next) => {
-    const { validators } = opts;
-    validators && Object.keys(validators)
-            .forEach(validator => validate.validators[validator] = validators[validator]);
-    const errors = validate(req.body, constraints, opts);
+export const validator = constraints => (req, res, next) => {
+    const errors = validate(req.body, constraints);
     if (errors) {
         res.status(400);
         return res.json({ message: "Validation failed", errors });

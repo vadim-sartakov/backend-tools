@@ -69,7 +69,7 @@ describe("Middleware", () => {
         const validationErrorPart = { message: "Validation failed" };
 
         it("Success", () => {
-            const constraints = { field: { presence: true } };
+            const constraints = { field: () => undefined };
             const next = fake();
             const middleware = validator(constraints);
             const res = new StubResponse({});
@@ -79,26 +79,14 @@ describe("Middleware", () => {
             expect(next).to.have.been.called;
         });
 
-        it("Fail with options", () => {
-            const constraints = { field: { presence: true } };
+        it("Fail", () => {
+            const constraints = { field: () => "Error" };
             const next = fake();
-            const middleware = validator(constraints, { format: "flat" });
+            const middleware = validator(constraints);
             const res = new StubResponse({});
             middleware({ body: { } }, res, next);
             expect(res.status).to.have.been.calledWith(400);
-            expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: ["Field can't be blank"] });
-            expect(next).to.not.have.been.called;
-        });
-
-        it("Fail with custom validator", () => {
-            const constraints = { field: { custom: true } };
-            const custom = () => "is wrong";
-            const next = fake();
-            const middleware = validator(constraints, { format: "flat", validators: { custom } });
-            const res = new StubResponse({});
-            middleware({ body: { } }, res, next);
-            expect(res.status).to.have.been.calledWith(400);
-            expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: ["Field is wrong"] });
+            expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: { "field": "Error" } });
             expect(next).to.not.have.been.called;
         });
 

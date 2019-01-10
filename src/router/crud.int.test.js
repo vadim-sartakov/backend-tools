@@ -212,27 +212,20 @@ describe("Crud router", () => {
 
         it("Allowed update with validation fail", async () => {
             const securitySchema = { "USER": { update: true } };
-            const validationSchema = { firstName: { format: /\w+/ } };
+            const validationSchema = { firstName: () => "Error" };
             const { app } = initialize({ updateOneResult: { firstName: "Steve" } }, { securitySchema, validationSchema }, { roles: ["USER"] });
-            await request(app).put("/1").send({ firstName: "_=*" }).expect(400);
+            await request(app).put("/1").send({ firstName: "Bill" }).expect(400);
         });
 
         it("No triggered validation on get", async () => {
-            const validationSchema = { firstName: { format: /\w+/ } };
+            const validationSchema = { firstName: () => undefined };
             const { app } = initialize({ getOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
-            await request(app).get("/1").send({ firstName: "_=*" }).expect(200);
+            await request(app).get("/1").send({ firstName: "Bill*" }).expect(200);
         });
 
         it("Triggered validation on post", async () => {
-            const validationSchema = { firstName: { format: /\w+/ } };
+            const validationSchema = { firstName: () => "Error" };
             const { app } = initialize({ addOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
-            await request(app).post("/").send({ firstName: "_=*" }).expect(400);
-        });
-
-        it("Custom validator", async () => {
-            const custom = () => "is wrong";
-            const validationSchema = { firstName: { custom: true } };
-            const { app } = initialize({ addOneResult: { firstName: "Steve" } }, { validationSchema, validators: { custom } }, { roles: ["USER"] });
             await request(app).post("/").send({ firstName: "Bill" }).expect(400);
         });
 
