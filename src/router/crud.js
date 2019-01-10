@@ -37,6 +37,17 @@ const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
     const { permissions } = res.locals;
 
     let { page, size, filter, sort } = req.query;
+
+    if (filter) {
+        try {
+            filter = JSON.parse(filter);
+        } catch(err) { } // eslint-disable-line no-empty
+    }
+    if (sort) {
+        try {
+            sort = JSON.parse(sort);
+        } catch(err) { } // eslint-disable-line no-empty
+    }
     // Converting to number by multiplying by 1
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
