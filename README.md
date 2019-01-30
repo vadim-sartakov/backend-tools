@@ -114,7 +114,10 @@ const Model = mongoose.model("Model");
 const options = {
     excerptProjection: { field: 1 },
     // Key is path and value is projection
-    populate: { user: { firstName: 1, lastName: 1 } }
+    populate: { user: { firstName: 1, lastName: 1 } },
+    // If filter contains 'search' filter, then this function is used
+    // to transform query
+    search: query => ({ email: new RegExp(`/.*${query}.*/`, 'i') })
 };
 const model = new MongooseCrudModel(Model, options);
 ```

@@ -33,7 +33,7 @@ const crudRouter = (Model, options) => {
 
 const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
-    const { defaultPageSize } = options;
+    const { defaultPageSize, search } = options;
     const { permissions } = res.locals;
 
     let { page, size, filter, sort } = req.query;
@@ -51,6 +51,11 @@ const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
     // Converting to number by multiplying by 1
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
+
+    if (filter && filter.search && search) {
+        Object.assign(filter, search(filter.search));
+        delete filter.search;
+    }
 
     const result = await Model.getAll({ page, size, filter, sort }, permissions);
     let totalCount = await Model.count(filter, undefined);

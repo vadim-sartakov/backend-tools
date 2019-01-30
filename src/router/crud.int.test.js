@@ -124,6 +124,20 @@ describe("Crud router", () => {
             expect(res.body.length).to.equal(1);
         });
 
+        it("With search filter", async () => {
+            const search = query => ({ email: new RegExp(`/.*${query}.*/`, 'i') });
+            const { model, app } = initialize({ getAllResult: getBulkResult(20), countResult: 50 }, { search });
+            const filter = { search: 'string' };
+            const res = await request(app).get("/")
+                    .query(qs.stringify({ filter }))
+                    .expect(200);
+            const expectedFilter = { email: new RegExp(`/.*string.*/`, 'i') };
+            expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: expectedFilter, sort: undefined }, undefined);
+            expect(model.count).to.have.been.calledWith(expectedFilter, undefined);
+            expect(res.get("X-Total-Count")).to.equal("50");
+            expect(res.body.length).to.equal(20);
+        });
+
     });
 
     describe("Add one", () => {
