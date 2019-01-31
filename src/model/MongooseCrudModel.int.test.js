@@ -15,7 +15,7 @@ describe("Mongoose crud model tests", () => {
     let Nested, Entry, connection, model;
 
     before(async () => {
-        connection = await mongoose.createConnection(process.env.DB_URL, { useNewUrlParser: true });
+        connection = await mongoose.createConnection(process.env.MONGO_DB_URL, { useNewUrlParser: true });
         Nested = connection.model("Nested", nestedSchema);
         Entry = connection.model("Entry", entrySchema);
         model = new MongooseCrudModel(Entry);
