@@ -114,7 +114,7 @@ describe("Mongoose crud model tests", () => {
         });
 
         it("Search single field", async () => {
-            model = new MongooseCrudModel(Entry, { search: "string" });
+            model = new MongooseCrudModel(Entry, { searchFields: "string" });
             let result = await model.getAll({ page: 0, size: 20, filter: { search: "tring 5" } });
             expect(result.length).to.equal(1);
             result = await model.getAll({ page: 0, size: 20, filter: { search: "String" } });
