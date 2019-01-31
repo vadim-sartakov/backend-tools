@@ -52,11 +52,6 @@ const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
     page = (page && page * 1) || 0;
     size = (size && size * 1) || defaultPageSize;
 
-    if (filter && filter.search && search) {
-        Object.assign(filter, search(filter.search));
-        delete filter.search;
-    }
-
     const result = await Model.getAll({ page, size, filter, sort }, permissions);
     let totalCount = await Model.count(filter, undefined);
     

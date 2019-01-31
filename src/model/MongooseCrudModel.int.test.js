@@ -32,12 +32,12 @@ describe("Mongoose crud model tests", () => {
     };
 
     const populateDatabase = async entryCount => {
-        const nested = new Nested({ counter: 0, string: "Nested field" });
-        await nested.save();
         let date = new Date();
         for (let counter = 0; counter < entryCount; counter++) {
             date = new Date(date);
-            await new Entry({ counter, date, string: counter, nested }).save();
+            const nested = new Nested({ counter, string: "Nested field " + counter });
+            await nested.save();
+            await new Entry({ counter, date, string: "String " + counter, nested }).save();
         }
     };
 
@@ -111,6 +111,14 @@ describe("Mongoose crud model tests", () => {
             expect(result[0].nested).to.be.ok;
             expect(result[0].nested.counter).to.equal(0);
             expect(result[0].nested.string).not.to.be.ok;
+        });
+
+        it("Search single field", async () => {
+            model = new MongooseCrudModel(Entry, { search: "string" });
+            let result = await model.getAll({ page: 0, size: 20, filter: { search: "tring 5" } });
+            expect(result.length).to.equal(1);
+            result = await model.getAll({ page: 0, size: 20, filter: { search: "String" } });
+            expect(result.length).to.equal(12);
         });
 
     });
@@ -214,7 +222,7 @@ describe("Mongoose crud model tests", () => {
             model = new MongooseCrudModel(Entry, { populate: { nested: "counter" } });
             const result = await model.getOne({ id: prepopulated[1]._id });
             expect(result.nested).to.be.ok;
-            expect(result.nested.counter).to.equal(0);
+            expect(result.nested.counter).to.equal(1);
             expect(result.nested.string).not.to.be.ok;
         });
 
@@ -247,7 +255,7 @@ describe("Mongoose crud model tests", () => {
             expect(result).not.to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
             expect(saved.counter).to.equal(0);
-            expect(saved.string).to.equal("0");
+            expect(saved.string).to.equal("String 0");
         });
 
         it("Update denied with permission filter to allowed entry", async () => {
@@ -265,7 +273,7 @@ describe("Mongoose crud model tests", () => {
             expect(result.counter).to.be.ok;
             const saved = await Entry.findOne({ _id: instances[0]._id }).lean();
             expect(saved.counter).to.equal(10);
-            expect(saved.string).to.equal("0");
+            expect(saved.string).to.equal("String 0");
         });
 
         it("Update with inclusive fields modify and read permission", async () => {

@@ -115,9 +115,8 @@ const options = {
     excerptProjection: { field: 1 },
     // Key is path and value is projection
     populate: { user: { firstName: 1, lastName: 1 } },
-    // If filter contains 'search' filter, then this function is used
-    // to transform query
-    search: query => ({ email: new RegExp(`/.*${query}.*/`, 'i') })
+    // If query filter contains 'search' filter property, then following fields will be used during full-text search. 
+    search: "email"
 };
 const model = new MongooseCrudModel(Model, options);
 ```

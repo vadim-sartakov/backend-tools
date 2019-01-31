@@ -5,13 +5,22 @@ const defaultPermissions = { create: { }, read: { }, update: { }, delete: { } };
 class MongooseCrudModel {
 
     constructor(Model, opts = {}) {
-        const { excerptProjection, populate } = opts;
+        const { excerptProjection, populate, search } = opts;
         this.Model = Model;
         this.excerptProjection = excerptProjection;
         this.populate = populate;
+        this.search = search;
     }
 
     getResultFilter(queryFilter, permissionFilter) {
+        if (queryFilter && queryFilter.search && this.search) {
+            let search = Array.isArray(this.search) ? this.search : [this.search];
+            search = search.map(searchField => {
+                return { [searchField]: new RegExp(`.*${queryFilter.search}.*`, 'i') };
+            });
+            delete queryFilter.search;
+            Object.assign(queryFilter, { $or: [...search] });
+        }
         const filterArray = [];
         if (permissionFilter) filterArray.push(permissionFilter);
         if (queryFilter) filterArray.push(queryFilter);
