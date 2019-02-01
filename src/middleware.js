@@ -1,6 +1,7 @@
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
+import createDebug from "debug";
 import { validate } from "shared-tools";
 import { getPermissions } from "shared-tools";
 
@@ -11,14 +12,20 @@ export const commonMiddlewares = [
     bodyParser.json()
 ];
 
-export const notFound = logger => (req, res) => {
-    logger && logger.warn("%s requested non-existed resource %s", req.ip, req.originalUrl);
-    res.status(404).send({ message: "Not found" });
+export const notFound = () => {
+    const debug = createDebug("middleware:notFound");
+    return (req, res) => {
+        debug("%s requested non-existed resource %s", req.ip, req.originalUrl);
+        res.status(404).send({ message: "Not found" });
+    };
 };
 
-export const internalError = logger => (err, req, res, next) => { // eslint-disable-line no-unused-vars
-    logger && logger.error("%s\n%s", err.message, err.stack);
-    res.status(500).send({ message: "Internal server error" });
+export const internalError = () => {
+    const debug = createDebug("middleware:internalError");
+    return (err, req, res, next) => { // eslint-disable-line no-unused-vars
+        debug("%s\n%s", err.message, err.stack);
+        res.status(500).send({ message: "Internal server error" });
+    };
 };
 
 /**
@@ -59,9 +66,12 @@ export const validator = constraints => (req, res, next) => {
     next();
 };
 
-export const unauthorized = logger => (req, res, next) => {
-    if (res.locals.user) return next();
-    logger && logger.warn("Unauthorized access from %s to %s", req.ip, req.originalUrl);
-    res.status(401);
-    res.json({ message: "Unathorized" });
+export const unauthorized = () => {
+    const debug = createDebug("middleware:unauthorized");
+    return (req, res, next) => {
+        if (res.locals.user) return next();
+        debug("Unauthorized access from %s to %s", req.ip, req.originalUrl);
+        res.status(401);
+        res.json({ message: "Unathorized" });
+    };
 };
