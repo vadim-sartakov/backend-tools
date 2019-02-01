@@ -11,16 +11,17 @@ class SequelizeCrudModel extends CrudModel {
 
   searchFieldsToFilter(search, query) {
       return search.map(searchField => {
-          return { [searchField]: { $iLike: `%${query}%` } };
+          return { [`$${searchField}$`]: { $iLike: `%${query}%` } };
       });
   }
 
-  async execGetAll({ page, size, projection, filter, sort }) {
+  async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
       const params = { limit: size, offset: size * page };
       if (projection) params.attributes = this.convertProjection(projection);
       if (filter) params.where = filter;
       if (sort) params.order = this.convertSort(sort);
-      return await this.Model.findAll(params, { include: this.include });
+      if (this.include) params.include = this.include;
+      return await this.Model.findAll(params);
   }
 
   convertProjection(projection) {
@@ -59,7 +60,7 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execUpdateOne(filter, payload) {
-      return await this.Model.findOneAndUpdate(filter, payload, { new: true, lean: true });;
+      return await this.Model.findOneAndUpdate(filter, payload, { new: true, lean: true });
   }
 
   async execDeleteOne(filter) {

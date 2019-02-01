@@ -62,30 +62,30 @@ describe.only('Sequelize crud model', () => {
 
     it('Paging', async () => {
       const model = new SequelizeCrudModel(Employee);
-      let result = await model.getAll({ page: 0, size: 20 });
+      let result = await model.execGetAll({ page: 0, size: 20 });
       expect(result.length).to.equal(20);    
-      result = await model.getAll({ page: 2, size: 20 });
+      result = await model.execGetAll({ page: 2, size: 20 });
       expect(result.length).to.equal(5);
     });
 
     it('Projection', async () => {
       const model = new SequelizeCrudModel(Employee);
-      let result = await model.getAll({}, { read: { projection: 'id' } });
+      let result = await model.execGetAll({ projection: 'id' });
       expect(result[0].id).to.be.ok;
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.getAll({}, { read: { projection: 'id name' } });
+      result = await model.execGetAll({ projection: 'id name' });
       expect(result[0].id).to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.getAll({}, { read: { projection: '-id' } });
+      result = await model.execGetAll({ projection: '-id' });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).to.be.ok;
 
-      result = await model.getAll({}, { read: { projection: '-id -name' } });
+      result = await model.execGetAll({ projection: '-id -name' });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).to.be.ok;
@@ -94,35 +94,45 @@ describe.only('Sequelize crud model', () => {
 
     it('Filtering', async () => {
       const model = new SequelizeCrudModel(Employee);
-      let result = await model.getAll({ filter: { name: 'Employee 1' } });
+      let result = await model.execGetAll({ filter: { name: 'Employee 1' } });
       expect(result.length).to.equal(1);
-      result = await model.getAll({ filter: { $or: [{ name: 'Employee 1' }, { name: 'Employee 2' }] } });
+      result = await model.execGetAll({ filter: { $or: [{ name: 'Employee 1' }, { name: 'Employee 2' }] } });
       expect(result.length).to.equal(2);
     });
 
     it('Sorting', async () => {
       const model = new SequelizeCrudModel(Employee);
-      let result = await model.getAll({ sort: { id: 1 } });
+      let result = await model.execGetAll({ sort: { id: 1 } });
       expect(result[0].name).to.equal('Employee 0');
       expect(result[result.length - 1].name).to.equal('Employee 19');
 
-      result = await model.getAll({ sort: { id: -1 } });
+      result = await model.execGetAll({ sort: { id: -1 } });
       expect(result[0].name).to.equal('Employee 44');
       expect(result[result.length - 1].name).to.equal('Employee 25');
     });
 
-    /*it('Search', async () => {
-      const result = await Department.findAll({
-        where: {
-          $or: [
-            { "$department.name$": { $like: "%4%" } },
-            { "$employees.name$": { $like: "%10%" } }
-          ]
-        },
-        include: [Address, Employee]
+    it('Search', async () => {
+      const model = new SequelizeCrudModel(Department, {
+        include: [{
+          model: Employee,
+          attributes: ['id', 'name'],
+          // Without this option, malformed query produced
+          duplicating: false
+        }], searchFields: ['department.name', 'employees.name']
       });
-      console.log("%o", JSON.parse(JSON.stringify(result)));
-    });*/
+      let result = await model.getAll({ filter: { search: 'ployee 42' } });
+      expect(result.length).to.equal(1);
+      expect(result[0].name).to.equal('Department 2');
+      expect(result[0].employees.length).to.equal(1);
+      expect(result[0].employees[0].name).to.equal('Employee 42');
+
+      expect(result[0].employees[0].birthdate).not.to.be.ok;
+
+      result = await model.getAll({ filter: { search: 'partment 2' } });
+      expect(result.length).to.equal(1);
+      expect(result[0].name).to.equal('Department 2');
+      expect(result[0].employees.length).to.equal(15);
+    });
 
   });
 
