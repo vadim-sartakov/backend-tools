@@ -25,17 +25,17 @@ describe.only('Sequelize crud model', () => {
   Department.hasMany(Employee);
 
   before(async () => {
-    await Department.sync();
-    await Address.sync();
-    await Employee.sync();
+    await Department.sync({ force: true });
+    await Address.sync({ force: true });
+    await Employee.sync({ force: true });
   });
 
-  const populateDatabase = async () => {
+  const populateDatabase = async (depCount, employeeCount) => {
     const now = new Date();
     let empId = 0;
-    for (let depId = 0; depId < 3; depId++) {
+    for (let depId = 0; depId < depCount; depId++) {
       const employees = [];
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < employeeCount; i++) {
         employees.push({
           name: 'Employee ' + (empId ++),
           birthdate: new Date(now.getFullYear() - 30, now.getMonth(), now.getDay())
@@ -57,7 +57,7 @@ describe.only('Sequelize crud model', () => {
 
   describe('Get all', () => {
 
-    before(populateDatabase);
+    before(async() => await populateDatabase(3, 15));
     after(cleanDatabase);
 
     it('Paging', async () => {
@@ -132,6 +132,61 @@ describe.only('Sequelize crud model', () => {
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(15);
+    });
+
+  });
+
+  describe('Count', () => {
+    
+    before(async() => await populateDatabase(1, 15));
+    after(cleanDatabase);
+
+    it('Count', async () => {
+      const model = new SequelizeCrudModel(Employee);
+      let result = await model.execCount();
+      expect(result).to.equal(15);
+      result = await model.execCount({ name: 'Employee 1' });
+      expect(result).to.equal(1);
+    });
+
+  });
+
+  it('Add one', async () => {
+    const model = new SequelizeCrudModel(Department);
+    let result = await model.execAddOne({ name: 'Department' });
+    expect(result).to.be.ok;
+    expect(result.name).to.equal('Department');
+  });
+
+  describe('Update', () => {
+
+    before(async() => await populateDatabase(1, 5));
+    after(cleanDatabase);
+
+    it('Update', async () => {
+      const model = new SequelizeCrudModel(Employee);
+                                            // filter                 // payload
+      let result = await model.execUpdateOne({ name: 'Employee 1' }, { name: 'Employee 11' });
+      expect(result.name).to.equal('Employee 11');
+
+      result = await model.execUpdateOne({ name: 'Employee 11111' }, { name: 'Employee 11' });
+      expect(result).not.to.be.ok;
+    });
+
+  });
+
+  describe('Delete', () => {
+
+    before(async() => await populateDatabase(1, 1));
+    after(cleanDatabase);
+
+    it('Delete', async () => {
+      const model = new SequelizeCrudModel(Department);
+      await Department.create({ name: 'Test' });
+      let result = await model.execDeleteOne({ name: 'Test' });
+      expect(result).to.be.ok;
+      result = await model.execDeleteOne({ name: 'Test' });
+      expect(result).not.to.be.ok;
     });
 
   });

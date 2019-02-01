@@ -40,31 +40,28 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execCount(filter) {
-      const countQuery = this.Model.count();
-      if (filter) countQuery.where(filter);
-      return await countQuery.exec();
+    return await this.Model.count({ where: filter });
   }
 
   async execAddOne(payload) {
-      const doc = new this.Model(payload);
-      let saved = await doc.save();
-      return saved.toObject();
+    return await this.Model.create(payload);
   }
 
   async execGetOne({ filter, projection }) {
-      const query = this.Model.findOne(filter);
-      if (projection) query.select(projection);
-      this.applyPopulateIfRequired(query);
-      query.setOptions({ lean: true });
-      return await query.exec();
+    return await this.Model.find({
+      attributes: this.convertProjection(projection),
+      where: filter,
+    });
   }
 
   async execUpdateOne(filter, payload) {
-      return await this.Model.findOneAndUpdate(filter, payload, { new: true, lean: true });
+    const [affected, result] = await this.Model.update(payload, { where: filter, returning: true });
+    if (affected === 0) return null;
+    return result[0];
   }
 
   async execDeleteOne(filter) {
-      return await this.Model.findOneAndDelete(filter).lean();
+    return await this.Model.destroy({ where: filter, returning: true });
   }
 
 }
