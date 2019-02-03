@@ -7,6 +7,7 @@ class MongooseCrudModel extends CrudModel {
         const { populate } = opts;
         this.Model = Model;
         this.populate = populate;
+        this.underscoredId = true;
     }
 
     searchFieldsToFilter(search, query) {

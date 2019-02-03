@@ -65,7 +65,7 @@ class CrudModel {
   }
 
   async getOne(filter, permissions) {
-      filter = this.convertFitlerId(filter);
+      if (this.underscoredId) filter = this.addIdUnderscore(filter);
       permissions = { ...defaultPermissions, ...permissions };
       const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
       const projection = this.getReadProjection(permissionProjection);
@@ -73,7 +73,7 @@ class CrudModel {
       return await this.execGetOne({ filter: resultFilter, projection });
   }
 
-  convertFitlerId(filter) {
+  addIdUnderscore(filter) {
       let result;
       if (filter && filter.id) {
           result = { ...filter };
@@ -84,7 +84,7 @@ class CrudModel {
   }
 
   async updateOne(filter, payload, permissions) {
-      filter = this.convertFitlerId(filter);
+      if (this.underscoredId) filter = this.addIdUnderscore(filter);
       permissions = { ...defaultPermissions, ...permissions };
       const { read: { filter: permissionFilter }, update: { projection } } = permissions;
       if (projection) {
@@ -96,7 +96,7 @@ class CrudModel {
   }
 
   async deleteOne(filter, permissions) {
-      filter = this.convertFitlerId(filter);
+      if (this.underscoredId) filter = this.addIdUnderscore(filter);
       permissions = { ...defaultPermissions, ...permissions };
       const { read: { filter: permissionFilter } } = permissions;
       const resultFilter = this.getResultFilter(filter, permissionFilter);

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import Sequelize from 'sequelize';
 import SequelizeCrudModel from './SequelizeCrudModel';
 
-describe.only('Sequelize crud model', () => {
+describe('Sequelize crud model', () => {
 
   const sequelize = new Sequelize(process.env.POSTGRES_DB_URL);
 
@@ -104,11 +104,9 @@ describe.only('Sequelize crud model', () => {
       const model = new SequelizeCrudModel(Employee);
       let result = await model.execGetAll({ sort: { id: 1 } });
       expect(result[0].name).to.equal('Employee 0');
-      expect(result[result.length - 1].name).to.equal('Employee 19');
 
       result = await model.execGetAll({ sort: { id: -1 } });
       expect(result[0].name).to.equal('Employee 44');
-      expect(result[result.length - 1].name).to.equal('Employee 25');
     });
 
     it('Search', async () => {
