@@ -157,18 +157,35 @@ describe('Sequelize crud model', () => {
       expect(result.name).to.equal('Department 1');
     });
 
-    it.skip('Multiple inserts', async () => {
-      const model = new SequelizeCrudModel(Department);
-      const employee = await Employee.create({ name: 'Employee 1', birthdate: new Date() });
-
-      let result = await model.execAddOne({
+    it('Cascade all', async () => {
+      const model = new SequelizeCrudModel(Department, {
+        cascadeFields: ['employees', 'address']
+      });
+      await model.execAddOne({
         name: 'Department 2',
+        address: { address: 'Address 1' },
         employees: [
-          { id: employee.id }
+          { name: 'Employee 1', birthdate: new Date() }
         ]
       });
-      expect(result).to.be.ok;
-      expect(result.employees.length).to.equal(1);
+      const employees = await Employee.findAll();
+      expect(employees.length).to.equal(1);
+      const addresses = await Address.findAll();
+      expect(addresses.length).to.equal(1);
+    });
+
+    it('Set associated references', async () => {
+      const model = new SequelizeCrudModel(Department);
+      let employee = await Employee.create({ name: 'Employee 1', birthdate: new Date() });
+      await model.execAddOne({
+        name: 'Department 2',
+        employees: [
+          employee.id
+        ]
+      });
+      employee = await Employee.findOne({ where: { id: employee.id } });
+      expect(employee).to.be.ok;
+      expect(employee.departmentId).to.be.ok;
     });
 
   });

@@ -55,7 +55,18 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execAddOne(payload) {
-    return await this.Model.create(payload);
+    return await this.Model.sequelize.transaction(async transaction => {
+      const options = { transaction };
+      if (this.cascadeFields) options.include = this.cascadeFields;
+      const instance = await this.Model.create(payload, options);
+      await Object.keys(this.Model.associations).reduce(async (accumulator, association) => {
+        if (this.cascadeFields && this.cascadeFields.some(cascadeField => cascadeField === association)) return;
+        const setter = instance[`set${association.charAt(0).toUpperCase() + association.substring(1)}`];
+        const value = payload[association];
+        if (value) await setter.apply(instance, [value, { transaction }]);
+      }, Promise.resolve());
+      return instance;
+    });
   }
 
   async execGetOne({ filter, projection }) {
