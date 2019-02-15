@@ -3,17 +3,6 @@ Set of useful middlewares, plugins and tools to build backend applications with 
 
 ## Basic utils
 
-### Logger
-Combines together "winston" and "debug" libraries. Provides convinient and ready to use logger factory.
-    
-```javascript
-import { createLogger } from "backend-tools";
-const logger = createLogger("server");
-```
-
-Function accepts logger label and returns winston logger with suitable decorators and formatters. It already has 2 transports: both console and file. Logs directory specified with `LOG_PATH` environment variable, default is `./log` directory. Directory creates automatically if it's absent.
-To determine the level of Logger "debug" library is used. So environment variable `DEBUG` is taking in count.
-
 ### Middleware
 
 #### Security
