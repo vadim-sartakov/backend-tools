@@ -1,10 +1,11 @@
 import { expect } from 'chai';
 import Sequelize from 'sequelize';
+import { createProjection } from 'common-tools';
 import SequelizeCrudModel from './SequelizeCrudModel';
 
 describe('Sequelize crud model', () => {
 
-  const sequelize = new Sequelize(process.env.POSTGRES_DB_URL);
+  const sequelize = new Sequelize(process.env.SEQUELIZE_DB_URL);
 
   const Address = sequelize.define('address', {
     address: { type: Sequelize.TEXT, allowNull: false }
@@ -70,22 +71,22 @@ describe('Sequelize crud model', () => {
 
     it('Projection', async () => {
       const model = new SequelizeCrudModel(Employee);
-      let result = await model.execGetAll({ projection: 'id' });
+      let result = await model.execGetAll({ projection: createProjection('id') });
       expect(result[0].id).to.be.ok;
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.execGetAll({ projection: 'id name' });
+      result = await model.execGetAll({ projection:  createProjection('id name') });
       expect(result[0].id).to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.execGetAll({ projection: '-id' });
+      result = await model.execGetAll({ projection:  createProjection('-id') });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).to.be.ok;
 
-      result = await model.execGetAll({ projection: '-id -name' });
+      result = await model.execGetAll({ projection:  createProjection('-id -name') });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).to.be.ok;
@@ -111,12 +112,13 @@ describe('Sequelize crud model', () => {
 
     it('Search', async () => {
       const model = new SequelizeCrudModel(Department, {
+        loadFields: { employees: "id name" },
         include: [{
           model: Employee,
           attributes: ['id', 'name'],
           // Without this option, malformed query produced
           duplicating: false
-        }], searchFields: ['department.name', 'employees.name']
+        }], searchFields: ['name', 'employees.name']
       });
       let result = await model.getAll({ filter: { search: 'ployee 42' } });
       expect(result.length).to.equal(1);
@@ -149,11 +151,28 @@ describe('Sequelize crud model', () => {
 
   });
 
-  it('Add one', async () => {
-    const model = new SequelizeCrudModel(Department);
-    let result = await model.execAddOne({ name: 'Department' });
-    expect(result).to.be.ok;
-    expect(result.name).to.equal('Department');
+  describe('Add one', () => {
+
+    after(cleanDatabase);
+
+    it.skip('Multiple inserts', async () => {
+      const model = new SequelizeCrudModel(Department);
+      let result = await model.execAddOne({ name: 'Department 1' });
+      expect(result).to.be.ok;
+      expect(result.name).to.equal('Department 1');
+
+      const employee = await Employee.create({ name: 'Employee 1', birthdate: new Date() });
+
+      result = await model.execAddOne({
+        name: 'Department 2',
+        employees: [
+          { id: employee.id }
+        ]
+      });
+      expect(result).to.be.ok;
+      expect(result.employees.length).to.equal(1);
+    });
+
   });
 
   describe('Update', () => {

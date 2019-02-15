@@ -2,8 +2,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import createDebug from "debug";
-import { validate } from "shared-tools";
-import { getPermissions } from "shared-tools";
+import { validate, getPermissions } from "common-tools";
 
 export const commonMiddlewares = [
     helmet(),

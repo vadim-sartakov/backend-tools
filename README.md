@@ -46,7 +46,7 @@ request(app).delete("/secured").expect(403, { message: "Access is denied" });
 ```
 
 #### Validation
-Uses `validate` utility of `shared-tools` package. It check data validity against constraints
+Uses `validate` utility of `common-tools` package. It check data validity against constraints
 ```javascript
 const constraints = { field: required() };
 app.post("/resource", validator(constraints));
@@ -92,7 +92,7 @@ request(app).get("/").expect(500, { message: "Failure" })
 Creates CRUD Express `Route` object which is ready to bind to your app.
 Model wrapper should be passed to the router constructor.
 
-Each model method has `permissions` parameter. It is the object of `getPermissions` function of `shared-tools` package and it's not required.
+Each model method has `permissions` parameter. It is the object of `getPermissions` function of `common-tools` package and it's not required.
 Model should have following methods:
 
 |Method                                             |Description|

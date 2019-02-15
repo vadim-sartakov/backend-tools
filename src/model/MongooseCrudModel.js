@@ -2,63 +2,67 @@ import CrudModel from "./CrudModel";
 
 class MongooseCrudModel extends CrudModel {
 
-    constructor(Model, opts = {}) {
-        super(opts);
-        const { populate } = opts;
-        this.Model = Model;
-        this.populate = populate;
-        this.underscoredId = true;
-    }
+  constructor(Model, opts = {}) {
+    super(opts);
+    const { populate } = opts;
+    this.Model = Model;
+    this.populate = populate;
+    this.underscoredId = true;
+  }
 
-    searchFieldsToFilter(search, query) {
-        return search.map(searchField => {
-            return { [searchField]: new RegExp(`.*${query}.*`, 'i') };
-        });
-    }
+  searchFieldsToFilter(search, query) {
+    return search.map(searchField => {
+      return { [searchField]: new RegExp(`.*${query}.*`, 'i') };
+    });
+  }
 
-    async execGetAll({ page, size, projection, filter, sort }) {
-        const getAllQuery = this.Model.find()
-            .skip(page * size)
-            .limit(size);
-        if (projection) getAllQuery.select(projection);
-        if (filter) getAllQuery.where(filter);
-        if (sort) getAllQuery.sort(sort);
-        this.applyPopulateIfRequired(getAllQuery);
-        getAllQuery.setOptions({ lean: true });
-        return await getAllQuery.exec();
-    }
+  convertToMongooseProjection({ exclusive, paths }) {
+    return ( exclusive ? '-' : '' ) + paths.join(exclusive ? ' -' : ' ');
+  }
 
-    applyPopulateIfRequired(query) {
-        if (this.populate) Object.keys(this.populate).forEach(path => query.populate({ path, select: this.populate[path] }));
-    }
+  async execGetAll({ page, size, projection, filter, sort }) {
+    const getAllQuery = this.Model.find()
+      .skip(page * size)
+      .limit(size);
+    if (projection) getAllQuery.select(this.convertToMongooseProjection(projection));
+    if (filter) getAllQuery.where(filter);
+    if (sort) getAllQuery.sort(sort);
+    this.applyPopulateIfRequired(getAllQuery);
+    getAllQuery.setOptions({ lean: true });
+    return await getAllQuery.exec();
+  }
 
-    async execCount(filter) {
-        const countQuery = this.Model.count();
-        if (filter) countQuery.where(filter);
-        return await countQuery.exec();
-    }
+  applyPopulateIfRequired(query) {
+    if (this.populate) Object.keys(this.populate).forEach(path => query.populate({ path, select: this.populate[path] }));
+  }
 
-    async execAddOne(payload) {
-        const doc = new this.Model(payload);
-        let saved = await doc.save();
-        return saved.toObject();
-    }
+  async execCount(filter) {
+    const countQuery = this.Model.count();
+    if (filter) countQuery.where(filter);
+    return await countQuery.exec();
+  }
 
-    async execGetOne({ filter, projection }) {
-        const query = this.Model.findOne(filter);
-        if (projection) query.select(projection);
-        this.applyPopulateIfRequired(query);
-        query.setOptions({ lean: true });
-        return await query.exec();
-    }
+  async execAddOne(payload) {
+    const doc = new this.Model(payload);
+    let saved = await doc.save();
+    return saved.toObject();
+  }
 
-    async execUpdateOne(filter, payload) {
-        return await this.Model.findOneAndUpdate(filter, payload, { new: true, lean: true });;
-    }
+  async execGetOne({ filter, projection }) {
+    const query = this.Model.findOne(filter);
+    if (projection) query.select(this.convertToMongooseProjection(projection));
+    this.applyPopulateIfRequired(query);
+    query.setOptions({ lean: true });
+    return await query.exec();
+  }
 
-    async execDeleteOne(filter) {
-        return await this.Model.findOneAndDelete(filter).lean();
-    }
+  async execUpdateOne(filter, payload) {
+    return await this.Model.findOneAndUpdate(filter, payload, { new: true, lean: true });
+  }
+
+  async execDeleteOne(filter) {
+    return await this.Model.findOneAndDelete(filter).lean();
+  }
 
 }
 

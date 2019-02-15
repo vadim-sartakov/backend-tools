@@ -10,30 +10,28 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   searchFieldsToFilter(search, query) {
-      return search.map(searchField => {
-          return { [`$${searchField}$`]: { $iLike: `%${query}%` } };
-      });
+    return search.map(searchField => {
+      const paths = searchField.split('.');
+      const field = paths.length === 1 ? searchField : `$${searchField}$`;
+      return { [field]: { $iLike: `%${query}%` } };
+    });
   }
 
   async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
-      const params = { limit: size, offset: size * page };
-      if (projection) params.attributes = this.convertProjection(projection);
-      if (filter) params.where = filter;
-      if (sort) params.order = this.convertSort(sort);
-      if (this.include) params.include = this.include;
-      return await this.Model.findAll(params);
+    const params = { limit: size, offset: size * page };
+    if (projection) params.attributes = this.convertProjectionToAttributes(projection);
+    if (filter) params.where = filter;
+    if (sort) params.order = this.convertSort(sort);
+    if (this.include) params.include = this.include;
+    return await this.Model.findAll(params);
   }
 
-  convertProjection(projection) {
-    if (!projection || typeof(projection) !== 'string' || projection.length === 0) return;
-    const paths = projection.split(' ');
-    if (paths.length === 0) return;
-    const exclusive = paths[0].startsWith('-');
-    return exclusive ? { exclude: paths.map(curPath => curPath.substring(1)) } : paths;
+  convertProjectionToAttributes({ exclusive, paths }) {
+    return exclusive ? { exclude: paths } : paths;
   }
 
   convertSort(sort) {
-    if (!sort || typeof(sort) !== 'object') return;
+    if (!sort || typeof (sort) !== 'object') return;
     const keys = Object.keys(sort);
     if (keys.length === 0) return;
     return keys.map(key => [key, sort[key] === 1 ? 'ASC' : 'DESC']);
@@ -49,7 +47,7 @@ class SequelizeCrudModel extends CrudModel {
 
   async execGetOne({ filter, projection }) {
     return await this.Model.find({
-      attributes: this.convertProjection(projection),
+      attributes: this.convertProjectionToAttributes(projection),
       where: filter,
     });
   }

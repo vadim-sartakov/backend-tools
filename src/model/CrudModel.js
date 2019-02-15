@@ -1,18 +1,21 @@
-import { filterObject } from "shared-tools";
+import { filterObject, createProjection } from "common-tools";
 
 const defaultPermissions = { create: { }, read: { }, update: { }, delete: { } };
 
 class CrudModel {
 
-  constructor({ excerptProjection, searchFields }) {
+  constructor({ excerptProjection, searchFields, loadFields, cascadeFields }) {
     this.excerptProjection = excerptProjection;
     this.searchFields = searchFields;
+    this.loadFields = loadFields;
+    this.cascadeFields = cascadeFields;
   }
 
   async getAll({ page = 0, size = 20, filter, sort }, permissions) {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
-    const projection = this.getReadProjection(permissionProjection);
+    let projection = this.getReadProjection(permissionProjection);
+    if (projection) projection = createProjection(projection);
     const resultFilter = this.getResultFilter(filter, permissionFilter);
     return await this.execGetAll({
       page,
@@ -68,7 +71,8 @@ class CrudModel {
       if (this.underscoredId) filter = this.addIdUnderscore(filter);
       permissions = { ...defaultPermissions, ...permissions };
       const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
-      const projection = this.getReadProjection(permissionProjection);
+      let projection = this.getReadProjection(permissionProjection);
+      if (projection) projection = createProjection(projection);
       const resultFilter = this.getResultFilter(filter, permissionFilter);
       return await this.execGetOne({ filter: resultFilter, projection });
   }
