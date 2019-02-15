@@ -113,12 +113,7 @@ describe('Sequelize crud model', () => {
     it('Search', async () => {
       const model = new SequelizeCrudModel(Department, {
         loadFields: { employees: "id name" },
-        include: [{
-          model: Employee,
-          attributes: ['id', 'name'],
-          // Without this option, malformed query produced
-          duplicating: false
-        }], searchFields: ['name', 'employees.name']
+        searchFields: ['name', 'employees.name']
       });
       let result = await model.getAll({ filter: { search: 'ployee 42' } });
       expect(result.length).to.equal(1);
@@ -153,17 +148,20 @@ describe('Sequelize crud model', () => {
 
   describe('Add one', () => {
 
-    after(cleanDatabase);
+    afterEach(cleanDatabase);
 
-    it.skip('Multiple inserts', async () => {
+    it('Simple insert', async () => {
       const model = new SequelizeCrudModel(Department);
       let result = await model.execAddOne({ name: 'Department 1' });
       expect(result).to.be.ok;
       expect(result.name).to.equal('Department 1');
+    });
 
+    it.skip('Multiple inserts', async () => {
+      const model = new SequelizeCrudModel(Department);
       const employee = await Employee.create({ name: 'Employee 1', birthdate: new Date() });
 
-      result = await model.execAddOne({
+      let result = await model.execAddOne({
         name: 'Department 2',
         employees: [
           { id: employee.id }

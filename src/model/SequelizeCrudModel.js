@@ -1,12 +1,12 @@
+import { createProjection } from 'common-tools';
 import CrudModel from './CrudModel';
 
 class SequelizeCrudModel extends CrudModel {
 
   constructor(Model, opts = {}) {
     super(opts);
-    const { include } = opts;
     this.Model = Model;
-    this.include = include;
+    this.include = this.loadFieldsToInclude(this.loadFields);
   }
 
   searchFieldsToFilter(search, query) {
@@ -17,6 +17,23 @@ class SequelizeCrudModel extends CrudModel {
     });
   }
 
+  loadFieldsToInclude(loadFields) {
+    if (loadFields === undefined) return undefined;
+    return Object.keys(loadFields).map(field => {
+      return {
+        association: field,
+        attributes: this.convertProjectionToAttributes(createProjection(loadFields[field])),
+        // Without this option, malformed query produced
+        // It throws SequelizeDatabaseError: missing FROM-clause entry for table
+        duplicating: false
+      };
+    });
+  }
+
+  convertProjectionToAttributes({ exclusive, paths }) {
+    return exclusive ? { exclude: paths } : paths;
+  }
+
   async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
     const params = { limit: size, offset: size * page };
     if (projection) params.attributes = this.convertProjectionToAttributes(projection);
@@ -24,10 +41,6 @@ class SequelizeCrudModel extends CrudModel {
     if (sort) params.order = this.convertSort(sort);
     if (this.include) params.include = this.include;
     return await this.Model.findAll(params);
-  }
-
-  convertProjectionToAttributes({ exclusive, paths }) {
-    return exclusive ? { exclude: paths } : paths;
   }
 
   convertSort(sort) {
