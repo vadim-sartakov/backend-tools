@@ -24,6 +24,7 @@ describe('Sequelize crud model', () => {
 
   Department.hasOne(Address);
   Department.hasMany(Employee);
+  Employee.hasOne(Address);
 
   before(async () => {
     await Department.sync({ force: true });
@@ -76,17 +77,17 @@ describe('Sequelize crud model', () => {
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.execGetAll({ projection:  createProjection('id name') });
+      result = await model.execGetAll({ projection: createProjection('id name') });
       expect(result[0].id).to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).not.to.be.ok;
 
-      result = await model.execGetAll({ projection:  createProjection('-id') });
+      result = await model.execGetAll({ projection: createProjection('-id') });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).to.be.ok;
       expect(result[0].birthdate).to.be.ok;
 
-      result = await model.execGetAll({ projection:  createProjection('-id -name') });
+      result = await model.execGetAll({ projection: createProjection('-id -name') });
       expect(result[0].id).not.to.be.ok;
       expect(result[0].name).not.to.be.ok;
       expect(result[0].birthdate).to.be.ok;
@@ -159,19 +160,19 @@ describe('Sequelize crud model', () => {
 
     it('Cascade all', async () => {
       const model = new SequelizeCrudModel(Department, {
-        cascadeFields: ['employees', 'address']
+        cascadeFields: [{ field: 'employees', cascadeFields: ['address'] }, 'address']
       });
       await model.execAddOne({
         name: 'Department 2',
         address: { address: 'Address 1' },
         employees: [
-          { name: 'Employee 1', birthdate: new Date() }
+          { name: 'Employee 1', birthdate: new Date(), address: { address: 'Address 2' } }
         ]
       });
       const employees = await Employee.findAll();
       expect(employees.length).to.equal(1);
       const addresses = await Address.findAll();
-      expect(addresses.length).to.equal(1);
+      expect(addresses.length).to.equal(2);
     });
 
     it('Set associated references', async () => {

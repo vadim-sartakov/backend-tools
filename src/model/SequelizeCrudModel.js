@@ -6,7 +6,7 @@ class SequelizeCrudModel extends CrudModel {
   constructor(Model, opts = {}) {
     super(opts);
     this.Model = Model;
-    this.include = this.loadFieldsToInclude(this.loadFields);
+    this.readInclude = this.loadFieldsToInclude(this.loadFields);
   }
 
   searchFieldsToFilter(search, query) {
@@ -39,7 +39,7 @@ class SequelizeCrudModel extends CrudModel {
     if (projection) params.attributes = this.convertProjectionToAttributes(projection);
     if (filter) params.where = filter;
     if (sort) params.order = this.convertSort(sort);
-    if (this.include) params.include = this.include;
+    if (this.readInclude) params.include = this.readInclude;
     return await this.Model.findAll(params);
   }
 
@@ -57,15 +57,25 @@ class SequelizeCrudModel extends CrudModel {
   async execAddOne(payload) {
     return await this.Model.sequelize.transaction(async transaction => {
       const options = { transaction };
-      if (this.cascadeFields) options.include = this.cascadeFields;
+      if (this.cascadeFields) options.include = this.cascadeFieldsToInclude(this.cascadeFields);
       const instance = await this.Model.create(payload, options);
       await Object.keys(this.Model.associations).reduce(async (accumulator, association) => {
-        if (this.cascadeFields && this.cascadeFields.some(cascadeField => cascadeField === association)) return;
+        if (this.cascadeFields && this.cascadeFields.some(cascadeField => association === ( cascadeField.field || cascadeField ) )) return;
         const setter = instance[`set${association.charAt(0).toUpperCase() + association.substring(1)}`];
         const value = payload[association];
         if (value) await setter.apply(instance, [value, { transaction }]);
       }, Promise.resolve());
       return instance;
+    });
+  }
+
+  cascadeFieldsToInclude(cascadeFields) {
+    return cascadeFields.map(cascadeFieldsItem => {
+      if (typeof (cascadeFieldsItem) === 'string') return cascadeFieldsItem;
+      const include = cascadeFieldsItem.cascadeFields && this.cascadeFieldsToInclude(cascadeFieldsItem.cascadeFields);
+      const result = { association: cascadeFieldsItem.field };
+      if (include) result.include = include;
+      return result;
     });
   }
 
