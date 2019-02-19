@@ -3,6 +3,55 @@ import SequelizeCrudModel from './SequelizeCrudModel';
 
 describe('Sequelize crud model', () => {
 
+  describe('loadFieldsToInclude', () => {
+
+    let model;
+
+    before(() => model = new SequelizeCrudModel());
+
+    it('Flat', () => {
+      expect(
+          model.loadFieldsToInclude({ employees: 'id name' })
+      ).to.deep.equal([
+        {
+          association: 'employees',
+          attributes: ['id', 'name'],
+          duplicating: false
+        }
+      ]);
+    });
+
+    it('Nested', () => {
+      expect(
+          model.loadFieldsToInclude({
+            employees: {
+              projection: 'id name',
+              loadFields: { individual: 'name' }
+            },
+            address: '-id'
+          })
+      ).to.deep.equal([
+        {
+          association: 'employees',
+          attributes: ['id', 'name'],
+          duplicating: false,
+          include: [
+              {
+              association: 'individual',
+              attributes: ['name'],
+              duplicating: false
+            }
+          ]
+        }, {
+          association: 'address',
+          attributes: { exclude: ['id'] },
+          duplicating: false
+        }
+      ]);
+    });
+
+  });
+
   describe('cascadeFieldsToInclude', () => {
 
     let model;

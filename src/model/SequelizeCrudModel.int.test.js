@@ -39,15 +39,17 @@ describe('Sequelize crud model', () => {
       const employees = [];
       for (let i = 0; i < employeeCount; i++) {
         employees.push({
-          name: 'Employee ' + (empId ++),
-          birthdate: new Date(now.getFullYear() - 30, now.getMonth(), now.getDay())
+          name: 'Employee ' + empId,
+          birthdate: new Date(now.getFullYear() - 30, now.getMonth(), now.getDay()),
+          address: { address: 'Employee address ' + empId }
         });
+        empId++;
       }
       await Department.create({
         name: 'Department ' + depId,
         address: { address: 'Address ' + depId },
         employees
-      }, { include: [ Address, Employee ] });
+      }, { include: [ 'address', { association: 'employees', include: ['address'] } ] });
     }
   };
 
@@ -113,8 +115,8 @@ describe('Sequelize crud model', () => {
 
     it('Search', async () => {
       const model = new SequelizeCrudModel(Department, {
-        loadFields: { employees: "id name" },
-        searchFields: ['name', 'employees.name']
+        loadFields: { employees: { projection: 'id name', loadFields: { address: 'address' } } },
+        searchFields: ['name', 'employees.name', 'employees.address.address']
       });
       let result = await model.getAll({ filter: { search: 'ployee 42' } });
       expect(result.length).to.equal(1);
@@ -128,6 +130,11 @@ describe('Sequelize crud model', () => {
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(15);
+
+      result = await model.getAll({ filter: { search: 'ployee address 33' } });
+      expect(result.length).to.equal(1);
+      expect(result[0].name).to.equal('Department 2');
+      expect(result[0].employees.length).to.equal(1);
     });
 
   });

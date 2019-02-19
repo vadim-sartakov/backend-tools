@@ -6,7 +6,7 @@ class SequelizeCrudModel extends CrudModel {
   constructor(Model, opts = {}) {
     super(opts);
     this.Model = Model;
-    this.readInclude = this.loadFieldsToInclude(this.loadFields);
+    this.readInclude = this.loadFields && this.loadFieldsToInclude(this.loadFields);
   }
 
   searchFieldsToFilter(search, query) {
@@ -18,15 +18,21 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   loadFieldsToInclude(loadFields) {
-    if (loadFields === undefined) return undefined;
     return Object.keys(loadFields).map(field => {
-      return {
+      const value = loadFields[field];
+      const include = value.loadFields && this.loadFieldsToInclude(value.loadFields);
+      const attributes = this.convertProjectionToAttributes(
+          createProjection( value.projection || value )
+      );
+      const result = {
         association: field,
-        attributes: this.convertProjectionToAttributes(createProjection(loadFields[field])),
-        // Without this option, malformed query produced
+        attributes,
+        // Without this option, malformed query produced when using limit and offset
         // It throws SequelizeDatabaseError: missing FROM-clause entry for table
         duplicating: false
       };
+      if (include) result.include = include;
+      return result;
     });
   }
 
