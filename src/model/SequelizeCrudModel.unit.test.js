@@ -1,5 +1,15 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
+import { fake } from 'sinon';
+import sinonChai from 'sinon-chai';
 import SequelizeCrudModel from './SequelizeCrudModel';
+
+chai.use(sinonChai);
+
+class StubModel {
+  constructor() {
+    this.findAll = fake();
+  }
+}
 
 describe('Sequelize crud model', () => {
 
@@ -98,6 +108,25 @@ describe('Sequelize crud model', () => {
         }]
       }
       ]);
+    });
+
+  });
+
+  describe('getAll', () => {
+
+    it('Include with projection', async () => {
+      const stubModel = new StubModel();
+      const model = new SequelizeCrudModel(stubModel);
+      model.readInclude = ['address', 'individual'];
+      await model.execGetAll({
+        projection: { exclusive: false, paths: ['id', 'name', 'address.presentation'] }
+      });
+      expect(stubModel.findAll).to.have.been.calledWith({
+        attributes: ["id", "name", 'address.presentation'],
+        limit: 20,
+        offset: 0,
+        include: ['address']
+      });
     });
 
   });

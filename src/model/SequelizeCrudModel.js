@@ -45,7 +45,12 @@ class SequelizeCrudModel extends CrudModel {
     if (projection) params.attributes = this.convertProjectionToAttributes(projection);
     if (filter) params.where = filter;
     if (sort) params.order = this.convertSort(sort);
-    if (this.readInclude) params.include = this.readInclude;
+    if (this.readInclude) params.include = ( projection && this.readInclude.filter(includeItem => {
+        return projection.paths.some(projPath => {
+          const rootProjPath = projPath.split('.')[0];
+          return rootProjPath === ( includeItem.association || includeItem );
+        });
+    }) ) || this.readInclude;
     return await this.Model.findAll(params);
   }
 

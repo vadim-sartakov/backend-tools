@@ -114,7 +114,7 @@ describe('Sequelize crud model', () => {
     });
 
     it('Search', async () => {
-      const model = new SequelizeCrudModel(Department, {
+      let model = new SequelizeCrudModel(Department, {
         loadFields: { employees: { projection: 'id name', loadFields: { address: 'address' } } },
         searchFields: ['name', 'employees.name', 'employees.address.address']
       });
@@ -135,6 +135,15 @@ describe('Sequelize crud model', () => {
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(1);
+
+    });
+
+    it('Projection with load', async () => {
+      const model = new SequelizeCrudModel(Department, {
+        loadFields: { employees: 'id name' }
+      });
+
+      const result = await model.execGetAll({ projection: { paths: ['name', 'employees.name'] } });
     });
 
   });
@@ -203,7 +212,7 @@ describe('Sequelize crud model', () => {
     before(async() => await populateDatabase(1, 5));
     after(cleanDatabase);
 
-    it('Update', async () => {
+    it('Simple', async () => {
       const model = new SequelizeCrudModel(Employee);
                                             // filter                 // payload
       let result = await model.execUpdateOne({ name: 'Employee 1' }, { name: 'Employee 11' });
@@ -211,6 +220,12 @@ describe('Sequelize crud model', () => {
 
       result = await model.execUpdateOne({ name: 'Employee 11111' }, { name: 'Employee 11' });
       expect(result).not.to.be.ok;
+    });
+
+    it.skip('Cascade all', async () => {
+      const model = new SequelizeCrudModel(Department, { cascadeFields: ['employees'] });
+      let result = await model.execUpdateOne({ name: 'Department 1' }, { name: 'Department 1', employees: [{ name: 'Employee 20', birthdate: new Date() }] });
+      //expect(result.name).to.equal('Employee 11');
     });
 
   });
