@@ -4,11 +4,11 @@ const defaultPermissions = { create: { }, read: { }, update: { }, delete: { } };
 
 class CrudModel {
 
-  constructor({ excerptProjection, searchFields, loadFields, cascadeFields }) {
+  constructor({ excerptProjection, searchFields, cascadeFields, loadDepth = 1 }) {
     this.excerptProjection = excerptProjection;
     this.searchFields = searchFields;
-    this.loadFields = loadFields;
     this.cascadeFields = cascadeFields;
+    this.loadDepth = loadDepth;
   }
 
   async getAll({ page = 0, size = 20, filter, sort }, permissions) {

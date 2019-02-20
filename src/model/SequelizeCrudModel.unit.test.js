@@ -13,10 +13,132 @@ class StubModel {
 
 describe('Sequelize crud model', () => {
 
+  describe('queryOptions', () => {
+
+    let model;
+    beforeEach(() => model = new SequelizeCrudModel());
+
+    const addressModel = {
+      attributes: {
+        id: {},
+        city: {}
+      }
+    };
+
+    const individualModel = {
+      attributes: {
+        id: {},
+        name: {},
+        birthdate: {}
+      },
+      associations: {
+        address: { target: addressModel }
+      }
+    };
+
+    const roleModel = {
+      attributes: {
+        id: {},
+        name: {},
+        key: {}
+      }
+    };
+
+    const userModel = {
+      attributes: {
+        id: {},
+        name: {}
+      },
+      associations: {
+        individual: { target: individualModel },
+        roles: { target: roleModel }
+      }
+    };
+
+    it('Load whole tree', () => {
+      const result = model.queryOptions(userModel, { depthLevel: 2 });
+      expect(result).to.deep.equal({
+        include: [
+          {
+            association: 'individual',
+            include: [{
+              association: 'address'
+            }]
+          },
+          { association: 'roles' }
+        ]
+      });
+    });
+
+    describe('Inclusive', () => {
+
+      it('Root level attribute', () => {
+        const projection = ['name'];
+        const result = model.queryOptions(userModel, { projection });
+        expect(result).to.deep.equal({
+          attributes: ['name']
+        });
+      });
+
+      it.only('Load nested by fields', () => {
+        const projection = ['individual.name', 'individual.address.city'];
+        const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
+        expect(result).to.deep.equal({
+          include: [
+            {
+              association: 'individual',
+              attributes: ['name'],
+              include: [{
+                association: 'address',
+                attributes: ['city']
+              }]
+            }
+          ]
+        });
+      });
+
+    });
+
+    describe('Exclusive', () => {
+
+      it('Exclude root property', () => {
+        const projection = { exclude: ['name'] };
+        const result = model.queryOptions(userModel, { projection });
+        expect(result).to.deep.equal({
+          attributes: { exclude: ['name'] },
+          include: {
+              association: 'individual',
+              include: [{
+                association: 'address',
+              }]
+            }
+        });
+      });
+
+      it('Exclude deep nested property', () => {
+        const projection = { exclude: ['individual.id', 'individual.address.id'] };
+        const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
+        expect(result).to.deep.equal({
+          include: [
+            {
+              association: 'individual',
+              attributes: { exclude: ['id'] },
+              include: [{
+                association: 'address',
+                attributes: { exclude: ['id'] }
+              }]
+            }
+          ]
+        });
+      });
+
+    });
+
+  });
+
   describe('loadFieldsToInclude', () => {
 
     let model;
-
     before(() => model = new SequelizeCrudModel());
 
     it('Flat', () => {
@@ -47,10 +169,10 @@ describe('Sequelize crud model', () => {
           duplicating: false,
           include: [
               {
-              association: 'individual',
-              attributes: ['name'],
-              duplicating: false
-            }
+                association: 'individual',
+                attributes: ['name'],
+                duplicating: false
+              }
           ]
         }, {
           association: 'address',

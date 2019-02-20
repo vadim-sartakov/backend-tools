@@ -9,6 +9,55 @@ class SequelizeCrudModel extends CrudModel {
     this.readInclude = this.loadFields && this.loadFieldsToInclude(this.loadFields);
   }
 
+  queryOptions(Model, { projection, depthLevel = 1, paths = [] }) {
+
+    const attributeIsInProjection = attribute => {
+      if (!projection) return true;
+      const projectionPaths = projection.exclude || projection;
+      return projectionPaths.some(projectionPath => {
+        return projectionPath === ( [...paths, attribute].join('.') );
+      });
+    };
+    const attributes = Object.keys(Model.attributes).reduce((accumulator, attribute) => {
+      const result = [...accumulator];
+      attributeIsInProjection(attribute) && result.push(attribute);
+      return result;
+    }, []);
+
+    const include = Model.associations && Object.keys(Model.associations).reduce((accumulator, attribute) => {
+      
+      const isInProjection = attributeIsInProjection(attribute);
+      if ( ( !projection || ( isInProjection && !projection.exclude ) || ( !isInProjection && projection.exclude ) ) && depthLevel > 0 ) {
+        return [
+          ...accumulator,
+          this.queryOptions(
+              Model.associations[attribute].target,
+              { projection, depthLevel: --depthLevel, paths: [...paths, attribute] }
+          )
+        ];
+      } else {
+        return accumulator;
+      }
+
+    }, []);
+
+    const result = {};
+    const association = paths.length > 0 && paths[paths.length - 1];
+    if (association) result.association = association;
+
+    if (projection && attributes.length > 0) result.attributes = projection.exclude ? { exclude: attributes } : attributes;
+    if (include && Object.keys(include).length > 0) result.include = include;
+
+    return result;
+
+  }
+
+  projectionPresents(projectionPaths, paths, attribute) {
+    return projectionPaths.some(projectionPath => {
+      return projectionPath === ( [...paths, attribute].join('.') );
+    });
+  }
+
   searchFieldsToFilter(search, query) {
     return search.map(searchField => {
       const paths = searchField.split('.');
