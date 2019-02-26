@@ -1,6 +1,6 @@
 import { filterObject, createProjection } from "common-tools";
 
-const defaultPermissions = { create: { }, read: { }, update: { }, delete: { } };
+const defaultPermissions = { create: {}, read: {}, update: {}, delete: {} };
 
 class CrudModel {
 
@@ -54,57 +54,57 @@ class CrudModel {
   }
 
   async count(filter, permissions) {
-      permissions = { ...defaultPermissions, ...permissions };
-      const { read: { filter: permissionFilter } } = permissions;
-      const resultFilter = this.getResultFilter(filter, permissionFilter);
-      return await this.execCount(resultFilter);
+    permissions = { ...defaultPermissions, ...permissions };
+    const { read: { filter: permissionFilter } } = permissions;
+    const resultFilter = this.getResultFilter(filter, permissionFilter);
+    return await this.execCount(resultFilter);
   }
 
   async addOne(payload, permissions) {
-      permissions = { ...defaultPermissions, ...permissions };
-      const { update: { projection } } = permissions;
-      if (projection) payload = filterObject(payload, projection);
-      return this.execAddOne(payload);
+    permissions = { ...defaultPermissions, ...permissions };
+    const { update: { projection } } = permissions;
+    if (projection) payload = filterObject(payload, projection);
+    return this.execAddOne(payload);
   }
 
   async getOne(filter, permissions) {
-      if (this.underscoredId) filter = this.addIdUnderscore(filter);
-      permissions = { ...defaultPermissions, ...permissions };
-      const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
-      let projection = this.getReadProjection(permissionProjection);
-      if (projection) projection = createProjection(projection);
-      const resultFilter = this.getResultFilter(filter, permissionFilter);
-      return await this.execGetOne({ filter: resultFilter, projection });
+    if (this.underscoredId) filter = this.addIdUnderscore(filter);
+    permissions = { ...defaultPermissions, ...permissions };
+    const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
+    let projection = this.getReadProjection(permissionProjection);
+    if (projection) projection = createProjection(projection);
+    const resultFilter = this.getResultFilter(filter, permissionFilter);
+    return await this.execGetOne({ filter: resultFilter, projection });
   }
 
   addIdUnderscore(filter) {
-      let result;
-      if (filter && filter.id) {
-          result = { ...filter };
-          result._id = result.id;
-          delete result.id;
-      }
-      return result;
+    let result;
+    if (filter && filter.id) {
+      result = { ...filter };
+      result._id = result.id;
+      delete result.id;
+    }
+    return result;
   }
 
   async updateOne(filter, payload, permissions) {
-      if (this.underscoredId) filter = this.addIdUnderscore(filter);
-      permissions = { ...defaultPermissions, ...permissions };
-      const { read: { filter: permissionFilter }, update: { projection } } = permissions;
-      if (projection) {
-          const initialObject = await this.execGetOne(filter);
-          payload = filterObject(payload, projection, initialObject);
-      }
-      const resultFilter = this.getResultFilter(filter, permissionFilter);
-      return await this.execUpdateOne(resultFilter, payload);
+    if (this.underscoredId) filter = this.addIdUnderscore(filter);
+    permissions = { ...defaultPermissions, ...permissions };
+    const { read: { filter: permissionFilter }, update: { projection } } = permissions;
+    if (projection) {
+      const initialObject = await this.execGetOne(filter);
+      payload = filterObject(payload, projection, initialObject);
+    }
+    const resultFilter = this.getResultFilter(filter, permissionFilter);
+    return await this.execUpdateOne(resultFilter, payload);
   }
 
   async deleteOne(filter, permissions) {
-      if (this.underscoredId) filter = this.addIdUnderscore(filter);
-      permissions = { ...defaultPermissions, ...permissions };
-      const { read: { filter: permissionFilter } } = permissions;
-      const resultFilter = this.getResultFilter(filter, permissionFilter);
-      return await this.execDeleteOne(resultFilter);
+    if (this.underscoredId) filter = this.addIdUnderscore(filter);
+    permissions = { ...defaultPermissions, ...permissions };
+    const { read: { filter: permissionFilter } } = permissions;
+    const resultFilter = this.getResultFilter(filter, permissionFilter);
+    return await this.execDeleteOne(resultFilter);
   }
 
 }

@@ -1,4 +1,3 @@
-import { createProjection } from 'common-tools';
 import CrudModel from './CrudModel';
 
 class SequelizeCrudModel extends CrudModel {
@@ -55,12 +54,6 @@ class SequelizeCrudModel extends CrudModel {
 
   }
 
-  projectionPresents(projectionPaths, paths, attribute) {
-    return projectionPaths.some(projectionPath => {
-      return projectionPath === ( [...paths, attribute].join('.') );
-    });
-  }
-
   searchFieldsToFilter(search, query) {
     return search.map(searchField => {
       const paths = searchField.split('.');
@@ -69,40 +62,14 @@ class SequelizeCrudModel extends CrudModel {
     });
   }
 
-  loadFieldsToInclude(loadFields) {
-    return Object.keys(loadFields).map(field => {
-      const value = loadFields[field];
-      const include = value.loadFields && this.loadFieldsToInclude(value.loadFields);
-      const attributes = this.convertProjectionToAttributes(
-          createProjection( value.projection || value )
-      );
-      const result = {
-        association: field,
-        attributes,
-        // Without this option, malformed query produced when using limit and offset
-        // It throws SequelizeDatabaseError: missing FROM-clause entry for table
-        duplicating: false
-      };
-      if (include) result.include = include;
-      return result;
-    });
-  }
-
   convertProjectionToAttributes({ exclusive, paths }) {
     return exclusive ? { exclude: paths } : paths;
   }
 
   async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
-    const params = { limit: size, offset: size * page };
-    if (projection) params.attributes = this.convertProjectionToAttributes(projection);
+    const params = { limit: size, offset: size * page, ...this.queryOptions(this.Model, { projection }) };
     if (filter) params.where = filter;
     if (sort) params.order = this.convertSort(sort);
-    if (this.readInclude) params.include = ( projection && this.readInclude.filter(includeItem => {
-        return projection.paths.some(projPath => {
-          const rootProjPath = projPath.split('.')[0];
-          return rootProjPath === ( includeItem.association || includeItem );
-        });
-    }) ) || this.readInclude;
     return await this.Model.findAll(params);
   }
 
@@ -143,10 +110,9 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execGetOne({ filter, projection }) {
-    return await this.Model.find({
-      attributes: this.convertProjectionToAttributes(projection),
-      where: filter,
-    });
+    const options = this.queryOptions(this.Model, { projection }) || {};
+    if (filter) options.where = filter;
+    return await this.Model.find(options);
   }
 
   async execUpdateOne(filter, payload) {
