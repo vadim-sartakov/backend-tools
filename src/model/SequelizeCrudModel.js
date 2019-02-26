@@ -9,13 +9,16 @@ class SequelizeCrudModel extends CrudModel {
     this.readInclude = this.loadFields && this.loadFieldsToInclude(this.loadFields);
   }
 
-  queryOptions(Model, { projection, depthLevel = 1, paths = [] }) {
+  queryOptions(Model, options = {}) {
+
+    const { projection, depthLevel = 1, paths = [] } = options;
 
     const attributeIsInProjection = attribute => {
       if (!projection) return true;
       const projectionPaths = projection.exclude || projection;
+      const currentPath = [...paths, attribute].join('.');
       return projectionPaths.some(projectionPath => {
-        return projectionPath === ( [...paths, attribute].join('.') );
+        return projection.exclude ? projectionPath === currentPath : projectionPath.startsWith(currentPath);
       });
     };
     const attributes = Object.keys(Model.attributes).reduce((accumulator, attribute) => {
@@ -28,13 +31,13 @@ class SequelizeCrudModel extends CrudModel {
       
       const isInProjection = attributeIsInProjection(attribute);
       if ( ( !projection || ( isInProjection && !projection.exclude ) || ( !isInProjection && projection.exclude ) ) && depthLevel > 0 ) {
-        return [
-          ...accumulator,
-          this.queryOptions(
-              Model.associations[attribute].target,
-              { projection, depthLevel: --depthLevel, paths: [...paths, attribute] }
-          )
-        ];
+        const associationModel = Model.associations[attribute].target;
+        const nextOpts = {
+          projection,
+          depthLevel: depthLevel - 1,
+          paths: [...paths, attribute]
+        };
+        return [...accumulator, this.queryOptions(associationModel, nextOpts)];
       } else {
         return accumulator;
       }

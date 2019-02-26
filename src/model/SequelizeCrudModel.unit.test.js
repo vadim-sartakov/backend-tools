@@ -55,22 +55,46 @@ describe('Sequelize crud model', () => {
       }
     };
 
-    it('Load whole tree', () => {
-      const result = model.queryOptions(userModel, { depthLevel: 2 });
-      expect(result).to.deep.equal({
-        include: [
-          {
-            association: 'individual',
-            include: [{
-              association: 'address'
-            }]
-          },
-          { association: 'roles' }
-        ]
+    describe('Empty projection', () => {
+
+      it('Shallow', () => {
+        const result = model.queryOptions(userModel);
+        expect(result).to.deep.equal({
+          include: [
+            { association: 'individual' },
+            { association: 'roles' }
+          ]
+        });
       });
+
+      it('Deep', () => {
+        const result = model.queryOptions(userModel, { depthLevel: 2 });
+        expect(result).to.deep.equal({
+          include: [
+            {
+              association: 'individual',
+              include: [{
+                association: 'address'
+              }]
+            },
+            { association: 'roles' }
+          ]
+        });
+      });
+
     });
 
     describe('Inclusive', () => {
+
+      it('One level deep', () => {
+        const projection = ['individual', 'individual.address'];
+        const result = model.queryOptions(userModel, { projection, depthLevel: 1 });
+        expect(result).to.deep.equal({
+          include: [{
+            association: 'individual'
+          }]
+        });
+      });
 
       it('Root level attribute', () => {
         const projection = ['name'];
@@ -80,7 +104,7 @@ describe('Sequelize crud model', () => {
         });
       });
 
-      it.only('Load nested by fields', () => {
+      it('Load nested by fields', () => {
         const projection = ['individual.name', 'individual.address.city'];
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
@@ -101,17 +125,32 @@ describe('Sequelize crud model', () => {
 
     describe('Exclusive', () => {
 
-      it('Exclude root property', () => {
+      it('One level deep', () => {
         const projection = { exclude: ['name'] };
         const result = model.queryOptions(userModel, { projection });
         expect(result).to.deep.equal({
           attributes: { exclude: ['name'] },
-          include: {
-              association: 'individual',
-              include: [{
-                association: 'address',
-              }]
-            }
+          include: [{
+            association: 'individual'
+          }, {
+            association: 'roles'
+          }]
+        });
+      });
+
+      it('Exclude root property', () => {
+        const projection = { exclude: ['name'] };
+        const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
+        expect(result).to.deep.equal({
+          attributes: { exclude: ['name'] },
+          include: [{
+            association: 'individual',
+            include: [{
+              association: 'address',
+            }]
+          }, {
+            association: 'roles'
+          }]
         });
       });
 
@@ -119,16 +158,16 @@ describe('Sequelize crud model', () => {
         const projection = { exclude: ['individual.id', 'individual.address.id'] };
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
-          include: [
-            {
-              association: 'individual',
-              attributes: { exclude: ['id'] },
-              include: [{
-                association: 'address',
-                attributes: { exclude: ['id'] }
-              }]
-            }
-          ]
+          include: [{
+            association: 'individual',
+            attributes: { exclude: ['id'] },
+            include: [{
+              association: 'address',
+              attributes: { exclude: ['id'] }
+            }]
+          }, {
+            association: 'roles'
+          }]
         });
       });
 
