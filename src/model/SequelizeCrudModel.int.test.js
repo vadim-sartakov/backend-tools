@@ -113,7 +113,7 @@ describe('Sequelize crud model', () => {
       expect(result[0].name).to.equal('Employee 44');
     });
 
-    it.only('Search', async () => {
+    it('Search', async () => {
       let model = new SequelizeCrudModel(Department, {
         loadFields: { employees: { projection: 'id name', loadFields: { address: 'address' } } },
         searchFields: ['name', 'employees.name', 'employees.address.address']

@@ -1,4 +1,4 @@
-import { filterObject, createProjection } from "common-tools";
+import { filterObject } from "common-tools";
 
 const defaultPermissions = { create: {}, read: {}, update: {}, delete: {} };
 
@@ -15,7 +15,6 @@ class CrudModel {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
     let projection = this.getReadProjection(permissionProjection);
-    if (projection) projection = createProjection(projection);
     const resultFilter = this.getResultFilter(filter, permissionFilter);
     return await this.execGetAll({
       page,
@@ -72,7 +71,6 @@ class CrudModel {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
     let projection = this.getReadProjection(permissionProjection);
-    if (projection) projection = createProjection(projection);
     const resultFilter = this.getResultFilter(filter, permissionFilter);
     return await this.execGetOne({ filter: resultFilter, projection });
   }

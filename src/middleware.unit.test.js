@@ -6,115 +6,115 @@ import { fake } from "sinon";
 chai.use(sinonChai);
 
 class StubResponse {
-    constructor(user) {
-        this.locals = { user };
-        this.status = fake();
-        this.json = fake();
-    }
+  constructor(user) {
+    this.locals = { user };
+    this.status = fake();
+    this.json = fake();
+  }
 }
 
 describe("Middleware", () => {
 
-    describe("Permissions", () => {
-        
-        let user, res, next;
+  describe("Permissions", () => {
 
-        beforeEach(() => {
-            user = { roles: ["USER"] };
-            res = new StubResponse(user);
-            next = new fake();
-        });
+    let user, res, next;
 
-        it("Granted read", () => {
-            const schema = { "USER": { read: true } };
-            const middleware = security(schema);
-            middleware({ }, res, next);
-            expect(res.locals.permissions).to.be.ok;
-            expect(next).to.have.been.called;
-        });
+    beforeEach(() => {
+      user = { roles: ["USER"] };
+      res = new StubResponse(user);
+      next = new fake();
+    });
 
-        describe("Denied", () => {
+    it("Granted read", () => {
+      const schema = { "USER": { read: true } };
+      const middleware = security(schema);
+      middleware({}, res, next);
+      expect(res.locals.permissions).to.be.ok;
+      expect(next).to.have.been.called;
+    });
 
-            const schema = { };
-            const middleware = security(schema);
+    describe("Denied", () => {
 
-            const checkIfAccessIsDenied = (middleware, res, method) => {
-                middleware({ method }, res, next);
-                expect(res.status).to.have.been.calledWith(403);
-                expect(res.json).to.have.been.calledWith({ message: "Access is denied" });
-            };
+      const schema = {};
+      const middleware = security(schema);
 
-            it("Denied create", () => {
-                checkIfAccessIsDenied(middleware, res, "POST");
-            });
-        
-            it("Denied read", () => {
-                checkIfAccessIsDenied(middleware, res, "GET");
-            });
+      const checkIfAccessIsDenied = (middleware, res, method) => {
+        middleware({ method }, res, next);
+        expect(res.status).to.have.been.calledWith(403);
+        expect(res.json).to.have.been.calledWith({ message: "Access is denied" });
+      };
 
-            it("Denied update", () => {
-                checkIfAccessIsDenied(middleware, res, "PUT");
-            });
-        
-            it("Denied delete", () => {
-                checkIfAccessIsDenied(middleware, res, "DELETE");
-            });
+      it("Denied create", () => {
+        checkIfAccessIsDenied(middleware, res, "POST");
+      });
 
-        });
+      it("Denied read", () => {
+        checkIfAccessIsDenied(middleware, res, "GET");
+      });
+
+      it("Denied update", () => {
+        checkIfAccessIsDenied(middleware, res, "PUT");
+      });
+
+      it("Denied delete", () => {
+        checkIfAccessIsDenied(middleware, res, "DELETE");
+      });
 
     });
 
-    describe("Validator", () => {
+  });
 
-        const validationErrorPart = { message: "Validation failed" };
+  describe("Validator", () => {
 
-        it("Success", () => {
-            const constraints = { field: () => undefined };
-            const next = fake();
-            const middleware = validator(constraints);
-            const res = new StubResponse({});
-            middleware({ body: { field: "Bill" } }, res, next);
-            expect(res.status).to.not.have.been.called;
-            expect(res.json).to.not.have.been.called;
-            expect(next).to.have.been.called;
-        });
+    const validationErrorPart = { message: "Validation failed" };
 
-        it("Fail", () => {
-            const constraints = { field: () => "Error" };
-            const next = fake();
-            const middleware = validator(constraints);
-            const res = new StubResponse({});
-            middleware({ body: { } }, res, next);
-            expect(res.status).to.have.been.calledWith(400);
-            expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: { "field": "Error" } });
-            expect(next).to.not.have.been.called;
-        });
-
+    it("Success", () => {
+      const constraints = { field: () => undefined };
+      const next = fake();
+      const middleware = validator(constraints);
+      const res = new StubResponse({});
+      middleware({ method: "POST", body: { field: "Bill" } }, res, next);
+      expect(res.status).to.not.have.been.called;
+      expect(res.json).to.not.have.been.called;
+      expect(next).to.have.been.called;
     });
 
-    describe("Unauthorized", () => {
-
-        it("Success", () => {
-            const next = fake();
-            const middleware = unauthorized();
-            const res = new StubResponse({});
-            middleware({}, res, next);
-            expect(res.status).to.not.have.been.called;
-            expect(res.json).to.not.have.been.called;
-            expect(next).to.have.been.called;
-        });
-
-        it("Fail", () => {
-            const next = fake();
-            const middleware = unauthorized();
-            const res = new StubResponse();
-            middleware({}, res, next);
-            expect(res.status).to.have.been.calledWith(401);
-            expect(res.json).to.have.been.calledWith({ message: "Unathorized" });
-            expect(next).to.not.have.been.called;
-        });
-
+    it("Fail", () => {
+      const constraints = { field: () => "Error" };
+      const next = fake();
+      const middleware = validator(constraints);
+      const res = new StubResponse({});
+      middleware({ method: "POST", body: {} }, res, next);
+      expect(res.status).to.have.been.calledWith(400);
+      expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: { "field": "Error" } });
+      expect(next).to.not.have.been.called;
     });
+
+  });
+
+  describe("Unauthorized", () => {
+
+    it("Success", () => {
+      const next = fake();
+      const middleware = unauthorized();
+      const res = new StubResponse({});
+      middleware({}, res, next);
+      expect(res.status).to.not.have.been.called;
+      expect(res.json).to.not.have.been.called;
+      expect(next).to.have.been.called;
+    });
+
+    it("Fail", () => {
+      const next = fake();
+      const middleware = unauthorized();
+      const res = new StubResponse();
+      middleware({}, res, next);
+      expect(res.status).to.have.been.calledWith(401);
+      expect(res.json).to.have.been.calledWith({ message: "Unathorized" });
+      expect(next).to.not.have.been.called;
+    });
+
+  });
 
 });
 
