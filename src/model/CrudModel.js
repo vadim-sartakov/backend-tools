@@ -4,17 +4,22 @@ const defaultPermissions = { create: {}, read: {}, update: {}, delete: {} };
 
 class CrudModel {
 
-  constructor({ excerptProjection, searchFields, cascadeFields, loadDepth = 1 }) {
+  constructor({ excerptProjection, searchFields, cascadeFields, returnValues, loadDepth = 1 }) {
     this.excerptProjection = excerptProjection;
     this.searchFields = searchFields;
     this.cascadeFields = cascadeFields;
+    this.returnValues = returnValues;
     this.loadDepth = loadDepth;
   }
 
-  async getAll({ page = 0, size = 20, filter, sort }, permissions) {
+  async getAll({ page = 0, size = 20, filter, sort, search }, permissions) {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
     let projection = this.getReadProjection(permissionProjection);
+    if (search && this.searchFields) {
+      const search = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
+      filter = Object.assign(filter, { $or: [...this.searchFieldsToFilter(this.searchFields, search)] });
+    }
     const resultFilter = this.getResultFilter(filter, permissionFilter);
     return await this.execGetAll({
       page,
@@ -27,11 +32,6 @@ class CrudModel {
 
   getResultFilter(queryFilter, permissionFilter) {
 
-    if (queryFilter && queryFilter.search && this.searchFields) {
-      const search = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
-      Object.assign(queryFilter, { $or: [...this.searchFieldsToFilter(search, queryFilter.search)] });
-      delete queryFilter.search;
-    }
     const filterArray = [];
     if (permissionFilter) filterArray.push(permissionFilter);
     if (queryFilter) filterArray.push(queryFilter);

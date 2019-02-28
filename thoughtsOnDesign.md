@@ -28,3 +28,4 @@ const crudRouter = new CrudRouter();
 ## Permissions handling level.
 
 One of main questions: where to transform evaluated user permissions (projection and filter) to query parameters? Controller or CrudModel?
+It should be on database wrapper level. Because controller should be able to query single entry with applied security schema (same as for the 1st clue)

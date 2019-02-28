@@ -172,7 +172,7 @@ describe.only("Crud router", () => {
 
     it("Update user", async () => {
       const instance = { firstName: "Steve" };
-      const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } });
+      const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } }, { returnValue: true });
       await request(app).put("/0").send(instance).expect(200, { ...instance, updated: true });
       expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
     });
