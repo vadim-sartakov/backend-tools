@@ -46,9 +46,9 @@ export const security = schema => {
     );
     const { method } = req;
     if ((method === "POST" && !permissions.create) ||
-      (method === "GET" && !permissions.read) ||
-      (method === "PUT" && !permissions.update) ||
-      (method === "DELETE" && !permissions.delete)) {
+        (method === "GET" && !permissions.read) ||
+        (method === "PUT" && !permissions.update) ||
+        (method === "DELETE" && !permissions.delete)) {
       res.status(403);
       res.json({ message: "Access is denied" });
       debug("Access denied for %s to %s", req.ip, req.originalUrl);

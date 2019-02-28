@@ -6,10 +6,6 @@ import { getCurrentUrl, asyncMiddleware } from "../utils";
 import { security, validator } from "../middleware";
 
 const defaultOptions = {
-  excerptProjection: undefined,
-  searchFields: undefined,
-  cascadeFields: undefined,
-  loadDepth: 1,
   getAll: {
     defaultPageSize: 20
   },
@@ -19,22 +15,25 @@ const defaultOptions = {
   deleteOne: {}
 };
 
-const crudRouter = (Model, options) => {
-  options = _.merge(options, defaultOptions);
-  const router = new Router();  
-  const { securitySchema, validationSchema } = options;
-  securitySchema && router.use( security(securitySchema) );  
-  validationSchema && router.use( validator(validationSchema) );
+class CrudRouter extends Router {
+  
+  constructor(crudModel, options) {
+    super();
+    options = _.merge(options, defaultOptions);
+    const { securitySchema, validationSchema } = options;
+    securitySchema && this.use( security(securitySchema) );  
+    validationSchema && this.use( validator(validationSchema) );
 
-  const rootRouter = router.route("/");
-  !options.getAll.disable && rootRouter.get( createGetAll(Model, options) );
-  !options.addOne.disable && rootRouter.post( createAddOne(Model, options) );
-  const idRouter = router.route("/:id");
-  !options.getOne.disable && idRouter.get( createGetOne(Model, options) );
-  !options.updateOne.disable && idRouter.put( createUpdateOne(Model, options) );
-  !options.deleteOne.disable && idRouter.delete( createDeleteOne(Model, options) );
-  return router;
-};
+    this.rootRouter = this.route("/");
+    !options.getAll.disable && this.rootRouter.get( createGetAll(crudModel, options) );
+    !options.addOne.disable && this.rootRouter.post( createAddOne(crudModel, options) );
+    this.idRouter = this.route("/:id");
+    !options.getOne.disable && this.idRouter.get( createGetOne(crudModel, options) );
+    !options.updateOne.disable && this.idRouter.put( createUpdateOne(crudModel, options) );
+    !options.deleteOne.disable && this.idRouter.delete( createDeleteOne(crudModel, options) );
+  }
+
+}
 
 const createGetAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
@@ -108,4 +107,4 @@ const createDeleteOne = Model => asyncMiddleware(async (req, res, next) => {
   return instance ? res.status(204).end() : next();
 });
 
-export default crudRouter;
+export default CrudRouter;

@@ -6,7 +6,7 @@ import sinonChai from "sinon-chai";
 import request from "supertest";
 import qs from "qs";
 
-import crudRouter from "./crud";
+import CrudRouter from "./crud";
 
 chai.use(sinonChai);
 
@@ -38,7 +38,7 @@ describe.only("Crud router", () => {
 
   const initialize = (modelArgs, routerOptions, user) => {
     const model = new StubModel(modelArgs);
-    const router = crudRouter(model, routerOptions);
+    const router = new CrudRouter(model, routerOptions);
     const app = express();
     app.use(bodyParser.json());
     user && app.use((req, res, next) => {
