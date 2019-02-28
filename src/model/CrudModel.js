@@ -1,14 +1,13 @@
-import { filterObject } from "common-tools";
+import { filterObject, createProjection } from "common-tools";
 
 const defaultPermissions = { create: {}, read: {}, update: {}, delete: {} };
 
 class CrudModel {
 
-  constructor({ excerptProjection, searchFields, cascadeFields, returnValues, loadDepth = 1 }) {
+  constructor({ excerptProjection, searchFields, cascadeFields, loadDepth = 1 }) {
     this.excerptProjection = excerptProjection;
     this.searchFields = searchFields;
     this.cascadeFields = cascadeFields;
-    this.returnValues = returnValues;
     this.loadDepth = loadDepth;
   }
 
@@ -16,21 +15,23 @@ class CrudModel {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
     let projection = this.getReadProjection(permissionProjection);
-    if (search && this.searchFields) {
-      const search = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
-      filter = Object.assign(filter, { $or: [...this.searchFieldsToFilter(this.searchFields, search)] });
-    }
-    const resultFilter = this.getResultFilter(filter, permissionFilter);
+    const resultFilter = this.getResultFilter(filter, permissionFilter, search);
     return await this.execGetAll({
       page,
       size,
-      projection,
+      projection: createProjection(projection),
       filter: resultFilter,
       sort
     });
   }
 
-  getResultFilter(queryFilter, permissionFilter) {
+  getResultFilter(queryFilter, permissionFilter, search) {
+
+    if (search && this.searchFields) {
+      const search = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
+      const searchFilter = this.searchFieldsToFilter(this.searchFields, search);
+      queryFilter = Object.assign(queryFilter, { $or: searchFilter });
+    }
 
     const filterArray = [];
     if (permissionFilter) filterArray.push(permissionFilter);
@@ -72,7 +73,10 @@ class CrudModel {
     const { read: { filter: permissionFilter, projection: permissionProjection } } = permissions;
     let projection = this.getReadProjection(permissionProjection);
     const resultFilter = this.getResultFilter(filter, permissionFilter);
-    return await this.execGetOne({ filter: resultFilter, projection });
+    return await this.execGetOne({
+      filter: resultFilter,
+      projection: createProjection(projection)
+    });
   }
 
   addIdUnderscore(filter) {

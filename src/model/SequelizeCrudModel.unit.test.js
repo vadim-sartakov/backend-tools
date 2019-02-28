@@ -116,7 +116,7 @@ describe('Sequelize crud model', () => {
     describe('Exclusive', () => {
 
       it('One level deep', () => {
-        const projection = { exclude: ['name'] };
+        const projection = { exclusive: true, paths: ['name'] };
         const result = model.queryOptions(userModel, { projection });
         expect(result).to.deep.equal({
           attributes: { exclude: ['name'] },
@@ -129,7 +129,7 @@ describe('Sequelize crud model', () => {
       });
 
       it('Exclude root property', () => {
-        const projection = { exclude: ['name'] };
+        const projection = { exclusive: true, paths: ['name'] };
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
           attributes: { exclude: ['name'] },
@@ -145,7 +145,7 @@ describe('Sequelize crud model', () => {
       });
 
       it('Exclude deep nested property', () => {
-        const projection = { exclude: ['individual.id', 'individual.address.id'] };
+        const projection = { exclusive: true, paths: ['individual.id', 'individual.address.id'] };
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
           include: [{

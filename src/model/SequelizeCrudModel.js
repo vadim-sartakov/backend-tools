@@ -14,10 +14,10 @@ class SequelizeCrudModel extends CrudModel {
 
     const attributeIsInProjection = attribute => {
       if (!projection) return true;
-      const projectionPaths = projection.exclude || projection;
+      const projectionPaths = projection.paths || projection;
       const currentPath = [...paths, attribute].join('.');
       return projectionPaths.some(projectionPath => {
-        return projection.exclude ? projectionPath === currentPath : projectionPath.startsWith(currentPath);
+        return projection.exclusive ? projectionPath === currentPath : projectionPath.startsWith(currentPath);
       });
     };
     const attributes = Object.keys(Model.attributes).reduce((accumulator, attribute) => {
@@ -29,7 +29,7 @@ class SequelizeCrudModel extends CrudModel {
     const include = Model.associations && Object.keys(Model.associations).reduce((accumulator, attribute) => {
       
       const isInProjection = attributeIsInProjection(attribute);
-      if ( ( !projection || ( isInProjection && !projection.exclude ) || ( !isInProjection && projection.exclude ) ) && depthLevel > 0 ) {
+      if ( ( !projection || ( isInProjection && !projection.exclusive ) || ( !isInProjection && projection.exclusive ) ) && depthLevel > 0 ) {
         const associationModel = Model.associations[attribute].target;
         const nextOpts = {
           projection,
@@ -47,7 +47,7 @@ class SequelizeCrudModel extends CrudModel {
     const association = paths.length > 0 && paths[paths.length - 1];
     if (association) result.association = association;
 
-    if (projection && attributes.length > 0) result.attributes = projection.exclude ? { exclude: attributes } : attributes;
+    if (projection && attributes.length > 0) result.attributes = projection.exclusive ? { exclude: attributes } : attributes;
     if (include && Object.keys(include).length > 0) result.include = include;
 
     return result;
@@ -60,10 +60,6 @@ class SequelizeCrudModel extends CrudModel {
       const field = paths.length === 1 ? searchField : `$${searchField}$`;
       return { [field]: { $iLike: `%${query}%` } };
     });
-  }
-
-  convertProjectionToAttributes({ exclusive, paths }) {
-    return exclusive ? { exclude: paths } : paths;
   }
 
   async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
