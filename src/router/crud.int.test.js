@@ -128,14 +128,24 @@ describe.only("Crud router", () => {
 
   describe("Add one", () => {
 
-    it("Add new user", async () => {
+    const getIdFromLocation = location => {
+      const regex = /.+\/(.+)/g;
+      const id = regex.exec(location)[1];
+      return id;
+    };
+
+    it("Add new user without return value", async () => {
       const instance = { id: "0" };
       const { model, app } = initialize({ addOneResult: instance, getOneResult: { ...instance, created: true } });
-      const getIdFromLocation = location => {
-        const regex = /.+\/(.+)/g;
-        const id = regex.exec(location)[1];
-        return id;
-      };
+      const res = await request(app).post("/").send(instance).expect(201, {});
+      const id = getIdFromLocation(res.headers.location);
+      expect(id).to.equal(instance.id);
+      expect(model.addOne).to.have.been.calledWith(instance, undefined);
+    });
+
+    it("Add new user with return value", async () => {
+      const instance = { id: "0" };
+      const { model, app } = initialize({ addOneResult: instance, getOneResult: { ...instance, created: true } }, { returnValue: true });
       const res = await request(app).post("/").send(instance).expect(201, { ...instance, created: true });
       const id = getIdFromLocation(res.headers.location);
       expect(id).to.equal(instance.id);
@@ -170,7 +180,14 @@ describe.only("Crud router", () => {
       expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
     });
 
-    it("Update user", async () => {
+    it("Update user without return value", async () => {
+      const instance = { firstName: "Steve" };
+      const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } });
+      await request(app).put("/0").send(instance).expect(200);
+      expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance, undefined);
+    });
+
+    it("Update user with return value", async () => {
       const instance = { firstName: "Steve" };
       const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } }, { returnValue: true });
       await request(app).put("/0").send(instance).expect(200, { ...instance, updated: true });
@@ -187,10 +204,17 @@ describe.only("Crud router", () => {
       expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);
     });
 
-    it("Delete user", async () => {
+    it("Delete user without return value", async () => {
       const instance = { firstName: "Steve" };
       const { model, app } = initialize({ deleteOneResult: instance });
       await request(app).delete("/0").expect(204);
+      expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);
+    });
+
+    it("Delete user with return value", async () => {
+      const instance = { firstName: "Steve" };
+      const { model, app } = initialize({ deleteOneResult: instance, getOneResult: instance }, { returnValue: true });
+      await request(app).delete("/0").expect(200, instance);
       expect(model.deleteOne).to.have.been.calledWith({ id: "0" }, undefined);
     });
 

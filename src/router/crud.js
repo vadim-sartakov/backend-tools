@@ -81,10 +81,10 @@ const addOne = (Model, options) => asyncMiddleware(async (req, res) => {
   res.status(201);
   res.location(getLocation(req, id));
   if (returnValue) {
-    res.json(instance);
-  } else {
     instance = await Model.getOne({ id }, permissions);
     res.json(instance);
+  } else {
+    res.end();
   }
 });
 
