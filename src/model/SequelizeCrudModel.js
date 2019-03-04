@@ -5,7 +5,6 @@ class SequelizeCrudModel extends CrudModel {
   constructor(Model, opts = {}) {
     super(opts);
     this.Model = Model;
-    this.readInclude = this.loadFields && this.loadFieldsToInclude(this.loadFields);
   }
 
   queryOptions(Model, options = {}) {
@@ -43,7 +42,7 @@ class SequelizeCrudModel extends CrudModel {
 
     }, []);
 
-    const result = {};
+    const result = { duplicating: false };
     const association = paths.length > 0 && paths[paths.length - 1];
     if (association) result.association = association;
 
@@ -63,7 +62,8 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execGetAll({ page = 0, size = 20, projection, filter, sort }) {
-    const params = { limit: size, offset: size * page, ...this.queryOptions(this.Model, { projection }) };
+    const options = this.queryOptions(this.Model, { projection, depthLevel: this.loadDepth });
+    const params = { limit: size, offset: size * page, ...options };
     if (filter) params.where = filter;
     if (sort) params.order = this.convertSort(sort);
     return await this.Model.findAll(params);
@@ -106,7 +106,7 @@ class SequelizeCrudModel extends CrudModel {
   }
 
   async execGetOne({ filter, projection }) {
-    const options = this.queryOptions(this.Model, { projection }) || {};
+    const options = this.queryOptions(this.Model, { projection, depthLevel: this.loadDepth }) || {};
     if (filter) options.where = filter;
     return await this.Model.find(options);
   }

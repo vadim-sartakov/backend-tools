@@ -115,35 +115,25 @@ describe('Sequelize crud model', () => {
 
     it('Search', async () => {
       let model = new SequelizeCrudModel(Department, {
-        loadFields: { employees: { projection: 'id name', loadFields: { address: 'address' } } },
-        searchFields: ['name', 'employees.name', 'employees.address.address']
+        searchFields: ['name', 'employees.name', 'employees.address.address'],
+        loadDepth: 2
       });
-      let result = await model.getAll({ filter: { search: 'ployee 42' } });
+      let result = await model.getAll({ search: 'ployee 42' });
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(1);
       expect(result[0].employees[0].name).to.equal('Employee 42');
 
-      expect(result[0].employees[0].birthdate).not.to.be.ok;
-
-      result = await model.getAll({ filter: { search: 'partment 2' } });
+      result = await model.getAll({ search: 'partment 2' });
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(15);
 
-      result = await model.getAll({ filter: { search: 'ployee address 33' } });
+      result = await model.getAll({ search: 'ployee address 33' });
       expect(result.length).to.equal(1);
       expect(result[0].name).to.equal('Department 2');
       expect(result[0].employees.length).to.equal(1);
 
-    });
-
-    it('Projection with load', async () => {
-      const model = new SequelizeCrudModel(Department, {
-        loadFields: { employees: 'id name' }
-      });
-
-      const result = await model.execGetAll({ projection: { paths: ['name', 'employees.name'] } });
     });
 
   });

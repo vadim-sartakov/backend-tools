@@ -19,17 +19,17 @@ class CrudModel {
     return await this.execGetAll({
       page,
       size,
-      projection: createProjection(projection),
+      projection: projection,
       filter: resultFilter,
       sort
     });
   }
 
-  getResultFilter(queryFilter, permissionFilter, search) {
+  getResultFilter(queryFilter = {}, permissionFilter, search) {
 
     if (search && this.searchFields) {
-      const search = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
-      const searchFilter = this.searchFieldsToFilter(this.searchFields, search);
+      const searchFieldsArray = Array.isArray(this.searchFields) ? this.searchFields : [this.searchFields];
+      const searchFilter = this.searchFieldsToFilter(searchFieldsArray, search);
       queryFilter = Object.assign(queryFilter, { $or: searchFilter });
     }
 

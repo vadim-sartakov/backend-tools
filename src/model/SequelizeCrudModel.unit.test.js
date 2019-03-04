@@ -50,9 +50,10 @@ describe('Sequelize crud model', () => {
       it('Shallow', () => {
         const result = model.queryOptions(userModel);
         expect(result).to.deep.equal({
+          duplicating: false,
           include: [
-            { association: 'individual' },
-            { association: 'roles' }
+            { duplicating: false, association: 'individual' },
+            { duplicating: false, association: 'roles' }
           ]
         });
       });
@@ -60,14 +61,17 @@ describe('Sequelize crud model', () => {
       it('Deep', () => {
         const result = model.queryOptions(userModel, { depthLevel: 2 });
         expect(result).to.deep.equal({
+          duplicating: false,
           include: [
             {
+              duplicating: false,
               association: 'individual',
               include: [{
+                duplicating: false,
                 association: 'address'
               }]
             },
-            { association: 'roles' }
+            { duplicating: false, association: 'roles' }
           ]
         });
       });
@@ -80,7 +84,9 @@ describe('Sequelize crud model', () => {
         const projection = ['individual', 'individual.address'];
         const result = model.queryOptions(userModel, { projection, depthLevel: 1 });
         expect(result).to.deep.equal({
+          duplicating: false,
           include: [{
+            duplicating: false,
             association: 'individual'
           }]
         });
@@ -90,6 +96,7 @@ describe('Sequelize crud model', () => {
         const projection = ['name'];
         const result = model.queryOptions(userModel, { projection });
         expect(result).to.deep.equal({
+          duplicating: false,
           attributes: ['name']
         });
       });
@@ -98,11 +105,14 @@ describe('Sequelize crud model', () => {
         const projection = ['individual.name', 'individual.address.city'];
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
+          duplicating: false,
           include: [
             {
+              duplicating: false,
               association: 'individual',
               attributes: ['name'],
               include: [{
+                duplicating: false,
                 association: 'address',
                 attributes: ['city']
               }]
@@ -119,10 +129,13 @@ describe('Sequelize crud model', () => {
         const projection = { exclusive: true, paths: ['name'] };
         const result = model.queryOptions(userModel, { projection });
         expect(result).to.deep.equal({
+          duplicating: false,
           attributes: { exclude: ['name'] },
           include: [{
+            duplicating: false,
             association: 'individual'
           }, {
+            duplicating: false,
             association: 'roles'
           }]
         });
@@ -132,13 +145,17 @@ describe('Sequelize crud model', () => {
         const projection = { exclusive: true, paths: ['name'] };
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
+          duplicating: false,
           attributes: { exclude: ['name'] },
           include: [{
+            duplicating: false,
             association: 'individual',
             include: [{
+              duplicating: false,
               association: 'address',
             }]
           }, {
+            duplicating: false,
             association: 'roles'
           }]
         });
@@ -148,14 +165,18 @@ describe('Sequelize crud model', () => {
         const projection = { exclusive: true, paths: ['individual.id', 'individual.address.id'] };
         const result = model.queryOptions(userModel, { projection, depthLevel: 2 });
         expect(result).to.deep.equal({
+          duplicating: false,
           include: [{
+            duplicating: false,
             association: 'individual',
             attributes: { exclude: ['id'] },
             include: [{
+              duplicating: false,
               association: 'address',
               attributes: { exclude: ['id'] }
             }]
           }, {
+            duplicating: false,
             association: 'roles'
           }]
         });

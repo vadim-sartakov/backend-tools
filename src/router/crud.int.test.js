@@ -26,7 +26,7 @@ class StubModel {
   }
 }
 
-describe.only("Crud router", () => {
+describe("Crud router", () => {
 
   const getBulkResult = entryCount => {
     const result = [];
