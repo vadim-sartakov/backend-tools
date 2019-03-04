@@ -85,10 +85,11 @@ class SequelizeCrudModel extends CrudModel {
       const options = { transaction };
       if (this.cascadeFields) options.include = this.cascadeFieldsToInclude(this.cascadeFields);
       const instance = await this.Model.create(payload, options);
-      await Object.keys(this.Model.associations).reduce(async (accumulator, association) => {
-        if (this.cascadeFields && this.cascadeFields.some(cascadeField => association === ( cascadeField.field || cascadeField ) )) return;
-        const setter = instance[`set${association.charAt(0).toUpperCase() + association.substring(1)}`];
-        const value = payload[association];
+      await Object.keys(this.Model.associations).reduce(async (accumulator, associationKey) => {
+        if (this.cascadeFields && this.cascadeFields.some(cascadeField => associationKey === ( cascadeField.field || cascadeField ) )) return;
+        const association = this.Model.associations[associationKey];   
+        const setter = instance[association.accessors.set];
+        const value = payload[associationKey];
         if (value) await setter.apply(instance, [value, { transaction }]);
       }, Promise.resolve());
       return instance;
