@@ -22,14 +22,18 @@ describe('Sequelize crud model', () => {
     birthdate: { type: Sequelize.DATE, allowNull: false }
   });
 
+  const EmployeeAddresses = sequelize.define('employee_addresses', {}, { timestamps: false });
+
   Department.hasOne(Address);
   Department.hasMany(Employee);
-  Employee.hasOne(Address);
+  Employee.belongsToMany(Address, { through: EmployeeAddresses });
+  //Address.belongsToMany(Employee, { through: 'EmployeeAddresses' });
 
   before(async () => {
     await Department.sync({ force: true });
     await Employee.sync({ force: true });
     await Address.sync({ force: true });
+    await EmployeeAddresses.sync({ force: true });
   });
 
   const populateDatabase = async (depCount, employeeCount) => {
@@ -41,7 +45,7 @@ describe('Sequelize crud model', () => {
         employees.push({
           name: 'Employee ' + empId,
           birthdate: new Date(now.getFullYear() - 30, now.getMonth(), now.getDay()),
-          address: { address: 'Employee address ' + empId }
+          addresses: [{ address: 'Employee address ' + empId }]
         });
         empId++;
       }
@@ -49,7 +53,7 @@ describe('Sequelize crud model', () => {
         name: 'Department ' + depId,
         address: { address: 'Address ' + depId },
         employees
-      }, { include: [ 'address', { association: 'employees', include: ['address'] } ] });
+      }, { include: [ 'address', { association: 'employees', include: ['addresses'] } ] });
     }
   };
 
@@ -115,7 +119,7 @@ describe('Sequelize crud model', () => {
 
     it('Search', async () => {
       let model = new SequelizeCrudModel(Department, {
-        searchFields: ['name', 'employees.name', 'employees.address.address'],
+        searchFields: ['name', 'employees.name', 'employees.addresses.address'],
         loadDepth: 2
       });
       let result = await model.getAll({ search: 'ployee 42' });
@@ -166,19 +170,24 @@ describe('Sequelize crud model', () => {
 
     it('Cascade all', async () => {
       const model = new SequelizeCrudModel(Department, {
-        cascadeFields: [{ field: 'employees', cascadeFields: ['address'] }, 'address']
+        cascadeFields: [{ field: 'employees', cascadeFields: ['addresses'] }, 'address']
       });
       await model.execAddOne({
         name: 'Department 2',
         address: { address: 'Address 1' },
         employees: [
-          { name: 'Employee 1', birthdate: new Date(), address: { address: 'Address 2' } }
+          { name: 'Employee 1', birthdate: new Date(), addresses: [{ address: 'Address 2' }] }
         ]
       });
-      const employees = await Employee.findAll();
-      expect(employees.length).to.equal(1);
-      const addresses = await Address.findAll();
-      expect(addresses.length).to.equal(2);
+      const newDepartment = await Department.findOne({
+        where: { name: 'Department 2' },
+        include: [{ association: 'employees', include: ['addresses'] }, 'address']
+      });
+      expect(newDepartment.address).to.be.ok;
+      expect(newDepartment.address.address).to.equal('Address 1');
+      expect(newDepartment.employees).to.be.ok;
+      expect(newDepartment.employees[0].addresses).to.be.ok;
+      expect(newDepartment.employees[0].addresses[0].address).to.equal('Address 2');
     });
 
     it('Set associated references', async () => {
