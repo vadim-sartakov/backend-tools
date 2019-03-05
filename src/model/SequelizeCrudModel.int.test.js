@@ -224,14 +224,37 @@ describe('Sequelize crud model', () => {
       expect(result).not.to.be.ok;
     });
 
-    it.skip('Cascade all', async () => {
-      const model = new SequelizeCrudModel(Department, { cascadeFields: ['address', 'employees'] });
+    it('Cascade one to one', async () => {
+      const model = new SequelizeCrudModel(Department, { cascadeFields: ['address'] });
       const result = await model.execUpdateOne({ name: 'Department 0' }, {
         name: 'Department 1',
         address: { address: 'Address 1' },
         employees: [{ name: 'Employee 20', birthdate: new Date() }]
       });
       expect(result).to.be.ok;
+      const instance = await Department.findOne({
+        where: { name: 'Department 1' },
+        include: ['address']
+      });
+      expect(instance).to.be.ok;
+      expect(instance.name).to.equal('Department 1');
+      expect(instance.address.address).to.equal('Address 1');
+    });
+
+    it.skip('Cascade many to many', async () => {
+      const model = new SequelizeCrudModel(Employee, { cascadeFields: ['addresses'] });
+      const result = await model.execUpdateOne({ name: 'Employee 0' }, {
+        name: 'Employee 999',
+        addresses: [{ address: 'Address 999' }]
+      });
+      expect(result).to.be.ok;
+      /*const instance = await Department.findOne({
+        where: { name: 'Department 1' },
+        include: ['address']
+      });
+      expect(instance).to.be.ok;
+      expect(instance.name).to.equal('Department 1');
+      expect(instance.address.address).to.equal('Address 1');*/
     });
 
   });

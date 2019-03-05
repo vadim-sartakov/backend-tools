@@ -139,6 +139,8 @@ class SequelizeCrudModel extends CrudModel {
         }
         const setter = instance[association.accessors.set];
         const value = payload[associationKey];
+        const targetModel = association.target;
+        const newValues = value.map(curValue => targetModel.build(curValue));
         if (value) await setter.apply(instance, [value, { transaction }]);
       } else {
         await this.updateObject(associatedInstance, payload[associationKey], transaction);
