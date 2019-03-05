@@ -28,8 +28,8 @@ describe('Sequelize crud model', () => {
 
   before(async () => {
     await Department.sync({ force: true });
-    await Address.sync({ force: true });
     await Employee.sync({ force: true });
+    await Address.sync({ force: true });
   });
 
   const populateDatabase = async (depCount, employeeCount) => {
