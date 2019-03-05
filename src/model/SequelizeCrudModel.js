@@ -86,7 +86,7 @@ class SequelizeCrudModel extends CrudModel {
       if (this.cascadeFields) options.include = this.cascadeFieldsToInclude(this.cascadeFields);
       const instance = await this.Model.create(payload, options);
       await Object.keys(this.Model.associations).reduce(async (accumulator, associationKey) => {
-        if (this.cascadeFields && this.cascadeFields.some(cascadeField => associationKey === ( cascadeField.field || cascadeField ) )) return;
+        if (this.isCascadeField(associationKey)) return;
         const association = this.Model.associations[associationKey];   
         const setter = instance[association.accessors.set];
         const value = payload[associationKey];
@@ -94,6 +94,10 @@ class SequelizeCrudModel extends CrudModel {
       }, Promise.resolve());
       return instance;
     });
+  }
+
+  isCascadeField(field) {
+    return (this.cascadeFields && this.cascadeFields.some(cascadeField => field === ( cascadeField.field || cascadeField ) ));
   }
 
   cascadeFieldsToInclude(cascadeFields) {
@@ -109,17 +113,56 @@ class SequelizeCrudModel extends CrudModel {
   async execGetOne({ filter, projection }) {
     const options = this.queryOptions(this.Model, { projection, depthLevel: this.loadDepth }) || {};
     if (filter) options.where = filter;
-    return await this.Model.find(options);
+    return await this.Model.findOne(options);
   }
 
   async execUpdateOne(filter, payload) {
-    const [affected, result] = await this.Model.update(payload, { where: filter, returning: true });
-    if (affected === 0) return null;
-    return result[0];
+    return this.Model.sequelize.transaction(async transaction => {
+      const options = { transaction, where: filter };
+      if (this.cascadeFields) options.include = this.cascadeFieldsToInclude(this.cascadeFields);
+      const instance = await this.Model.findOne(options);
+      if (!instance) return null;
+      await this.updateObject(instance, payload, transaction);
+      return true;
+    });
+  }
+
+  async updateObject(instance, payload, transaction) {
+    const { attributes, associations } = instance.constructor;
+    await Object.keys(associations).reduce(async (accumulator, associationKey) => {
+      const associatedInstance = instance[associationKey];
+      if (!associatedInstance) return;
+      if (Array.isArray(associatedInstance)) {
+        const association = associations[associationKey];
+        if (association.associationType !== 'BelongsToMany') {
+          throw Error('Cascade update allowed only for BelongsToMany array associations');
+        }
+        const setter = instance[association.accessors.set];
+        const value = payload[associationKey];
+        if (value) await setter.apply(instance, [value, { transaction }]);
+      } else {
+        await this.updateObject(associatedInstance, payload[associationKey], transaction);
+      }
+    }, Promise.resolve([]));
+    Object.keys(attributes).filter(
+      attribute => attribute !== 'id'
+          && attribute !== 'updatedAt'
+          && attribute !== 'createdAt'
+    ).forEach(attribute => {
+      const value = payload[attribute];
+      value && instance.set(attribute, value);
+    });
+    await instance.save({ transaction });
   }
 
   async execDeleteOne(filter) {
-    return await this.Model.destroy({ where: filter, returning: true });
+    return this.Model.sequelize.transaction(async transaction => {
+      return this.Model.destroy({ where: filter, transaction });
+    });
+  }
+
+  deleteAssociation(Model, attribute) {
+
   }
 
 }

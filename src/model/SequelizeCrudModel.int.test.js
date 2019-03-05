@@ -206,6 +206,9 @@ describe('Sequelize crud model', () => {
       const model = new SequelizeCrudModel(Employee);
                                             // filter                 // payload
       let result = await model.execUpdateOne({ name: 'Employee 1' }, { name: 'Employee 11' });
+      expect(result).to.be.ok;
+
+      result = await Employee.findOne({ where: { name: 'Employee 11' } });
       expect(result.name).to.equal('Employee 11');
 
       result = await model.execUpdateOne({ name: 'Employee 11111' }, { name: 'Employee 11' });
@@ -213,9 +216,13 @@ describe('Sequelize crud model', () => {
     });
 
     it.skip('Cascade all', async () => {
-      const model = new SequelizeCrudModel(Department, { cascadeFields: ['employees'] });
-      let result = await model.execUpdateOne({ name: 'Department 1' }, { name: 'Department 1', employees: [{ name: 'Employee 20', birthdate: new Date() }] });
-      //expect(result.name).to.equal('Employee 11');
+      const model = new SequelizeCrudModel(Department, { cascadeFields: ['address', 'employees'] });
+      const result = await model.execUpdateOne({ name: 'Department 0' }, {
+        name: 'Department 1',
+        address: { address: 'Address 1' },
+        employees: [{ name: 'Employee 20', birthdate: new Date() }]
+      });
+      expect(result).to.be.ok;
     });
 
   });

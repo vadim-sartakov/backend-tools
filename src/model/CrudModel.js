@@ -94,8 +94,7 @@ class CrudModel {
     permissions = { ...defaultPermissions, ...permissions };
     const { read: { filter: permissionFilter }, update: { projection } } = permissions;
     if (projection) {
-      const initialObject = await this.execGetOne(filter);
-      payload = filterObject(payload, projection, initialObject);
+      payload = filterObject(payload, projection);
     }
     const resultFilter = this.getResultFilter(filter, permissionFilter);
     return await this.execUpdateOne(resultFilter, payload);
