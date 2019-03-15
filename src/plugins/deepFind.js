@@ -3,14 +3,14 @@ function reduceSchemaRecursive(schemaObject, reducer, initialValue, paths = []) 
     const value = schemaObject[property];
     const nestedSchema = Array.isArray(value) ? value[0].obj : value;
     const currentPaths = [...paths, property];
-    let currentAccValue = accumulator;
+    let currentAccValue = reducer(accumulator, currentPaths.join('.'), value);
     if (nestedSchema.ref) {
       const targetModel = this.db.model(nestedSchema.ref);
-      currentAccValue = reduceSchemaRecursive.call(this, targetModel.schema.obj, reducer, initialValue, currentPaths);
+      currentAccValue = reduceSchemaRecursive.call(this, targetModel.schema.obj, reducer, currentAccValue, currentPaths);
     } else if (typeof(nestedSchema) === 'object') {
-      currentAccValue = reduceSchemaRecursive.call(this, nestedSchema, reducer, initialValue, currentPaths);
+      currentAccValue = reduceSchemaRecursive.call(this, nestedSchema, reducer, currentAccValue, currentPaths);
     }
-    return reducer(currentAccValue, currentPaths.join('.'), value);
+    return currentAccValue;
   }, initialValue);
 }
 
@@ -33,6 +33,7 @@ export function deepFindAll(options = {}) {
   const arrays = pathsMeta.filter(path => path.type === 'array').map(pathMeta => pathMeta.property);
   const refs = pathsMeta.filter(path => path.type === 'ref').map(pathMeta => pathMeta.property);
 
+  console.log(pathsMeta);
   console.log(arrays);
   console.log(refs);
 
