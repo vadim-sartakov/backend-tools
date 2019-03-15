@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import mongoose, { Schema } from 'mongoose';
 import deepFindPlugin from './deepFind';
 
+mongoose.set('debug', true);
+
 const managerSchema = new Schema({ name: String });
 const manufacturerSchema = new Schema({ name: String });
 const productSchema = new Schema({

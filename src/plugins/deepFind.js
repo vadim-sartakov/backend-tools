@@ -1,16 +1,17 @@
-function eachPathRecursive(schemaObject, callback, paths = []) {
-  Object.keys(schemaObject).forEach(property => {
+function reduceSchemaRecursive(schemaObject, reducer, initialValue, paths = []) {
+  return Object.keys(schemaObject).reduce((accumulator, property) => {
     const value = schemaObject[property];
     const nestedSchema = Array.isArray(value) ? value[0].obj : value;
     const currentPaths = [...paths, property];
+    let currentAccValue = accumulator;
     if (nestedSchema.ref) {
-      const targetModel = this.connection.model(nestedSchema.ref);
-      eachPathRecursive(targetModel.schema.obj, callback, currentPaths);
+      const targetModel = this.db.model(nestedSchema.ref);
+      currentAccValue = reduceSchemaRecursive.call(this, targetModel.schema.obj, reducer, initialValue, currentPaths);
     } else if (typeof(nestedSchema) === 'object') {
-      eachPathRecursive(nestedSchema, callback, currentPaths);
+      currentAccValue = reduceSchemaRecursive.call(this, nestedSchema, reducer, initialValue, currentPaths);
     }
-    callback(currentPaths.join('.'), value);
-  });
+    return reducer(currentAccValue, currentPaths.join('.'), value);
+  }, initialValue);
 }
 
 export function deepFindAll(options = {}) {
@@ -21,10 +22,19 @@ export function deepFindAll(options = {}) {
   skip && pipeline.push({ $skip: skip });
   limit && pipeline.push({ $limit: limit });
 
-  eachPathRecursive.call(this.schema.obj, (property, schema) => {
-    //schema.ref === reference;
-    //Array.isArray(schema) === array;
-  });
+  const pathsMeta = reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema) => {
+    let type;
+    if (schema.ref) type = 'ref';
+    else if (Array.isArray(schema)) type = 'array';
+    else type = 'path';
+    return [...accumulator, { property, type }];
+  }, []);
+
+  const arrays = pathsMeta.filter(path => path.type === 'array').map(pathMeta => pathMeta.property);
+  const refs = pathsMeta.filter(path => path.type === 'ref').map(pathMeta => pathMeta.property);
+
+  console.log(arrays);
+  console.log(refs);
 
   return pipeline.length === 0 ? this.find() : this.aggregate(pipeline);
 
