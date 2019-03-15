@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 import { createProjection } from 'common-tools';
 import SequelizeCrudModel from './SequelizeCrudModel';
 
-describe('Sequelize crud model', () => {
+describe.skip('Sequelize crud model', () => {
 
   const sequelize = new Sequelize(process.env.SEQUELIZE_DB_URL);
 
