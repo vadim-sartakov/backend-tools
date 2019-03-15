@@ -1,17 +1,17 @@
-const eachPathRecursive = (connection, schemaObject, callback, paths = []) => {
+function eachPathRecursive(schemaObject, callback, paths = []) {
   Object.keys(schemaObject).forEach(property => {
     const value = schemaObject[property];
     const nestedSchema = Array.isArray(value) ? value[0].obj : value;
     const currentPaths = [...paths, property];
     if (nestedSchema.ref) {
-      const targetModel = connection.model(nestedSchema.ref);
-      eachPathRecursive(connection, targetModel.schema.obj, callback, currentPaths);
+      const targetModel = this.connection.model(nestedSchema.ref);
+      eachPathRecursive(targetModel.schema.obj, callback, currentPaths);
     } else if (typeof(nestedSchema) === 'object') {
-      eachPathRecursive(connection, nestedSchema, callback, currentPaths);
+      eachPathRecursive(nestedSchema, callback, currentPaths);
     }
     callback(currentPaths.join('.'), value);
   });
-};
+}
 
 export function deepFindAll(options = {}) {
 
@@ -21,7 +21,7 @@ export function deepFindAll(options = {}) {
   skip && pipeline.push({ $skip: skip });
   limit && pipeline.push({ $limit: limit });
 
-  eachPathRecursive(this.db, this.schema.obj, (property, schema) => {
+  eachPathRecursive.call(this.schema.obj, (property, schema) => {
     //schema.ref === reference;
     //Array.isArray(schema) === array;
   });
