@@ -92,7 +92,7 @@ describe.only('Mongoose deep find plugin', () => {
     expect(result.length).to.equal(3);
   });
 
-  it('Skip 1 limit 1', async () => {
+  it.only('Skip 1 limit 1', async () => {
     const result = await Order.deepFindAll({ skip: 1, limit: 1 });
     expect(result).to.be.ok;
     expect(result.length).to.equal(1);
