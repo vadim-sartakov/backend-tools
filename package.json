@@ -4,7 +4,7 @@
   "description": "Set of useful tools for building backend applications",
   "main": "lib/index.js",
   "scripts": {
-    "unit-test": "mocha src/**/*unit.test.js --watch --require babel-core/register --require babel-polyfill",
+    "unit-test": "mocha src/**/*unit.test.js --watch --inspect --require babel-core/register --require babel-polyfill",
     "int-test": "createdbjs sequelize & mocha src/**/*int.test.js --watch --inspect --require dotenv/config --require babel-core/register --require babel-polyfill --timeout 10000",
     "eslint": "eslint --ignore-path .gitignore ./",
     "create-database": "node --require dotenv/config ./createDatabase.js",

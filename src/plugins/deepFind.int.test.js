@@ -19,7 +19,10 @@ const orderSchema = new Schema({
   manager: { type: Schema.Types.ObjectId, ref: 'Manager' },
   items: [orderItemSchema],
   comment: String
-}, { searchFields: ['comment', 'manager.name', 'items.product.name'] });
+}, {
+  searchFields: ['comment', 'manager.name', 'items.product.name'],
+  maxDepth: 2
+});
 orderSchema.plugin(deepFindPlugin);
 
 describe.only('Mongoose deep find plugin', () => {
@@ -88,11 +91,11 @@ describe.only('Mongoose deep find plugin', () => {
     await connection.close(true);
   });
 
-  it.only('No parameters', async () => {
+  it.only('Loads whole tree with default depth when no options specified', async () => {
     const result = await Order.deepFindAll();
     expect(result).to.be.ok;
     expect(result.length).to.equal(3);
-    console.log('%o', result);
+    console.log("%o", result);
   });
 
   it('Skip 1 limit 1', async () => {
