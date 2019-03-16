@@ -88,16 +88,23 @@ describe.only('Mongoose deep find plugin', () => {
     await connection.close(true);
   });
 
-  it('No parameters', async () => {
+  it.only('No parameters', async () => {
     const result = await Order.deepFindAll();
     expect(result).to.be.ok;
     expect(result.length).to.equal(3);
+    console.log('%o', result);
   });
 
-  it.only('Skip 1 limit 1', async () => {
+  it('Skip 1 limit 1', async () => {
     const result = await Order.deepFindAll({ skip: 1, limit: 1 });
     expect(result).to.be.ok;
     expect(result.length).to.equal(1);
+  });
+
+  it('Search', async () => {
+    const result = await Order.deepFindAll({ search: 'i5' });
+    expect(result).to.be.ok;
+    expect(result.length).to.equal(2);
   });
 
 });

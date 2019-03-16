@@ -14,15 +14,26 @@ function reduceSchemaRecursive(schemaObject, reducer, initialValue, paths = []) 
   }, initialValue);
 }
 
+function searchQueryToFilter(searchQuery) {
+  const { searchFields } = this.schema.options;
+  if (!searchQuery || !searchFields) return;
+  return searchFields.map(searchField => {
+    return { [searchField]: new RegExp(`.*${searchQuery}.*`, 'i') };
+  });
+}
+
+function getRootCollectionFilter(projection) {
+  if (!projection) return;
+}
+
+function getJoinPipeline(projection) {
+
+}
+
 export function deepFindAll(options = {}) {
 
   const { skip, limit, projection, filter, sort, search } = options;
-
-  const pipeline = [];
-  skip && pipeline.push({ $skip: skip });
-  limit && pipeline.push({ $limit: limit });
-
-  const pathsMeta = reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema) => {
+  const pathsTree = this.schema._pathsTree || reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema) => {
     let type;
     if (schema.ref) type = 'ref';
     else if (Array.isArray(schema)) type = 'array';
@@ -30,12 +41,25 @@ export function deepFindAll(options = {}) {
     return [...accumulator, { property, type }];
   }, []);
 
-  const arrays = pathsMeta.filter(path => path.type === 'array').map(pathMeta => pathMeta.property);
-  const refs = pathsMeta.filter(path => path.type === 'ref').map(pathMeta => pathMeta.property);
+  if (!this.schema._pathsTree) this.schema._pathsTree = pathsTree;
 
-  console.log(pathsMeta);
-  console.log(arrays);
-  console.log(refs);
+  const pipeline = [];
+  skip && pipeline.push({ $skip: skip });
+  limit && pipeline.push({ $limit: limit });
+
+  const searchFilter = searchQueryToFilter.call(this, search);
+  const resultFilter = Object.assign({}, filter, searchFilter);
+
+  const rootCollectionFilter = getRootCollectionFilter.call(this, projection);
+
+  rootCollectionFilter && pipeline.push({ $match: rootCollectionFilter });
+
+  const joinPipeline = getJoinPipeline(projection);
+  joinPipeline && pipeline.push(...joinPipeline);
+
+  resultFilter && pipeline.push({ $match: resultFilter });
+  projection && pipeline.push({ $projection: projection });
+  sort && pipeline.push({ $sort: sort });
 
   return pipeline.length === 0 ? this.find() : this.aggregate(pipeline);
 
