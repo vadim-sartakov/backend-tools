@@ -16,7 +16,7 @@ function reduceSchemaRecursive(schemaObject, reducer, initialValue, context = {}
   return Object.keys(schemaObject).reduce((accumulator, property) => {
     const value = schemaObject[property];
     const isArray = Array.isArray(value);
-    const nestedSchema = isArray ? value[0].obj : value;
+    const nestedSchema = isArray ? ( value[0].obj || value[0] ) : ( value.obj || value );
     const currentPaths = [...paths, property];
     const currentPathsString = currentPaths.join('.');
     const nextDepth = maxDepth === true ? maxDepth : maxDepth - 1;
@@ -59,9 +59,16 @@ function getCollectionFilter(projection, filter) {
   if (!projection) return;
 }
 
-function getJoinPipeline(pathsTree, projection, maxDepth) {
-  //const arraysToUnwind = pathsTree.filter();
-  //const set = new Set();
+function getJoinPipeline(pathsTree) {
+  console.log(pathsTree);
+  const arraysToUnwind = pathsTree.reduce((accumulator, path) => {
+    if (path.type === 'ref' && path.parentArrays.length) {
+      return new Set([...accumulator, ...path.parentArrays]);
+    } else {
+      return accumulator;
+    }
+  }, []);
+  console.log(...arraysToUnwind);
 }
 
 const getResultFilter = (filter, searchFilter) => {

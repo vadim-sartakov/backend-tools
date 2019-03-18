@@ -7,7 +7,7 @@ mongoose.set('debug', true);
 const managerSchema = new Schema({ name: String });
 const manufacturerSchema = new Schema({ name: String });
 const productSchema = new Schema({
-  name: String, manufacturer: { type: Schema.Types.ObjectId, ref: 'Manufacturer' }
+  name: String, manufacturer: { type: Schema.Types.ObjectId, ref: 'Manufacturer' }, manager: [{ type: Schema.Types.ObjectId, ref: 'Manager' }]
 });
 const orderItemSchema = new Schema({
   product: { type: Schema.Types.ObjectId, ref: 'Product' },
@@ -21,7 +21,7 @@ const orderSchema = new Schema({
   comment: String
 }, {
   searchFields: ['comment', 'manager.name', 'items.product.name'],
-  //maxDepth: 2
+  maxDepth: true
 });
 orderSchema.plugin(deepFindPlugin);
 
