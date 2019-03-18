@@ -21,7 +21,7 @@ const orderSchema = new Schema({
   comment: String
 }, {
   searchFields: ['comment', 'manager.name', 'items.product.name'],
-  maxDepth: 2
+  //maxDepth: 2
 });
 orderSchema.plugin(deepFindPlugin);
 

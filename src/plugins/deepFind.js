@@ -5,11 +5,11 @@ function reduceSchemaRecursive(schemaObject, reducer, initialValue, context = {}
     const isArray = Array.isArray(value);
     const nestedSchema = isArray ? value[0].obj : value;
     const currentPaths = [...paths, property];
-    const nextDepth = maxDepth - 1;
+    const nextDepth = maxDepth === true ? maxDepth : maxDepth - 1;
     const nextParentArrays = isArray ? [...parentArrays, property] : parentArrays;
-    
+
     let currentAccValue = reducer(accumulator, currentPaths.join('.'), value, parentArrays);
-    if (nestedSchema.ref && nextDepth >= 0) {
+    if (nestedSchema.ref && ( nextDepth === true || nextDepth >= 0 )) {
       const targetModel = this.db.model(nestedSchema.ref);
       currentAccValue = reduceSchemaRecursive.call(
         this,
@@ -44,10 +44,9 @@ function getRootCollectionFilter(projection) {
   if (!projection) return;
 }
 
-function getJoinPipeline(projection, maxDepth) {
-  const pathsTree = this.schema._pathsTree;
-  
-  //Got to track lastArray
+function getJoinPipeline(pathsTree, projection, maxDepth) {
+  //const arraysToUnwind = pathsTree.filter();
+  //const set = new Set();
 }
 
 const getResultFilter = (filter, searchFilter) => {
@@ -61,8 +60,12 @@ const getResultFilter = (filter, searchFilter) => {
 export function deepFindAll(options = {}) {
 
   const { skip, limit, projection, filter, sort, search } = options;
-  const maxDepth = options.maxDepth || this.schema.options.maxDepth;
-  const pathsTree = this.schema._pathsTree || reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema, parentArrays) => {
+  let maxDepth;
+  if (options.maxDepth || options.maxDepth === 0) maxDepth = options.maxDepth;
+  else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
+  else maxDepth = 1;
+
+  const pathsTree = reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema, parentArrays) => {
     let type;
     if (schema.ref) type = 'ref';
     else if (Array.isArray(schema)) type = 'array';
@@ -71,8 +74,6 @@ export function deepFindAll(options = {}) {
   }, [], { maxDepth });
 
   console.log(pathsTree);
-
-  if (!this.schema._pathsTree) this.schema._pathsTree = pathsTree;
 
   const pipeline = [];
 
@@ -83,7 +84,7 @@ export function deepFindAll(options = {}) {
 
   rootCollectionFilter && pipeline.push({ $match: rootCollectionFilter });
 
-  const joinPipeline = getJoinPipeline.call(this, projection, maxDepth);
+  const joinPipeline = getJoinPipeline.call(this, pathsTree, projection, maxDepth);
   joinPipeline && pipeline.push(...joinPipeline);
 
   resultFilter && pipeline.push({ $match: resultFilter });
