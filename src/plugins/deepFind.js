@@ -1,30 +1,45 @@
+const checkIsExclusive = projection => {
+  const keys = Object.keys(projection);
+  return projection[keys[0]] === 0;
+};
+
+const shouldIncludePath = (path, projection) => {
+  if (!projection) return true;
+  const keys = Object.keys(projection);
+  const isExclusive = checkIsExclusive(projection);
+  const pathInProjection = keys.some(key => isExclusive ? key === path : ( key.startsWith(path) || path.startsWith(key) ) );
+  return ( isExclusive && !pathInProjection ) || ( !isExclusive && pathInProjection ) ? true : false;
+};
+
 function reduceSchemaRecursive(schemaObject, reducer, initialValue, context = {}) {
-  const { paths = [], maxDepth, parentArrays = [] } = context;
+  const { paths = [], maxDepth, projection, parentArrays = [] } = context;
   return Object.keys(schemaObject).reduce((accumulator, property) => {
     const value = schemaObject[property];
     const isArray = Array.isArray(value);
     const nestedSchema = isArray ? value[0].obj : value;
     const currentPaths = [...paths, property];
+    const currentPathsString = currentPaths.join('.');
     const nextDepth = maxDepth === true ? maxDepth : maxDepth - 1;
     const nextParentArrays = isArray ? [...parentArrays, property] : parentArrays;
+    const includePath = shouldIncludePath(currentPathsString, projection);
 
-    let currentAccValue = reducer(accumulator, currentPaths.join('.'), value, parentArrays);
-    if (nestedSchema.ref && ( nextDepth === true || nextDepth >= 0 )) {
+    let currentAccValue = ( includePath && reducer(accumulator, currentPathsString, value, parentArrays) ) || accumulator;
+    if (nestedSchema.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
       const targetModel = this.db.model(nestedSchema.ref);
       currentAccValue = reduceSchemaRecursive.call(
         this,
         targetModel.schema.obj,
         reducer,
         currentAccValue,
-        { paths: currentPaths, maxDepth: nextDepth, parentArrays: nextParentArrays }
+        { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays }
       );
-    } else if (typeof(nestedSchema) === 'object' && !nestedSchema.ref) {
+    } else if (typeof(nestedSchema) === 'object' && !nestedSchema.ref && includePath) {
       currentAccValue = reduceSchemaRecursive.call(
         this,
         nestedSchema,
         reducer,
         currentAccValue,
-        { paths: currentPaths, maxDepth, parentArrays: nextParentArrays }
+        { paths: currentPaths, maxDepth, projection, parentArrays: nextParentArrays }
       );
     }
     return currentAccValue;
@@ -40,7 +55,7 @@ function searchQueryToFilter(searchQuery) {
   return { $or: filters};
 }
 
-function getRootCollectionFilter(projection) {
+function getCollectionFilter(projection, filter) {
   if (!projection) return;
 }
 
@@ -71,16 +86,14 @@ export function deepFindAll(options = {}) {
     else if (Array.isArray(schema)) type = 'array';
     else type = 'path';
     return [...accumulator, { property, type, parentArrays }];
-  }, [], { maxDepth });
-
-  console.log(pathsTree);
+  }, [], { maxDepth, projection });
 
   const pipeline = [];
 
   const searchFilter = searchQueryToFilter.call(this, search);
   const resultFilter = getResultFilter(filter, searchFilter);
 
-  const rootCollectionFilter = getRootCollectionFilter.call(this, projection);
+  const rootCollectionFilter = getCollectionFilter.call(this, projection);
 
   rootCollectionFilter && pipeline.push({ $match: rootCollectionFilter });
 
