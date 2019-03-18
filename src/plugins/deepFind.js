@@ -11,35 +11,28 @@ const shouldIncludePath = (path, projection) => {
   return ( isExclusive && !pathInProjection ) || ( !isExclusive && pathInProjection ) ? true : false;
 };
 
-function reduceSchemaRecursive(schemaObject, reducer, initialValue, context = {}) {
+function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
   const { paths = [], maxDepth, projection, parentArrays = [] } = context;
-  return Object.keys(schemaObject).reduce((accumulator, property) => {
-    const value = schemaObject[property];
-    const isArray = Array.isArray(value);
-    const nestedSchema = isArray ? ( value[0].obj || value[0] ) : ( value.obj || value );
-    const currentPaths = [...paths, property];
+  return Object.keys(schema.paths).reduce((accumulator, path) => {
+    let { options } = schema.paths[path];
+    const type = options[0] || options;
+    //options = type.constructor.name === 'Schema' ? type.
+    const isArray = Array.isArray(options.type);
+    const currentPaths = [...paths, path];
     const currentPathsString = currentPaths.join('.');
     const nextDepth = maxDepth === true ? maxDepth : maxDepth - 1;
-    const nextParentArrays = isArray ? [...parentArrays, property] : parentArrays;
+    const nextParentArrays = isArray ? [...parentArrays, path] : parentArrays;
     const includePath = shouldIncludePath(currentPathsString, projection);
 
-    let currentAccValue = ( includePath && reducer(accumulator, currentPathsString, value, parentArrays) ) || accumulator;
-    if (nestedSchema.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
-      const targetModel = this.db.model(nestedSchema.ref);
+    let currentAccValue = ( includePath && reducer(accumulator, currentPathsString, options, parentArrays) ) || accumulator;
+    if ((options.ref) && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
+      const targetModel = this.db.model(options.ref);
       currentAccValue = reduceSchemaRecursive.call(
         this,
-        targetModel.schema.obj,
+        targetModel.schema,
         reducer,
         currentAccValue,
         { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays }
-      );
-    } else if (typeof(nestedSchema) === 'object' && !nestedSchema.ref && includePath) {
-      currentAccValue = reduceSchemaRecursive.call(
-        this,
-        nestedSchema,
-        reducer,
-        currentAccValue,
-        { paths: currentPaths, maxDepth, projection, parentArrays: nextParentArrays }
       );
     }
     return currentAccValue;
@@ -87,7 +80,7 @@ export function deepFindAll(options = {}) {
   else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
   else maxDepth = 1;
 
-  const pathsTree = reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema, parentArrays) => {
+  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, parentArrays) => {
     let type;
     if (schema.ref) type = 'ref';
     else if (Array.isArray(schema)) type = 'array';

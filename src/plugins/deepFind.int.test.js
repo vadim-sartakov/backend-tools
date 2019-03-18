@@ -16,6 +16,7 @@ const orderItemSchema = new Schema({
 
 const orderSchema = new Schema({
   number: Number,
+  manufacturer: manufacturerSchema,
   manager: { type: Schema.Types.ObjectId, ref: 'Manager' },
   items: [orderItemSchema],
   comment: String
