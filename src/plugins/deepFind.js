@@ -1,14 +1,31 @@
-function reduceSchemaRecursive(schemaObject, reducer, initialValue, paths = []) {
+function reduceSchemaRecursive(schemaObject, reducer, initialValue, context = {}) {
+  const { paths = [], maxDepth, parentArrays = [] } = context;
   return Object.keys(schemaObject).reduce((accumulator, property) => {
     const value = schemaObject[property];
-    const nestedSchema = Array.isArray(value) ? value[0].obj : value;
+    const isArray = Array.isArray(value);
+    const nestedSchema = isArray ? value[0].obj : value;
     const currentPaths = [...paths, property];
-    let currentAccValue = reducer(accumulator, currentPaths.join('.'), value);
-    if (nestedSchema.ref) {
+    const nextDepth = maxDepth - 1;
+    const nextParentArrays = isArray ? [...parentArrays, property] : parentArrays;
+    
+    let currentAccValue = reducer(accumulator, currentPaths.join('.'), value, parentArrays);
+    if (nestedSchema.ref && nextDepth >= 0) {
       const targetModel = this.db.model(nestedSchema.ref);
-      currentAccValue = reduceSchemaRecursive.call(this, targetModel.schema.obj, reducer, currentAccValue, currentPaths);
-    } else if (typeof(nestedSchema) === 'object') {
-      currentAccValue = reduceSchemaRecursive.call(this, nestedSchema, reducer, currentAccValue, currentPaths);
+      currentAccValue = reduceSchemaRecursive.call(
+        this,
+        targetModel.schema.obj,
+        reducer,
+        currentAccValue,
+        { paths: currentPaths, maxDepth: nextDepth, parentArrays: nextParentArrays }
+      );
+    } else if (typeof(nestedSchema) === 'object' && !nestedSchema.ref) {
+      currentAccValue = reduceSchemaRecursive.call(
+        this,
+        nestedSchema,
+        reducer,
+        currentAccValue,
+        { paths: currentPaths, maxDepth, parentArrays: nextParentArrays }
+      );
     }
     return currentAccValue;
   }, initialValue);
@@ -41,17 +58,19 @@ const getResultFilter = (filter, searchFilter) => {
   return resultFilter.length === 1 ? resultFilter[0] : { $and: resultFilter };
 };
 
-export function deepFindAll(options = { maxDepth: 1 }) {
+export function deepFindAll(options = {}) {
 
   const { skip, limit, projection, filter, sort, search } = options;
-  const maxDepth = this.schema.options.maxDepth || options.maxDepth;
-  const pathsTree = this.schema._pathsTree || reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema) => {
+  const maxDepth = options.maxDepth || this.schema.options.maxDepth;
+  const pathsTree = this.schema._pathsTree || reduceSchemaRecursive.call(this, this.schema.obj, (accumulator, property, schema, parentArrays) => {
     let type;
     if (schema.ref) type = 'ref';
     else if (Array.isArray(schema)) type = 'array';
     else type = 'path';
-    return [...accumulator, { property, type }];
-  }, []);
+    return [...accumulator, { property, type, parentArrays }];
+  }, [], { maxDepth });
+
+  console.log(pathsTree);
 
   if (!this.schema._pathsTree) this.schema._pathsTree = pathsTree;
 
