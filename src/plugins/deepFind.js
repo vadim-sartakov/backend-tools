@@ -12,7 +12,7 @@ const shouldIncludePath = (path, projection) => {
 };
 
 function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
-  const { paths = [], maxDepth, projection, parentArrays = [] } = context;
+  const { paths = [], maxDepth, projection, parentArrays = [], parentRef } = context;
   return Object.keys(schema.paths).reduce((accumulator, path) => {
     const currentSchemaPath = schema.paths[path];
     const options = ( currentSchemaPath.caster && currentSchemaPath.caster.options ) || currentSchemaPath.options;
@@ -22,17 +22,24 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
     const nextParentArrays = currentSchemaPath.instance === 'Array' ? [...parentArrays, path] : parentArrays;
     const includePath = shouldIncludePath(currentPathsString, projection);
 
-    let currentAccValue = ( includePath && reducer(accumulator, currentPathsString, currentSchemaPath, options, parentArrays) ) || accumulator;
+    let currentAccValue = (includePath && reducer(
+        accumulator,
+        currentPathsString,
+        currentSchemaPath,
+        options,
+        { parentArrays, parentRef })
+      ) || accumulator;
     if (options.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
+      const parentRef = path;
       const targetModel = this.db.model(options.ref);
       currentAccValue = reduceSchemaRecursive.call(
         this,
         targetModel.schema,
         reducer,
         currentAccValue,
-        { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays }
+        { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays, parentRef }
       );
-    } else if (currentSchemaPath.schema) {
+    } else if (currentSchemaPath.schema && includePath) {
       currentAccValue = reduceSchemaRecursive.call(
         this,
         currentSchemaPath.schema,
@@ -61,11 +68,9 @@ function getCollectionFilter(projection, filter) {
 function getJoinPipeline(pathsTree) {
   console.log(pathsTree);
   const arraysToUnwind = pathsTree.reduce((accumulator, path) => {
-    if (path.type === 'ref' && path.parentArrays.length) {
-      return new Set([...accumulator, ...path.parentArrays]);
-    } else {
-      return accumulator;
-    }
+    return path.type === 'ref' && path.parentArrays ?
+        new Set([...accumulator, ...path.parentArrays]) :
+        accumulator;
   }, []);
   console.log(...arraysToUnwind);
 }
@@ -78,7 +83,7 @@ const getResultFilter = (filter, searchFilter) => {
   return resultFilter.length === 1 ? resultFilter[0] : { $and: resultFilter };
 };
 
-export function deepFindAll(options = {}) {
+export function deepFind(options = {}) {
 
   const { skip, limit, projection, filter, sort, search } = options;
   let maxDepth;
@@ -86,12 +91,15 @@ export function deepFindAll(options = {}) {
   else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
   else maxDepth = 1;
 
-  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, parentArrays) => {
+  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, { parentArrays, parentRef }) => {
     let type;
     if (options.ref) type = 'ref';
     else if (schema.instance === 'Array') type = 'array';
     else type = 'path';
-    return [...accumulator, { property, type, parentArrays }];
+    const newPath = { property, type };
+    if (parentArrays.length) newPath.parentArrays = parentArrays;
+    if (parentRef) newPath.parentRef = parentRef;
+    return [...accumulator, newPath];
   }, [], { maxDepth, projection });
 
   const pipeline = [];
@@ -117,9 +125,9 @@ export function deepFindAll(options = {}) {
 }
 
 const deepFindPlugin = schema => {
-  schema.static('deepFindAll', deepFindAll);
+  schema.static('deepFind', deepFind);
   schema.static('deepFindOne', async function(options) {
-    const result = await deepFindAll({ ...options, limit: 1 });
+    const result = await deepFind({ ...options, limit: 1 });
     return result.length > 0 ? result[0] : null;
   });
 };
