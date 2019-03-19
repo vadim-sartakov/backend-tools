@@ -12,14 +12,14 @@ const shouldIncludePath = (path, projection) => {
 };
 
 function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
-  const { paths = [], maxDepth, projection, parentArrays = [], parentRef } = context;
+  const { paths = [], maxDepth, projection, parentArrays, parentRef, collectionName } = context;
   return Object.keys(schema.paths).reduce((accumulator, path) => {
     const currentSchemaPath = schema.paths[path];
     const options = ( currentSchemaPath.caster && currentSchemaPath.caster.options ) || currentSchemaPath.options;
     const currentPaths = [...paths, path];
     const currentPathsString = currentPaths.join('.');
     const nextDepth = maxDepth === true ? maxDepth : maxDepth - 1;
-    const nextParentArrays = currentSchemaPath.instance === 'Array' ? [...parentArrays, path] : parentArrays;
+    const nextParentArrays = currentSchemaPath.instance === 'Array' ? [...(parentArrays || []), currentPathsString] : parentArrays;
     const includePath = shouldIncludePath(currentPathsString, projection);
 
     let currentAccValue = (includePath && reducer(
@@ -27,17 +27,25 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentPathsString,
         currentSchemaPath,
         options,
-        { parentArrays, parentRef })
+        { parentArrays, parentRef, collectionName })
       ) || accumulator;
     if (options.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
-      const parentRef = path;
+      const nextParentRef = path;
       const targetModel = this.db.model(options.ref);
+      const targetCollectionName = targetModel.collection.collectionName;
       currentAccValue = reduceSchemaRecursive.call(
         this,
         targetModel.schema,
         reducer,
         currentAccValue,
-        { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays, parentRef }
+        {
+          paths: currentPaths,
+          maxDepth: nextDepth,
+          projection,
+          parentArrays: nextParentArrays,
+          parentRef: nextParentRef,
+          collectionName: targetCollectionName
+        }
       );
     } else if (currentSchemaPath.schema && includePath) {
       currentAccValue = reduceSchemaRecursive.call(
@@ -45,7 +53,12 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentSchemaPath.schema,
         reducer,
         currentAccValue,
-        { paths: currentPaths, maxDepth: nextDepth, projection, parentArrays: nextParentArrays }
+        {
+          paths: currentPaths,
+          maxDepth: nextDepth,
+          projection,
+          parentArrays: nextParentArrays
+        }
       );
     } 
     return currentAccValue;
@@ -66,13 +79,68 @@ function getCollectionFilter(projection, filter) {
 }
 
 function getJoinPipeline(pathsTree) {
-  console.log(pathsTree);
-  const arraysToUnwind = pathsTree.reduce((accumulator, path) => {
-    return path.type === 'ref' && path.parentArrays ?
-        new Set([...accumulator, ...path.parentArrays]) :
-        accumulator;
+  const joinPipeline = [];
+  const pathsToJoin = pathsTree.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
+  if (!pathsToJoin.length) return joinPipeline;
+
+  const joinSteps = pathsToJoin.reduce((accumulator, path) => {
+    const parts = path.property.split('.');
+    const localField = parts.splice(0, parts.length - 1).join('.');
+    const currentPipeline = [...accumulator];
+
+    path.parentArrays && path.parentArrays.forEach(array => {
+      const curPath = '$' + array;
+      if (!accumulator.some(step => step.$unwind === curPath ) ) {
+        currentPipeline.push({
+          $unwind: {
+            path: curPath,
+            preserveNullAndEmptyArrays: true
+          }
+        });
+      }
+    });
+
+    currentPipeline.push(
+      {
+        $lookup: {
+          from: path.collectionName,
+          localField,
+          foreignField: '_id',
+          as: localField
+        }
+      },
+      {
+        $unwind: {
+          path: '$' + localField,
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    );
+    return currentPipeline;
   }, []);
-  console.log(...arraysToUnwind);
+
+  console.log(joinSteps);
+
+  joinPipeline.push(...joinSteps);
+
+  const groupProperties = pathsTree.reverse().reduce((accumulator, path) => {
+    if (path.property === '_id') return accumulator;
+    if (path.type === 'path' && !path.parentArrays) return { ...accumulator, [path.property]: { $first: '$' + path.property } };
+    else if (path.type === 'array') return { ...accumulator, [path.property]: { $push: '$' + path.property } };
+    else return accumulator;
+  }, {});
+
+  const groupStep = {
+    $group: {
+      _id: '$_id',
+      ...groupProperties
+    }
+  };
+
+  //joinPipeline.push(groupStep);
+
+  return joinPipeline;
+
 }
 
 const getResultFilter = (filter, searchFilter) => {
@@ -91,14 +159,13 @@ export function deepFind(options = {}) {
   else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
   else maxDepth = 1;
 
-  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, { parentArrays, parentRef }) => {
+  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, context) => {
     let type;
-    if (options.ref) type = 'ref';
-    else if (schema.instance === 'Array') type = 'array';
+    if (schema.instance === 'Array') type = 'array';
+    else if (schema.schema) type = 'shema';
+    else if (options.ref) type = 'ref';
     else type = 'path';
-    const newPath = { property, type };
-    if (parentArrays.length) newPath.parentArrays = parentArrays;
-    if (parentRef) newPath.parentRef = parentRef;
+    const newPath = { property, type, ...context };
     return [...accumulator, newPath];
   }, [], { maxDepth, projection });
 

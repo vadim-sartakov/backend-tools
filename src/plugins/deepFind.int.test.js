@@ -36,8 +36,8 @@ describe.only('Mongoose deep find plugin', () => {
 
   const populateDatabase = async () => {
     
-    const john = await new Manager({ name: 'John' });
-    const rebecca = await new Manager({ name: 'Rebecca' });
+    const john = await new Manager({ name: 'John' }).save();
+    const rebecca = await new Manager({ name: 'Rebecca' }).save();
     
     const intel = await new Manufacturer({ name: 'Intel' }).save();
     const amd = await new Manufacturer({ name: 'AMD' }).save();
@@ -99,8 +99,8 @@ describe.only('Mongoose deep find plugin', () => {
   it.only('Loads whole tree with default depth when no options specified', async () => {
     const result = await Order.deepFind();
     expect(result).to.be.ok;
-    expect(result.length).to.equal(3);
-    //console.log("%o", result);
+    //expect(result.length).to.equal(3);
+    console.log("%o", result);
   });
 
   it('Skip 1 limit 1', async () => {
