@@ -103,7 +103,7 @@ describe.only('Mongoose deep find plugin', () => {
       comment: "Intel purchase"
     }).save();
 
-    await new Order({
+    /*await new Order({
       number: 2,
       invoice: { number: 2 },
       stock: secondaryStock,
@@ -127,7 +127,7 @@ describe.only('Mongoose deep find plugin', () => {
         { product: coreI7, quantity: 3 }
       ],
       comment: "Mixed purchase"
-    }).save();
+    }).save();*/
 
   };
 

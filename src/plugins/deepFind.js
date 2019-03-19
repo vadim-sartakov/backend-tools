@@ -134,17 +134,46 @@ function getJoinPipeline(pathsTree) {
 
   const groupStep = {
     $group: {
-      _id: { _id: '$_id', 'product': '$items.product._id' },
+      _id: { _id: '$_id', product: '$items.product._id' },
       number: { $first: '$number' },
       invoice: { $first: '$invoice' },
       comment: { $first: '$comment' },
       items: { $first: '$items' },
-      '$items.product.specs': { $push: '$items.product.specs' },
+      items_product_specs: { $push: '$items.product.specs' }
       //...groupProperties 
     }
   };
 
-  //joinPipeline.push(groupStep);
+  joinPipeline.push(groupStep);
+
+  joinPipeline.push(
+    {
+      $addFields: {
+        'items.product.specs': '$items_product_specs'
+      }
+    }
+  );
+
+  joinPipeline.push(
+    {
+      $project: {
+        'items_product_specs': 0
+      }
+    }
+  );
+
+  joinPipeline.push(
+    {
+      $group: {
+        _id: '$_id._id',
+        number: { $first: '$number' },
+        invoice: { $first: '$invoice' },
+        comment: { $first: '$comment' },
+        items: { $push: '$items' }
+        //...groupProperties 
+      }
+    }
+  );
 
   return joinPipeline;
 
