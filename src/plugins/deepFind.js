@@ -134,12 +134,13 @@ function getJoinPipeline(pathsTree) {
 
   const groupStep = {
     $group: {
-      _id: '$_id',
-      //...groupProperties 
+      _id: { _id: '$_id', 'product': '$items.product._id' },
       number: { $first: '$number' },
-      complex: { $first: '$complex' },
+      invoice: { $first: '$invoice' },
       comment: { $first: '$comment' },
-      items: { $push: '$items' }
+      items: { $first: '$items' },
+      '$items.product.specs': { $push: '$items.product.specs' },
+      //...groupProperties 
     }
   };
 
@@ -200,7 +201,7 @@ export function deepFind(options = {}) {
   skip && pipeline.push({ $skip: skip });
   limit && pipeline.push({ $limit: limit });
 
-  return pipeline.length === 0 ? this.find() : this.aggregate(pipeline);
+  return pipeline.length === 0 ? this.find() : this.aggregate(pipeline).allowDiskUse(true).exec();
 
 }
 
