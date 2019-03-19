@@ -12,7 +12,7 @@ const shouldIncludePath = (path, projection) => {
 };
 
 function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
-  const { paths = [], maxDepth, projection, parentArrays, parentRef, collectionName } = context;
+  const { paths = [], level = 0, maxDepth, projection, parentArrays, parentRef, collectionName } = context;
   return Object.keys(schema.paths).reduce((accumulator, path) => {
     const currentSchemaPath = schema.paths[path];
     const options = ( currentSchemaPath.caster && currentSchemaPath.caster.options ) || currentSchemaPath.options;
@@ -27,7 +27,7 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentPathsString,
         currentSchemaPath,
         options,
-        { parentArrays, parentRef, collectionName })
+        { level, parentArrays, parentRef, collectionName })
       ) || accumulator;
     if (options.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
       const nextParentRef = path;
@@ -40,6 +40,7 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentAccValue,
         {
           paths: currentPaths,
+          level: level + 1,
           maxDepth: nextDepth,
           projection,
           parentArrays: nextParentArrays,
@@ -55,6 +56,7 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentAccValue,
         {
           paths: currentPaths,
+          level: level + 1,
           maxDepth: nextDepth,
           projection,
           parentArrays: nextParentArrays
@@ -90,7 +92,7 @@ function getJoinPipeline(pathsTree) {
 
     path.parentArrays && path.parentArrays.forEach(array => {
       const curPath = '$' + array;
-      if (!accumulator.some(step => step.$unwind === curPath ) ) {
+      if (!accumulator.filter(step => step.$unwind).some(step => curPath === (step.$unwind.path || step.$unwind) ) ) {
         currentPipeline.push({
           $unwind: {
             path: curPath,
@@ -123,17 +125,21 @@ function getJoinPipeline(pathsTree) {
 
   joinPipeline.push(...joinSteps);
 
-  const groupProperties = pathsTree.reverse().reduce((accumulator, path) => {
+  const groupProperties = pathsTree.reduce((accumulator, path) => {
     if (path.property === '_id') return accumulator;
-    if (path.type === 'path' && !path.parentArrays) return { ...accumulator, [path.property]: { $first: '$' + path.property } };
-    else if (path.type === 'array') return { ...accumulator, [path.property]: { $push: '$' + path.property } };
+    if (path.type === 'path' && !path.parentArrays && !path.parentRef) return { ...accumulator, [path.property]: { $first: '$' + path.property } };
+    //else if (path.type === 'array') return { ...accumulator, [path.property]: { $push: '$' + path.property } };
     else return accumulator;
   }, {});
 
   const groupStep = {
     $group: {
       _id: '$_id',
-      ...groupProperties
+      //...groupProperties 
+      number: { $first: '$number' },
+      complex: { $first: '$complex' },
+      comment: { $first: '$comment' },
+      items: { $push: '$items' }
     }
   };
 
@@ -149,6 +155,12 @@ const getResultFilter = (filter, searchFilter) => {
   filter && resultFilter.push(filter);
   searchFilter && resultFilter.push(searchFilter);
   return resultFilter.length === 1 ? resultFilter[0] : { $and: resultFilter };
+};
+
+const treePathsComparator = (a, b) => {
+  if (a.level > b.level) return 1;
+  else if (a.level < b.level) return -1;
+  else return a.property.localeCompare(b.property);
 };
 
 export function deepFind(options = {}) {
@@ -167,7 +179,8 @@ export function deepFind(options = {}) {
     else type = 'path';
     const newPath = { property, type, ...context };
     return [...accumulator, newPath];
-  }, [], { maxDepth, projection });
+  }, [], { maxDepth, projection }).sort(treePathsComparator);
+  console.log(pathsTree);
 
   const pipeline = [];
 

@@ -1,13 +1,22 @@
 import { expect } from 'chai';
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, SchemaType } from 'mongoose';
 import deepFindPlugin from './deepFind';
 
 mongoose.set('debug', true);
 
+const stockSchema = new Schema({ name: String });
 const managerSchema = new Schema({ name: String });
 const manufacturerSchema = new Schema({ name: String });
+const specSchema = new Schema({ name: String });
 const productSchema = new Schema({
-  name: String, manufacturer: { type: Schema.Types.ObjectId, ref: 'Manufacturer' }, manager: [{ type: Schema.Types.ObjectId, ref: 'Manager' }]
+  name: String,
+  manufacturer: { type: Schema.Types.ObjectId, ref: 'Manufacturer' },
+  specs: [
+    {
+      spec: { type: Schema.Types.ObjectId, ref: 'Spec' },
+      value: String
+    }
+  ]
 });
 const orderItemSchema = new Schema({
   product: { type: Schema.Types.ObjectId, ref: 'Product' },
@@ -16,11 +25,10 @@ const orderItemSchema = new Schema({
 
 const orderSchema = new Schema({
   number: Number,
-  manufacturer: manufacturerSchema,
-  complex: {
-    one: String,
-    two: Number
+  invoice: {
+    number: String
   },
+  stock: stockSchema,
   manager: { type: Schema.Types.ObjectId, ref: 'Manager' },
   items: [orderItemSchema],
   comment: String
@@ -32,25 +40,62 @@ orderSchema.plugin(deepFindPlugin);
 
 describe.only('Mongoose deep find plugin', () => {
 
-  let connection, Manager, Manufacturer, Product, Order;
+  let connection, Stock, Manager, Manufacturer, Spec, Product, Order;
 
   const populateDatabase = async () => {
     
+    const primaryStock = await new Stock({ name: 'Primary' }).save();
+    const secondaryStock = await new Stock({ name: 'Secondary' }).save();
+
     const john = await new Manager({ name: 'John' }).save();
     const rebecca = await new Manager({ name: 'Rebecca' }).save();
     
+    const size = await new Spec({ name: 'size' }).save();
+    const weight = await new Spec({ name: 'weight' }).save();
+
     const intel = await new Manufacturer({ name: 'Intel' }).save();
     const amd = await new Manufacturer({ name: 'AMD' }).save();
 
-    const coreI5 = await new Product({ name: 'Core i5', manufacturer: intel }).save();
-    const coreI7 = await new Product({ name: 'Core i7', manufacturer: intel }).save();
+    const coreI5 = await new Product({
+      name: 'Core i5',
+      manufacturer: intel,
+      specs: [
+        { spec: size, value: '15x15' },
+        { spec: weight, value: '200' }
+      ]
+    }).save();
+    const coreI7 = await new Product({
+      name: 'Core i7',
+      manufacturer: intel,
+      specs: [
+        { spec: size, value: '12x12' },
+        { spec: weight, value: '150' }
+      ]
+    }).save();
 
-    const phenom = await new Product({ name: 'Phenom', manufacturer: amd }).save();
-    const ryzen = await new Product({ name: 'Ryzen', manufacturer: amd }).save();
+    const phenom = await new Product({
+      name: 'Phenom',
+      manufacturer: amd,
+      specs: [
+        { spec: size, value: '16x16' },
+        { spec: weight, value: '220' }
+      ]
+    }).save();
+    const ryzen = await new Product({
+      name: 'Ryzen',
+      manufacturer: amd,
+      specs: [
+        { spec: size, value: '10x10' },
+        { spec: weight, value: '120' }
+      ]
+    }).save();
 
     await new Order({
       number: 1,
+      invoice: { number: 1 },
+      stock: primaryStock,
       manager: john,
+      complex: { one: '1', two: '2' },
       items: [
         { product: coreI5, quantity: 5 },
         { product: coreI7, quantity: 3 }
@@ -60,6 +105,8 @@ describe.only('Mongoose deep find plugin', () => {
 
     await new Order({
       number: 2,
+      invoice: { number: 2 },
+      stock: secondaryStock,
       manager: rebecca,
       items: [
         { product: phenom, quantity: 1 },
@@ -70,6 +117,8 @@ describe.only('Mongoose deep find plugin', () => {
 
     await new Order({
       number: 3,
+      stock: secondaryStock,
+      invoice: { number: 3 },
       manager: rebecca,
       items: [
         { product: ryzen, quantity: 2 },
@@ -84,8 +133,10 @@ describe.only('Mongoose deep find plugin', () => {
 
   before(async () => {
     connection = await mongoose.createConnection(process.env.MONGO_DB_URL, { useNewUrlParser: true });
+    Stock = connection.model('Stock', stockSchema);
     Manager = connection.model('Manager', managerSchema);
     Manufacturer = connection.model('Manufacturer', manufacturerSchema);
+    Spec = connection.model('Spec', specSchema);
     Product = connection.model('Product', productSchema);
     Order = connection.model('Order', orderSchema);
     await populateDatabase();
@@ -100,7 +151,7 @@ describe.only('Mongoose deep find plugin', () => {
     const result = await Order.deepFind();
     expect(result).to.be.ok;
     //expect(result.length).to.equal(3);
-    console.log("%o", result);
+    console.log(JSON.stringify(result, null, 4));
   });
 
   it('Skip 1 limit 1', async () => {
