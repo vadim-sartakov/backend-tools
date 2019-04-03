@@ -80,9 +80,9 @@ function getCollectionFilter(projection, filter) {
   if (!projection) return;
 }
 
-function getJoinPipeline(pathsTree) {
+function getJoinPipeline(pathsMeta) {
   const joinPipeline = [];
-  const pathsToJoin = pathsTree.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
+  const pathsToJoin = pathsMeta.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
   if (!pathsToJoin.length) return joinPipeline;
 
   const joinSteps = pathsToJoin.reduce((accumulator, path) => {
@@ -121,11 +121,17 @@ function getJoinPipeline(pathsTree) {
     return currentPipeline;
   }, []);
 
-  console.log(joinSteps);
-
   joinPipeline.push(...joinSteps);
 
-  const groupProperties = pathsTree.reduce((accumulator, path) => {
+  const rootGroupProperties = pathsMeta
+      .filter(path => path.level === 0 && path.type === 'path' && path.property !== '_id')
+      .reduce((accumulator, path) => {
+    // In case of nested objects, always pick the root property.
+    const curPath = path.property.split('.')[0];
+    return accumulator[curPath] ? accumulator : { ...accumulator, [curPath]: { $first: '$' + curPath } } ;
+  }, {});
+
+  const groupProperties = pathsMeta.reduce((accumulator, path) => {
     if (path.property === '_id') return accumulator;
     if (path.type === 'path' && !path.parentArrays && !path.parentRef) return { ...accumulator, [path.property]: { $first: '$' + path.property } };
     //else if (path.type === 'array') return { ...accumulator, [path.property]: { $push: '$' + path.property } };
@@ -135,12 +141,9 @@ function getJoinPipeline(pathsTree) {
   const groupStep = {
     $group: {
       _id: { _id: '$_id', product: '$items.product._id' },
-      number: { $first: '$number' },
-      invoice: { $first: '$invoice' },
-      comment: { $first: '$comment' },
+      ...rootGroupProperties,
       items: { $first: '$items' },
-      items_product_specs: { $push: '$items.product.specs' }
-      //...groupProperties 
+      items_product_specs: { $push: '$items.product.specs' } 
     }
   };
 
@@ -166,11 +169,8 @@ function getJoinPipeline(pathsTree) {
     {
       $group: {
         _id: '$_id._id',
-        number: { $first: '$number' },
-        invoice: { $first: '$invoice' },
-        comment: { $first: '$comment' },
+        ...rootGroupProperties,
         items: { $push: '$items' }
-        //...groupProperties 
       }
     }
   );
@@ -201,16 +201,17 @@ export function deepFind(options = {}) {
   else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
   else maxDepth = 1;
 
-  const pathsTree = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, context) => {
+  const pathsMeta = reduceSchemaRecursive.call(this, this.schema, (accumulator, property, schema, options, context) => {
     let type;
     if (schema.instance === 'Array') type = 'array';
-    else if (schema.schema) type = 'shema';
+    else if (schema.schema) type = 'schema';
     else if (options.ref) type = 'ref';
     else type = 'path';
     const newPath = { property, type, ...context };
     return [...accumulator, newPath];
   }, [], { maxDepth, projection }).sort(treePathsComparator);
-  console.log(pathsTree);
+
+  console.log(pathsMeta);
 
   const pipeline = [];
 
@@ -221,7 +222,7 @@ export function deepFind(options = {}) {
 
   rootCollectionFilter && pipeline.push({ $match: rootCollectionFilter });
 
-  const joinPipeline = getJoinPipeline.call(this, pathsTree, projection, maxDepth);
+  const joinPipeline = getJoinPipeline.call(this, pathsMeta, projection, maxDepth);
   joinPipeline && pipeline.push(...joinPipeline);
 
   resultFilter && pipeline.push({ $match: resultFilter });
