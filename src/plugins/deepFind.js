@@ -76,10 +76,6 @@ function searchQueryToFilter(searchQuery) {
   return { $or: filters};
 }
 
-function getCollectionFilter(projection, filter) {
-  if (!projection) return;
-}
-
 function getJoinPipeline(pathsMeta) {
   const joinPipeline = [];
   const pathsToJoin = pathsMeta.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
@@ -123,19 +119,35 @@ function getJoinPipeline(pathsMeta) {
 
   joinPipeline.push(...joinSteps);
 
+  let arraysToCollect = pathsToJoin.reduce((accumulator, path) => {
+    if (path.parentArrays) {
+      const result = [...accumulator];
+      path.parentArrays.forEach(parentArray => {
+        if (accumulator.indexOf(parentArray) === -1) {
+          result.push(parentArray);
+        }
+      });
+      return result;
+    } else {
+      return accumulator;
+    }
+  }, []);
+
+  arraysToCollect = arraysToCollect.map(array => {
+    return pathsMeta.find(pathMeta => pathMeta.property === array);
+  });
+
   const rootGroupProperties = pathsMeta
-      .filter(path => path.level === 0 && path.type === 'path' && path.property !== '_id')
+      .filter(path => {
+        const isPlainArray = path.type === 'array' &&
+            !arraysToCollect.some(arrayToCollect => arrayToCollect.property === path.property);
+        return path.level === 0 && path.property !== '_id' &&
+            ( path.type === 'path' || isPlainArray );
+      })
       .reduce((accumulator, path) => {
     // In case of nested objects, always pick the root property.
     const curPath = path.property.split('.')[0];
     return accumulator[curPath] ? accumulator : { ...accumulator, [curPath]: { $first: '$' + curPath } } ;
-  }, {});
-
-  const groupProperties = pathsMeta.reduce((accumulator, path) => {
-    if (path.property === '_id') return accumulator;
-    if (path.type === 'path' && !path.parentArrays && !path.parentRef) return { ...accumulator, [path.property]: { $first: '$' + path.property } };
-    //else if (path.type === 'array') return { ...accumulator, [path.property]: { $push: '$' + path.property } };
-    else return accumulator;
   }, {});
 
   const groupStep = {
@@ -217,10 +229,6 @@ export function deepFind(options = {}) {
 
   const searchFilter = searchQueryToFilter.call(this, search);
   const resultFilter = getResultFilter(filter, searchFilter);
-
-  const rootCollectionFilter = getCollectionFilter.call(this, projection);
-
-  rootCollectionFilter && pipeline.push({ $match: rootCollectionFilter });
 
   const joinPipeline = getJoinPipeline.call(this, pathsMeta, projection, maxDepth);
   joinPipeline && pipeline.push(...joinPipeline);
