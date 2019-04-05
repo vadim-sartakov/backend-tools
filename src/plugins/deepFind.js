@@ -74,7 +74,7 @@ const searchQueryToFilter = (schema, searchQuery) => {
     return { [searchField]: new RegExp(`.*${searchQuery}.*`, 'i') };
   });
   return { $or: filters};
-}
+};
 
 const getJoinPipeline = pathsToJoin => {
 
@@ -127,38 +127,44 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
 
   const groupPipeline = [];
 
-  let arraysToCollect = pathsToJoin.reduce((accumulator, path) => {
+  const arrayPropertyIsInside = (arraysToCollect, currentArrayProperty) => {
+    return arraysToCollect.some(rootItem => {
+      return ( rootItem.property && rootItem.property === currentArrayProperty ) ||
+          ( Array.isArray(rootItem) && arrayPropertyIsInside(rootItem, currentArrayProperty) ) ||
+          false;
+    });
+  };
+
+  const arraysToCollect = pathsToJoin.slice(0).reverse().reduce((arraysToCollect, path) => {
     if (path.parentArrays) {
-      const result = [...accumulator];
-      path.parentArrays.forEach(parentArray => {
-        if (accumulator.indexOf(parentArray) === -1) {
-          result.push(parentArray);
+      const nestedArrays = path.parentArrays.slice(0).reverse().reduce((nestedArrays, parentArrayProperty) => {
+        if (!arrayPropertyIsInside(arraysToCollect, parentArrayProperty)) {
+          const parentArray = pathsMeta.find(pathMeta => pathMeta.property === parentArrayProperty);
+          return [...nestedArrays, parentArray];
+        } else {
+          return nestedArrays;
         }
-      });
-      return result;
+      }, []);      
+      return nestedArrays.length ? [...arraysToCollect, nestedArrays] : arraysToCollect;
     } else {
-      return accumulator;
+      return arraysToCollect;
     }
   }, []);
 
-  arraysToCollect = arraysToCollect.map(array => {
-    return pathsMeta.find(pathMeta => pathMeta.property === array);
+  let rootGroupProperties = pathsMeta.filter(path => {
+    const isPlainArray = path.type === 'array' &&
+        // Check if it's non-collectable array
+        !arrayPropertyIsInside(arraysToCollect, path.property);
+    return path.level === 0 && path.property !== '_id' &&
+        ( path.type === 'path' || isPlainArray );
   });
-
-  const rootGroupProperties = pathsMeta
-      .filter(path => {
-        const isPlainArray = path.type === 'array' &&
-            !arraysToCollect.some(arrayToCollect => arrayToCollect.property === path.property);
-        return path.level === 0 && path.property !== '_id' &&
-            ( path.type === 'path' || isPlainArray );
-      })
-      .reduce((accumulator, path) => {
-        // In case of nested objects, always pick the root property.
-        const curPath = path.property.split('.')[0];
-        return accumulator[curPath] ?
-            accumulator :
-            { ...accumulator, [curPath]: { $first: '$' + curPath } };
-      }, {});
+  rootGroupProperties = rootGroupProperties.reduce((accumulator, path) => {
+    // In case of nested objects, always pick the root property.
+    const curPath = path.property.split('.')[0];
+    return accumulator[curPath] ?
+        accumulator :
+        { ...accumulator, [curPath]: { $first: '$' + curPath } };
+  }, {});
 
   const processedArrays = [];
   const groupStep1 = [];
