@@ -125,8 +125,6 @@ const getJoinPipeline = pathsToJoin => {
 
 const getGroupPipeline = (pathsMeta, pathsToJoin) => {
 
-  const groupPipeline = [];
-
   const arrayPropertyIsInside = (arraysToCollect, currentArrayProperty) => {
     return arraysToCollect.some(rootItem => {
       return ( rootItem.property && rootItem.property === currentArrayProperty ) ||
@@ -166,82 +164,77 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
         { ...accumulator, [curPath]: { $first: '$' + curPath } };
   }, {});
 
-  const processedArrays = [];
-  const groupStep1 = [];
+  const dotToUnderscore = property => property.replace(/\.+/g, '_');
 
-  const getArrayProperties = (arraysToCollect, currentArray) => {
-    return arraysToCollect.map(item => {
+  const getArrayProperties = (arraysToCollect, currentArray, underscoreNestedArrayProperty) => {
+    return arraysToCollect.reduce((accumulator, item) => {
       const curProperty = '$' + item.property;
-      return item.property === currentArray ?
-          { $push: curProperty } :
-          { $first: curProperty };
-    });
+      const rootProperty = item.property.split('.')[0];
+      if (item.property === currentArray.property) {
+        return { ...accumulator, [underscoreNestedArrayProperty]: { $push: curProperty } };
+      } else if (!accumulator[rootProperty]) {
+        return  { ...accumulator, [rootProperty]: { $first: curProperty } };
+      } else {
+        return accumulator;
+      }
+    }, {});
   };
 
-  arraysToCollect.reverse().forEach(arrayToCollect => {
-    const group = {
-      ...rootGroupProperties
-    };
-    if (arrayToCollect.parentArrays) {
-      arrayToCollect.parentArrays.forEach(parentArray => {
-        if (processedArrays.indexOf(parentArray) !== -1) return;
-        
-        processedArrays.push(parentArray);
-      });
-    } else {
-      groupStep1.push({
-        $group: {
-          _id: '$_id',
-          ...rootGroupProperties
+  const groupPipeline = arraysToCollect.reduce((groupPipeline, arrayToCollect) => {
+    if (Array.isArray(arrayToCollect)) {
+      const nestedPipeline = arrayToCollect.reduce((nestedPipeline, nestedArrayToCollect, index) => {
+        const underscoreNestedArrayProperty = dotToUnderscore(nestedArrayToCollect.property);
+        const arrayProperties = getArrayProperties(arrayToCollect, nestedArrayToCollect, underscoreNestedArrayProperty);
+        // The result will be different for the last element,
+        // so tracking if it's the last one or not
+        if (index < arrayToCollect.length - 1) {
+          return [
+            ...nestedPipeline,
+            {
+              $group: {
+                _id: { _id: '$_id', [dotToUnderscore(nestedArrayToCollect.parentRef)]: '$' + nestedArrayToCollect.parentRef + '._id' },
+                ...rootGroupProperties,
+                ...arrayProperties
+              }
+            }, 
+            {
+              $addFields: { [nestedArrayToCollect.property]: '$' + underscoreNestedArrayProperty }
+            },
+            {
+              $project: { [underscoreNestedArrayProperty]: 0 }
+            }
+          ];
+        } else {
+          return [
+            ...nestedPipeline,
+            {
+              $group: {
+                 _id: '$_id._id',
+                ...rootGroupProperties,
+                ...arrayProperties
+              } 
+            }
+          ]; 
         }
-      });
-    }
-    if (arrayToCollect.parentRef) {
-      group._id = { _id: '$_id', [arrayToCollect.parentRef]: '$' + arrayToCollect.parentRef + '._id'  };
-      group[arrayToCollect.property.replace(/\./g, '_')] = { $push: '$' + arrayToCollect.property };
-      const remainedArrays = arraysToCollect.filter(item => item.property !== arrayToCollect.property);
-      remainedArrays.forEach(item => group[item.property] = { $first: '$' + item.property });
+      }, []);
+      return [
+        ...groupPipeline,
+        ...nestedPipeline
+      ];
     } else {
-      group._id = '$_id';
+      const arrayProperties = getArrayProperties(arraysToCollect, arrayToCollect);
+      return [
+        ...groupPipeline,
+        {
+          $group: {
+            _id: '$_id',
+            ...rootGroupProperties,
+            ...arrayProperties
+          }
+        }
+      ];
     }
   }, []);
-
-  const groupStep = {
-    $group: {
-      _id: { _id: '$_id', product: '$items.product._id' },
-      ...rootGroupProperties,
-      items: { $first: '$items' },
-      items_product_specs: { $push: '$items.product.specs' }
-    }
-  };
-
-  groupPipeline.push(groupStep);
-
-  groupPipeline.push(
-    {
-      $addFields: {
-        'items.product.specs': '$items_product_specs'
-      }
-    }
-  );
-
-  groupPipeline.push(
-    {
-      $project: {
-        'items_product_specs': 0
-      }
-    }
-  );
-
-  groupPipeline.push(
-    {
-      $group: {
-        _id: '$_id._id',
-        ...rootGroupProperties,
-        items: { $push: '$items' }
-      }
-    }
-  );
 
   return groupPipeline;
 };
