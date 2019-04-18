@@ -49,18 +49,18 @@ describe.only('Mongoose deep find plugin', () => {
       }
     };
 
-    it('Preserves correct data structure with complex doc', async () => {
-      const ref = { type: Schema.Types.ObjectId, ref: 'Child' };
-      const embeddedSchema = new Schema({ field: String, ref });
+    it('Preserves data structure with complex doc', async () => {
+      const child = { type: Schema.Types.ObjectId, ref: 'Child' };
+      const embeddedSchema = new Schema({ field: String, child });
       createModels(
         new Schema({ field: String }),
         new Schema({
           field: String,
-          ref,
-          embedded: { field: String, ref },
+          child,
+          embedded: { field: String, child },
           embeddedSchema,
           array: [String],
-          arrayOfEmbedded: [{ field: String }],
+          //arrayOfEmbedded: [{ field: String, child }],
           //arrayOfSchemas: [embeddedSchema]
           //arrayOfRefs: [ref]
         })
@@ -70,30 +70,30 @@ describe.only('Mongoose deep find plugin', () => {
           childValues: () => ({ field: 'test' }),
           rootValues: childInstance => ({
             field: 'test',
-            ref: childInstance,
-            embedded: { field: 'test', ref: childInstance },
-            embeddedSchema: { field: 'test', ref: childInstance },
+            child: childInstance,
+            embedded: { field: 'test', child: childInstance },
+            embeddedSchema: { field: 'test', child: childInstance },
             array: ['One', 'Two'],
-            arrayOfEmbedded: [{ field: 'test' }],
-            arrayOfSchemas: [{ field: 'test' }],
-            arrayOfRefs: [childInstance, childInstance]
+            //arrayOfEmbedded: [{ field: 'test', child: childInstance }],
+            //arrayOfSchemas: [{ field: 'test' }],
+            //arrayOfRefs: [childInstance, childInstance]
           })
         },
         3
       );
       const Model = connection.model('Root');
       const result = await Model.deepFind({ maxDepth: true });
-      console.log(result[0]);
+      console.log("%o", result[0]);
       expect(result.length).to.equal(3);
       expect(result[0].field).to.equal('test');
-      expect(result[0].ref.field).to.equal('test');
+      expect(result[0].child.field).to.equal('test');
       expect(result[0].embedded.field).to.equal('test');
-      expect(result[0].embedded.ref.field).to.equal('test');
+      expect(result[0].embedded.child.field).to.equal('test');
       expect(result[0].embeddedSchema.field).to.equal('test');
-      expect(result[0].embeddedSchema.ref.field).to.equal('test');
+      expect(result[0].embeddedSchema.child.field).to.equal('test');
       expect(result[0].array).to.deep.equal(['One', 'Two']);
-      expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
-      //expect(result[0].arrayOfEmbedded[0].ref.field).to.equal('test');
+      //expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
+      //expect(result[0].arrayOfEmbedded[0].child.field).to.equal('test');
     });
 
   });
