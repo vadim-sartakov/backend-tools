@@ -5,7 +5,7 @@ import SequelizeCrudModel from './SequelizeCrudModel';
 
 describe.skip('Sequelize crud model', () => {
 
-  const sequelize = new Sequelize(process.env.SEQUELIZE_DB_URL);
+  const sequelize = new Sequelize('postgres://postgres@localhost/sequelize');
 
   const Address = sequelize.define('address', {
     address: { type: Sequelize.TEXT, allowNull: false }
