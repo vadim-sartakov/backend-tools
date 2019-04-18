@@ -60,9 +60,9 @@ describe.only('Mongoose deep find plugin', () => {
           embedded: { field: String, child },
           embeddedSchema,
           array: [String],
-          //arrayOfEmbedded: [{ field: String, child }],
-          //arrayOfSchemas: [embeddedSchema]
-          //arrayOfRefs: [ref]
+          arrayOfEmbedded: [{ field: String, child }],
+          arrayOfSchemas: [embeddedSchema],
+          arrayOfRefs: [child]
         })
       );
       await createInstances(
@@ -74,16 +74,16 @@ describe.only('Mongoose deep find plugin', () => {
             embedded: { field: 'test', child: childInstance },
             embeddedSchema: { field: 'test', child: childInstance },
             array: ['One', 'Two'],
-            //arrayOfEmbedded: [{ field: 'test', child: childInstance }],
-            //arrayOfSchemas: [{ field: 'test' }],
-            //arrayOfRefs: [childInstance, childInstance]
+            arrayOfEmbedded: [{ field: 'test', child: childInstance }],
+            arrayOfSchemas: [{ field: 'test', child: childInstance }],
+            arrayOfRefs: [childInstance]
           })
         },
         3
       );
       const Model = connection.model('Root');
       const result = await Model.deepFind({ maxDepth: true });
-      console.log("%o", result[0]);
+      console.log("%o", result);
       expect(result.length).to.equal(3);
       expect(result[0].field).to.equal('test');
       expect(result[0].child.field).to.equal('test');
@@ -92,8 +92,11 @@ describe.only('Mongoose deep find plugin', () => {
       expect(result[0].embeddedSchema.field).to.equal('test');
       expect(result[0].embeddedSchema.child.field).to.equal('test');
       expect(result[0].array).to.deep.equal(['One', 'Two']);
-      //expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
-      //expect(result[0].arrayOfEmbedded[0].child.field).to.equal('test');
+      expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
+      expect(result[0].arrayOfEmbedded[0].child.field).to.equal('test');
+      expect(result[0].arrayOfSchemas[0].field).to.equal('test');
+      expect(result[0].arrayOfSchemas[0].child.field).to.equal('test');
+      expect(result[0].arrayOfRefs[0].field).to.equal('test');
     });
 
   });

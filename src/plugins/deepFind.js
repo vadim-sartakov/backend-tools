@@ -141,19 +141,17 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
         } else {
           return nestedArrays;
         }
-      }, []);      
-      return nestedArrays.length ? [...arraysToCollect, nestedArrays] : arraysToCollect;
+      }, []);
+      return nestedArrays.length ? [...arraysToCollect, nestedArrays.length === 1 ? nestedArrays[0] : nestedArrays] : arraysToCollect;
     } else {
       return arraysToCollect;
     }
   }, []);
 
+  if (!arraysToCollect.length) return [];
+
   let rootGroupProperties = pathsMeta.filter(path => {
-    const isPlainArray = path.type === 'array' &&
-        // Check if it's non-collectable array
-        !arrayPropertyIsInside(arraysToCollect, path.property);
-    return path.level === 0 && path.property !== '_id' &&
-        ( path.type === 'path' || isPlainArray );
+    return path.level === 0 && path.property !== '_id';
   });
   rootGroupProperties = rootGroupProperties.reduce((accumulator, path) => {
     // In case of nested objects, always pick the root property.
@@ -165,7 +163,7 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
 
   const dotToUnderscore = property => property.replace(/\.+/g, '_');
 
-  const getArrayProperties = (arraysToCollect, currentArray, underscoreNestedArrayProperty) => {
+  const getArrayGroupProperties = (arraysToCollect, currentArray, underscoreNestedArrayProperty) => {
     return arraysToCollect.reduce((accumulator, item) => {
       const curProperty = '$' + item.property;
       const rootProperty = item.property.split('.')[0];
@@ -183,7 +181,7 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
     if (Array.isArray(arrayToCollect)) {
       const nestedPipeline = arrayToCollect.reduce((nestedPipeline, nestedArrayToCollect, index) => {
         const underscoreNestedArrayProperty = dotToUnderscore(nestedArrayToCollect.property);
-        const arrayProperties = getArrayProperties(arrayToCollect, nestedArrayToCollect, underscoreNestedArrayProperty);
+        const arrayProperties = getArrayGroupProperties(arrayToCollect, nestedArrayToCollect, underscoreNestedArrayProperty);
         // The result will be different for the last element,
         // so tracking if it's the last one or not
         if (index < arrayToCollect.length - 1) {
@@ -221,7 +219,8 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
         ...nestedPipeline
       ];
     } else {
-      const arrayProperties = getArrayProperties(arraysToCollect, arrayToCollect);
+      const underscoreNestedArrayProperty = dotToUnderscore(arrayToCollect.property);
+      const arrayProperties = getArrayGroupProperties(arraysToCollect, arrayToCollect, underscoreNestedArrayProperty);
       return [
         ...groupPipeline,
         {
