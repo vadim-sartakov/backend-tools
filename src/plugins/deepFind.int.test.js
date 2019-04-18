@@ -20,26 +20,32 @@ describe.only('Mongoose deep find plugin', () => {
   describe('Different schema definitions', () => {
     
     const clearDataAndModels = async () => {
+      await connection.model('DeepChild').deleteMany({});
       await connection.model('Child').deleteMany({});
       await connection.model('Root').deleteMany({});
-      delete connection.models.Root;
+      delete connection.models.DeepChild;
       delete connection.models.Child;
+      delete connection.models.Root;
     };
 
     afterEach(clearDataAndModels);
 
     const createModels = (childSchema, rootSchema) => {
       rootSchema.plugin(deepFindPlugin);
+      connection.model('DeepChild', childSchema);
       connection.model('Child', childSchema);
       connection.model('Root', rootSchema);
     };
 
-    const createInstances = async (childValues, rootValuesProvider, count) => {
+    const createInstances = async ({ rootValues, childValues, deepChildValues }, count) => {
+      let deepChildInstance, childInstance;
+      const DeepChildModel = connection.model('DeepChild');
       const ChildModel = connection.model('Child');
       const RootModel = connection.model('Root');
       for (let i = 0; i < count; i++) {
-        let childInstance = await new ChildModel(childValues).save();
-        await new RootModel(rootValuesProvider(childInstance)).save();
+        if (deepChildValues) deepChildInstance = await new DeepChildModel(deepChildValues).save();
+        if (childValues) childInstance = await new ChildModel(childValues(deepChildInstance)).save();
+        await new RootModel(rootValues(childInstance)).save();
       }
     };
 
@@ -52,18 +58,22 @@ describe.only('Mongoose deep find plugin', () => {
           embedded: { field: String },
           embeddedSchema,
           array: [String],
+          arrayOfEmbedded: [{ field: String }],
           ref: { type: Schema.Types.ObjectId, ref: 'Child' }
-        }, { maxDepth: true })
+        })
       );
       await createInstances(
-        { field: 'test' },
-        childInstance => ({
-          field: 'test',
-          embedded: { field: 'test' },
-          embeddedSchema: { field: 'test' },
-          array: ['One', 'Two'],
-          ref: childInstance
-        }),
+        {
+          childValues: () => ({ field: 'test' }),
+          rootValues: childInstance => ({
+            field: 'test',
+            embedded: { field: 'test' },
+            embeddedSchema: { field: 'test' },
+            array: ['One', 'Two'],
+            arrayOfEmbedded: [{ field: 'test' }],
+            ref: childInstance
+          })
+        },
         3
       );
       const Model = connection.model('Root');
@@ -73,6 +83,7 @@ describe.only('Mongoose deep find plugin', () => {
       expect(result[0].embedded.field).to.equal('test');
       expect(result[0].embeddedSchema.field).to.equal('test');
       expect(result[0].array).to.deep.equal(['One', 'Two']);
+      expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
       expect(result[0].ref.field).to.equal('test');
     });
 
