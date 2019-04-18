@@ -49,17 +49,20 @@ describe.only('Mongoose deep find plugin', () => {
       }
     };
 
-    it('Ref on root level', async () => {
-      const embeddedSchema = new Schema({ field: String });
+    it('Preserves correct data structure with complex doc', async () => {
+      const ref = { type: Schema.Types.ObjectId, ref: 'Child' };
+      const embeddedSchema = new Schema({ field: String, ref });
       createModels(
         new Schema({ field: String }),
         new Schema({
           field: String,
-          embedded: { field: String },
+          ref,
+          embedded: { field: String, ref },
           embeddedSchema,
           array: [String],
           arrayOfEmbedded: [{ field: String }],
-          ref: { type: Schema.Types.ObjectId, ref: 'Child' }
+          //arrayOfSchemas: [embeddedSchema]
+          //arrayOfRefs: [ref]
         })
       );
       await createInstances(
@@ -67,24 +70,30 @@ describe.only('Mongoose deep find plugin', () => {
           childValues: () => ({ field: 'test' }),
           rootValues: childInstance => ({
             field: 'test',
-            embedded: { field: 'test' },
-            embeddedSchema: { field: 'test' },
+            ref: childInstance,
+            embedded: { field: 'test', ref: childInstance },
+            embeddedSchema: { field: 'test', ref: childInstance },
             array: ['One', 'Two'],
             arrayOfEmbedded: [{ field: 'test' }],
-            ref: childInstance
+            arrayOfSchemas: [{ field: 'test' }],
+            arrayOfRefs: [childInstance, childInstance]
           })
         },
         3
       );
       const Model = connection.model('Root');
-      const result = await Model.deepFind();
+      const result = await Model.deepFind({ maxDepth: true });
+      console.log(result[0]);
       expect(result.length).to.equal(3);
       expect(result[0].field).to.equal('test');
+      expect(result[0].ref.field).to.equal('test');
       expect(result[0].embedded.field).to.equal('test');
+      expect(result[0].embedded.ref.field).to.equal('test');
       expect(result[0].embeddedSchema.field).to.equal('test');
+      expect(result[0].embeddedSchema.ref.field).to.equal('test');
       expect(result[0].array).to.deep.equal(['One', 'Two']);
       expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
-      expect(result[0].ref.field).to.equal('test');
+      //expect(result[0].arrayOfEmbedded[0].ref.field).to.equal('test');
     });
 
   });

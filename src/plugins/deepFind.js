@@ -30,7 +30,6 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         { level, parentArrays, parentRef, collectionName })
       ) || accumulator;
     if (options.ref && ( nextDepth === true || nextDepth >= 0 ) && includePath) {
-      const nextParentRef = currentPathsString;
       const targetModel = this.db.model(options.ref);
       const targetCollectionName = targetModel.collection.collectionName;
       currentAccValue = reduceSchemaRecursive.call(
@@ -44,7 +43,7 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
           maxDepth: nextDepth,
           projection,
           parentArrays: nextParentArrays,
-          parentRef: nextParentRef,
+          parentRef: currentPathsString,
           collectionName: targetCollectionName
         }
       );
@@ -56,8 +55,8 @@ function reduceSchemaRecursive(schema, reducer, initialValue, context = {}) {
         currentAccValue,
         {
           paths: currentPaths,
-          level: level + 1,
-          maxDepth: nextDepth,
+          level,
+          maxDepth,
           projection,
           parentArrays: nextParentArrays
         }
