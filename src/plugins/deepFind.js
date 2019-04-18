@@ -278,8 +278,6 @@ export function deepFind(options = {}) {
     return [...accumulator, newPath];
   }, [], { maxDepth, projection }).sort(treePathsComparator);
 
-  console.log(pathsMeta);
-
   const pipeline = [];
 
   const searchFilter = searchQueryToFilter(this.schema, search);
