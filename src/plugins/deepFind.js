@@ -132,6 +132,10 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
     });
   };
 
+  // Preparing to collect unwinded arrays.
+  // References nested deep inside other arrays should have their own nested group pipeline,
+  // so to simplify further processing, we inserting these kind of deep nested references into nested arrays
+  // Executing revere here to make sure deep nested references go first
   const arraysToCollect = pathsToJoin.slice(0).reverse().reduce((arraysToCollect, path) => {
     if (path.parentArrays) {
       const nestedArrays = path.parentArrays.slice(0).reverse().reduce((nestedArrays, parentArrayProperty) => {
@@ -167,7 +171,7 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
     return arraysToCollect.reduce((accumulator, item) => {
       const curProperty = '$' + item.property;
       const rootProperty = item.property.split('.')[0];
-      if (item.property === currentArray.property) {
+      if (item.level === currentArray.level) {
         return { ...accumulator, [underscoreNestedArrayProperty]: { $push: curProperty } };
       } else if (!accumulator[rootProperty]) {
         return  { ...accumulator, [rootProperty]: { $first: curProperty } };

@@ -62,7 +62,7 @@ describe.only('Mongoose deep find plugin', () => {
           array: [String],
           arrayOfEmbedded: [{ field: String, child }],
           arrayOfSchemas: [embeddedSchema],
-          arrayOfRefs: [child]
+          //arrayOfRefs: [child]
         })
       );
       await createInstances(
@@ -74,9 +74,9 @@ describe.only('Mongoose deep find plugin', () => {
             embedded: { field: 'test', child: childInstance },
             embeddedSchema: { field: 'test', child: childInstance },
             array: ['One', 'Two'],
-            arrayOfEmbedded: [{ field: 'test', child: childInstance }],
-            arrayOfSchemas: [{ field: 'test', child: childInstance }],
-            arrayOfRefs: [childInstance]
+            arrayOfEmbedded: [{ field: 'test 1', child: childInstance }, { field: 'test 2', child: childInstance }],
+            arrayOfSchemas: [{ field: 'test 1', child: childInstance }, { field: 'test 2', child: childInstance }],
+            //arrayOfRefs: [childInstance, childInstance]
           })
         },
         3
@@ -92,11 +92,24 @@ describe.only('Mongoose deep find plugin', () => {
       expect(result[0].embeddedSchema.field).to.equal('test');
       expect(result[0].embeddedSchema.child.field).to.equal('test');
       expect(result[0].array).to.deep.equal(['One', 'Two']);
-      expect(result[0].arrayOfEmbedded[0].field).to.equal('test');
+
+      expect(result[0].arrayOfEmbedded.length).to.equal(2);
+      expect(result[0].arrayOfEmbedded[0].field).to.equal('test 1');
       expect(result[0].arrayOfEmbedded[0].child.field).to.equal('test');
-      expect(result[0].arrayOfSchemas[0].field).to.equal('test');
+      expect(result[0].arrayOfEmbedded[1].field).to.equal('test 2');
+      expect(result[0].arrayOfEmbedded[1].child.field).to.equal('test');
+
+      expect(result[0].arrayOfSchemas.length).to.equal(2);
+      expect(result[0].arrayOfSchemas[0].field).to.equal('test 1');
       expect(result[0].arrayOfSchemas[0].child.field).to.equal('test');
-      expect(result[0].arrayOfRefs[0].field).to.equal('test');
+      expect(result[0].arrayOfSchemas[1].field).to.equal('test 2');
+      expect(result[0].arrayOfSchemas[1].child.field).to.equal('test');
+
+      expect(result[0].arrayOfRefs.length).to.equal(2);
+      expect(result[0].arrayOfRefs[0].field).to.equal('test 1');
+      expect(result[0].arrayOfRefs[0].child.field).to.equal('test');
+      expect(result[0].arrayOfRefs[1].field).to.equal('test 2');
+      expect(result[0].arrayOfRefs[1].child.field).to.equal('test');
     });
 
   });
