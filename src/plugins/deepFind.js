@@ -113,7 +113,8 @@ const getJoinAndGroupPipeline = pathsMeta => {
       result.push({
         $unwind: {
           path: curPath,
-          preserveNullAndEmptyArrays: true
+          preserveNullAndEmptyArrays: true,
+          includeArrayIndex: '_index'
         }
       });
     });
@@ -140,24 +141,43 @@ const getJoinAndGroupPipeline = pathsMeta => {
     });
 
     // Executing revere here to make sure deep nested references go first
-    item.parentArrays && item.parentArrays.slice(0).reverse().forEach(array => {
-      const curPath = '$' + array;
+    item.parentArrays && item.parentArrays.slice(0).reverse().forEach((arrayItem, index, array) => {
+      const curPath = '$' + arrayItem;
+      const nextArray = array[index + 1];
       // Since grouping does not support dot-notatation in properties,
       // making some workaround here by replacing dot's with underscores and adding another
       // pipeline steps to fix the issue.
-      const underscoredPath = array.includes('.') && dotToUnderscore(array);
-      const arrayGroupProperty = { [underscoredPath || array]: { $push: curPath } };
-      result.push({
-        $group: {
+      const underscoredPath = arrayItem.includes('.') && dotToUnderscore(arrayItem);
+      const arrayGroupProperty = { [underscoredPath || arrayItem]: { $push: curPath } };
+
+      const groupStep = {
+        ...rootGroupProperties,
+        ...arrayGroupProperty
+      };
+
+      if (array.length === 1) {
+        groupStep._id = '$_id';
+      } else if (index < array.length - 1) {
+        groupStep._id = {
           _id: '$_id',
-          ...rootGroupProperties,
-          ...arrayGroupProperty
-        }
-      });
+          // TODO: make some checks to prevent grouping array rows without ids
+          [underscoredPath || arrayItem]: '$' + nextArray + '._id'
+        };
+      } else {
+        groupStep._id = '$_id._id';
+      }
+
+      result.push({ $group: groupStep });
+
+      if (index < array.length - 1) {
+        result.push({ $sort: { [nextArray + '._index']: 1 } });
+        result.push({ $project: { [nextArray + '._index']: 0 } });
+      }
+
       if (underscoredPath) {
         result.push(
           {
-            $addFields: { [array]: '$' + underscoredPath }
+            $addFields: { [arrayItem]: '$' + underscoredPath }
           },
           {
             $project: { [underscoredPath]: 0 }
