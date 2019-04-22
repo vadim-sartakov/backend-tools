@@ -37,7 +37,7 @@ describe.only('Mongoose deep find plugin', () => {
       const rootSchema = new Schema({
         field: String,
         child,
-        embedded: { field: String, child },
+        embedded: { field: String, child, arrayOfRefs: [child] },
         embeddedSchema,
         array: [String],
         arrayOfEmbedded: [{ field: String, child }],
@@ -56,7 +56,7 @@ describe.only('Mongoose deep find plugin', () => {
       const rootOne = await new RootModel({
         field: 'test 1',
         child: childOne,
-        embedded: { field: 'test 1', child: childOne },
+        embedded: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
         embeddedSchema: { field: 'test 2', child: childOne },
         array: ['One', 'Two'],
         arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
@@ -66,7 +66,7 @@ describe.only('Mongoose deep find plugin', () => {
       const rootTwo = await new RootModel({
         field: 'test 2',
         child: childOne,
-        embedded: { field: 'test 2', child: childOne },
+        embedded: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
         embeddedSchema: { field: 'test 2', child: childOne },
         array: ['One', 'Two'],
         arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
