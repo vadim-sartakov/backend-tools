@@ -30,104 +30,54 @@ describe.only('Mongoose deep find plugin', () => {
 
     afterEach(clearDataAndModels);
 
-    const createModels = (childSchema, rootSchema) => {
-      rootSchema.plugin(deepFindPlugin);
-      connection.model('DeepChild', childSchema);
-      connection.model('Child', childSchema);
-      connection.model('Root', rootSchema);
-    };
-
-    const createInstances = async ({ rootValues, childValues, deepChildValues }, count) => {
-      let deepChildInstance, childInstance;
-      const DeepChildModel = connection.model('DeepChild');
-      const ChildModel = connection.model('Child');
-      const RootModel = connection.model('Root');
-      for (let i = 0; i < count; i++) {
-        if (deepChildValues) deepChildInstance = await new DeepChildModel(deepChildValues).save();
-        if (childValues) childInstance = await new ChildModel(childValues(deepChildInstance)).save();
-        await new RootModel(rootValues(childInstance)).save();
-      }
-    };
-
     it('Preserves data structure with complex doc', async () => {
       const child = { type: Schema.Types.ObjectId, ref: 'Child' };
       const embeddedSchema = new Schema({ field: String, child });
-      createModels(
-        new Schema({ field: String }),
-        new Schema({
-          field: String,
-          child,
-          embedded: { field: String, child },
-          embeddedSchema,
-          array: [String],
-          arrayOfEmbedded: [{ field: String, child }],
-          arrayOfSchemas: [embeddedSchema],
-          //arrayOfRefs: [child]
-        })
-      );
-      await createInstances(
-        {
-          childValues: () => ({ field: 'test' }),
-          rootValues: childInstance => ({
-            field: 'test',
-            child: childInstance,
-            embedded: { field: 'test', child: childInstance },
-            embeddedSchema: { field: 'test', child: childInstance },
-            array: ['One', 'Two'],
-            arrayOfEmbedded: [{ field: 'test 1', child: childInstance }, { field: 'test 2', child: childInstance }],
-            arrayOfSchemas: [{ field: 'test 1', child: childInstance }, { field: 'test 2', child: childInstance }],
-            //arrayOfRefs: [childInstance, childInstance]
-          })
-        },
-        3
-      );
-      const Model = connection.model('Root');
-      const result = await Model.deepFind(); /*await Model.aggregate([
-        { '$unwind': { path: '$arrayOfEmbedded', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'arrayOfEmbedded.child', foreignField: '_id', as: 'arrayOfEmbedded.child' } },
-        { '$unwind': { path: '$arrayOfEmbedded.child', preserveNullAndEmptyArrays: true } },
-        { '$group': { _id: '$_id', __v: { '$first': '$__v' }, array: { '$first': '$array' }, arrayOfEmbedded: { '$push': '$arrayOfEmbedded' }, arrayOfSchemas: { '$first': '$arrayOfSchemas' }, child: { '$first': '$child' }, embedded: { '$first': '$embedded' }, embeddedSchema: { '$first': '$embeddedSchema' }, field: { '$first': '$field' } } },
+      const childSchema = new Schema({ field: String });
+      const rootSchema = new Schema({
+        field: String,
+        child,
+        embedded: { field: String, child },
+        embeddedSchema,
+        array: [String],
+        arrayOfEmbedded: [{ field: String, child }],
+        arrayOfSchemas: [embeddedSchema],
+        arrayOfRefs: [child]
+      });
 
-        { '$unwind': { path: '$arrayOfSchemas', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'arrayOfSchemas.child', foreignField: '_id', as: 'arrayOfSchemas.child' } },
-        { '$unwind': { path: '$arrayOfSchemas.child', preserveNullAndEmptyArrays: true } },
-        { '$group': { _id: '$_id', __v: { '$first': '$__v' }, array: { '$first': '$array' }, arrayOfEmbedded: { '$first': '$arrayOfEmbedded' }, arrayOfSchemas: { '$push': '$arrayOfSchemas' }, child: { '$first': '$child' }, embedded: { '$first': '$embedded' }, embeddedSchema: { '$first': '$embeddedSchema' }, field: { '$first': '$field' } } },
+      rootSchema.plugin(deepFindPlugin);
+      const DeepChildModel = connection.model('DeepChild', childSchema);
+      const ChildModel = connection.model('Child', childSchema);
+      const RootModel = connection.model('Root', rootSchema);
+      
+      const childOne = await new ChildModel({ field: 'test 1' }).save();
+      const childTwo = await new ChildModel({ field: 'test 2' }).save();
 
-        { '$lookup': { from: 'children', localField: 'child', foreignField: '_id', as: 'child' } },
-        { '$unwind': { path: '$child', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'embedded.child', foreignField: '_id', as: 'embedded.child' } },
-        { '$unwind': { path: '$embedded.child', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'embeddedSchema.child', foreignField: '_id', as: 'embeddedSchema.child' } },
-        { '$unwind': { path: '$embeddedSchema.child', preserveNullAndEmptyArrays: true } }
-        ]);*/
-      console.log("%o", result);
-      console.log(JSON.stringify(result));
-      expect(result.length).to.equal(3);
-      expect(result[0].field).to.equal('test');
-      expect(result[0].child.field).to.equal('test');
-      expect(result[0].embedded.field).to.equal('test');
-      expect(result[0].embedded.child.field).to.equal('test');
-      expect(result[0].embeddedSchema.field).to.equal('test');
-      expect(result[0].embeddedSchema.child.field).to.equal('test');
-      expect(result[0].array).to.deep.equal(['One', 'Two']);
+      const rootOne = await new RootModel({
+        field: 'test 1',
+        child: childOne,
+        embedded: { field: 'test 1', child: childOne },
+        embeddedSchema: { field: 'test 2', child: childOne },
+        array: ['One', 'Two'],
+        arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfSchemas: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfRefs: [childOne, childTwo]
+      }).save();
+      const rootTwo = await new RootModel({
+        field: 'test 2',
+        child: childOne,
+        embedded: { field: 'test 2', child: childOne },
+        embeddedSchema: { field: 'test 2', child: childOne },
+        array: ['One', 'Two'],
+        arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfSchemas: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfRefs: [childOne, childTwo]
+      }).save();
 
-      expect(result[0].arrayOfEmbedded.length).to.equal(2);
-      expect(result[0].arrayOfEmbedded[0].field).to.equal('test 1');
-      expect(result[0].arrayOfEmbedded[0].child.field).to.equal('test');
-      expect(result[0].arrayOfEmbedded[1].field).to.equal('test 2');
-      expect(result[0].arrayOfEmbedded[1].child.field).to.equal('test');
+      const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
+      const result = JSON.parse(JSON.stringify(await RootModel.deepFind({ sort: { field: 1 } })));
+      expect(result).to.deep.equal(expectedResult);
 
-      expect(result[0].arrayOfSchemas.length).to.equal(2);
-      expect(result[0].arrayOfSchemas[0].field).to.equal('test 1');
-      expect(result[0].arrayOfSchemas[0].child.field).to.equal('test');
-      expect(result[0].arrayOfSchemas[1].field).to.equal('test 2');
-      expect(result[0].arrayOfSchemas[1].child.field).to.equal('test');
-
-      /*expect(result[0].arrayOfRefs.length).to.equal(2);
-      expect(result[0].arrayOfRefs[0].field).to.equal('test 1');
-      expect(result[0].arrayOfRefs[0].child.field).to.equal('test');
-      expect(result[0].arrayOfRefs[1].field).to.equal('test 2');
-      expect(result[0].arrayOfRefs[1].child.field).to.equal('test');*/
     });
 
   });
