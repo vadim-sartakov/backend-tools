@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 const checkIsExclusive = projection => {
   const keys = Object.keys(projection);
   return projection[keys[0]] === 0;
@@ -75,85 +77,9 @@ const searchQueryToFilter = (schema, searchQuery) => {
   return { $or: filters};
 };
 
-const getJoinPipeline = pathsToJoin => {
+const dotToUnderscore = property => property.replace(/\.+/g, '_');
 
-  const joinPipeline = [];
-  if (!pathsToJoin.length) return joinPipeline;
-
-  const joinSteps = pathsToJoin.reduce((accumulator, path) => {
-    const parts = path.property.split('.');
-    const localField = parts.splice(0, parts.length - 1).join('.');
-    const currentPipeline = [...accumulator];
-
-    path.parentArrays && path.parentArrays.forEach(array => {
-      const curPath = '$' + array;
-      if (!accumulator.filter(step => step.$unwind).some(step => curPath === (step.$unwind.path || step.$unwind) ) ) {
-        currentPipeline.push({
-          $unwind: {
-            path: curPath,
-            preserveNullAndEmptyArrays: true
-          }
-        });
-      }
-    });
-
-    currentPipeline.push(
-      {
-        $lookup: {
-          from: path.collectionName,
-          localField,
-          foreignField: '_id',
-          as: localField
-        }
-      },
-      {
-        $unwind: {
-          path: '$' + localField,
-          preserveNullAndEmptyArrays: true
-        }
-      }
-    );
-    return currentPipeline;
-  }, []);
-
-  joinPipeline.push(...joinSteps);
-
-  return joinPipeline;
-
-};
-
-const getGroupPipeline = (pathsMeta, pathsToJoin) => {
-
-  const arrayPropertyIsInside = (arraysToCollect, currentArrayProperty) => {
-    return arraysToCollect.some(rootItem => {
-      return ( rootItem.property && rootItem.property === currentArrayProperty ) ||
-          ( Array.isArray(rootItem) && arrayPropertyIsInside(rootItem, currentArrayProperty) ) ||
-          false;
-    });
-  };
-
-  // Preparing to collect unwinded arrays.
-  // References nested deep inside other arrays should have their own nested group pipeline,
-  // so to simplify further processing, we inserting these kind of deep nested references into nested arrays
-  // Executing revere here to make sure deep nested references go first
-  const arraysToCollect = pathsToJoin.slice(0).reverse().reduce((arraysToCollect, path) => {
-    if (path.parentArrays) {
-      const nestedArrays = path.parentArrays.slice(0).reverse().reduce((nestedArrays, parentArrayProperty) => {
-        if (!arrayPropertyIsInside(arraysToCollect, parentArrayProperty)) {
-          const parentArray = pathsMeta.find(pathMeta => pathMeta.property === parentArrayProperty);
-          return [...nestedArrays, parentArray];
-        } else {
-          return nestedArrays;
-        }
-      }, []);
-      return nestedArrays.length ? [...arraysToCollect, nestedArrays.length === 1 ? nestedArrays[0] : nestedArrays] : arraysToCollect;
-    } else {
-      return arraysToCollect;
-    }
-  }, []);
-
-  if (!arraysToCollect.length) return [];
-
+const getRootGroupProperties = pathsMeta => {
   let rootGroupProperties = pathsMeta.filter(path => {
     return path.level === 0 && path.property !== '_id';
   });
@@ -164,88 +90,86 @@ const getGroupPipeline = (pathsMeta, pathsToJoin) => {
         accumulator :
         { ...accumulator, [curPath]: { $first: '$' + curPath } };
   }, {});
-
-  const dotToUnderscore = property => property.replace(/\.+/g, '_');
-
-  const getArrayGroupProperties = (arraysToCollect, currentArray, underscoreNestedArrayProperty) => {
-    return arraysToCollect.reduce((accumulator, item) => {
-      const curProperty = '$' + item.property;
-      const rootProperty = item.property.split('.')[0];
-      if (item.level === currentArray.level) {
-        return { ...accumulator, [underscoreNestedArrayProperty]: { $push: curProperty } };
-      } else if (!accumulator[rootProperty]) {
-        return  { ...accumulator, [rootProperty]: { $first: curProperty } };
-      } else {
-        return accumulator;
-      }
-    }, {});
-  };
-
-  const groupPipeline = arraysToCollect.reduce((groupPipeline, arrayToCollect) => {
-    if (Array.isArray(arrayToCollect)) {
-      const nestedPipeline = arrayToCollect.reduce((nestedPipeline, nestedArrayToCollect, index) => {
-        const underscoreNestedArrayProperty = dotToUnderscore(nestedArrayToCollect.property);
-        const arrayProperties = getArrayGroupProperties(arrayToCollect, nestedArrayToCollect, underscoreNestedArrayProperty);
-        // The result will be different for the last element,
-        // so tracking if it's the last one or not
-        if (index < arrayToCollect.length - 1) {
-          return [
-            ...nestedPipeline,
-            {
-              $group: {
-                _id: { _id: '$_id', [dotToUnderscore(nestedArrayToCollect.parentRef)]: '$' + nestedArrayToCollect.parentRef + '._id' },
-                ...rootGroupProperties,
-                ...arrayProperties
-              }
-            }, 
-            {
-              $addFields: { [nestedArrayToCollect.property]: '$' + underscoreNestedArrayProperty }
-            },
-            {
-              $project: { [underscoreNestedArrayProperty]: 0 }
-            }
-          ];
-        } else {
-          return [
-            ...nestedPipeline,
-            {
-              $group: {
-                 _id: '$_id._id',
-                ...rootGroupProperties,
-                ...arrayProperties
-              } 
-            }
-          ]; 
-        }
-      }, []);
-      return [
-        ...groupPipeline,
-        ...nestedPipeline
-      ];
-    } else {
-      const underscoreNestedArrayProperty = dotToUnderscore(arrayToCollect.property);
-      const arrayProperties = getArrayGroupProperties(arraysToCollect, arrayToCollect, underscoreNestedArrayProperty);
-      return [
-        ...groupPipeline,
-        {
-          $group: {
-            _id: '$_id',
-            ...rootGroupProperties,
-            ...arrayProperties
-          }
-        }
-      ];
-    }
-  }, []);
-
-  return groupPipeline;
+  return rootGroupProperties;
 };
 
 const getJoinAndGroupPipeline = pathsMeta => {
   const pathsToJoin = pathsMeta.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
-  const joinPipeline = getJoinPipeline(pathsToJoin);
-  const groupPipeline = getGroupPipeline(pathsMeta, pathsToJoin);
-  return [...joinPipeline, ...groupPipeline];
+  if (!pathsToJoin.length) return pipeline;
+
+  const rootGroupProperties = getRootGroupProperties(pathsMeta);
+
+  // Grouping by parent arrays property, so references same level deep
+  // should be processed by the same step
+  const groupedByParentArrays = pathsToJoin.reduce((accumulator, path) => {
+    const groupItem = accumulator.find(item => item.parentArrays && _.isEqual(item.parentArrays, path.parentArrays)) || { parentArrays: path.parentArrays, paths: [] };
+    return [...accumulator, { ...groupItem, paths: [...groupItem.paths, path] }];
+  }, []);
+
+  const pipeline = groupedByParentArrays.reduce((accumulator, item) => {
+    const result = [...accumulator];
+    item.parentArrays && item.parentArrays.forEach(array => {
+      const curPath = '$' + array;
+      result.push({
+        $unwind: {
+          path: curPath,
+          preserveNullAndEmptyArrays: true
+        }
+      });
+    });
+
+    item.paths.forEach(path => {
+      const parts = path.property.split('.');
+      const localField = parts.splice(0, parts.length - 1).join('.');
+      result.push(
+        {
+          $lookup: {
+            from: path.collectionName,
+            localField,
+            foreignField: '_id',
+            as: localField
+          }
+        },
+        {
+          $unwind: {
+            path: '$' + localField,
+            preserveNullAndEmptyArrays: true
+          }
+        }
+      );
+    });
+
+    // Executing revere here to make sure deep nested references go first
+    item.parentArrays && item.parentArrays.slice(0).reverse().forEach(array => {
+      const curPath = '$' + array;
+      // Since grouping does not support dot-notatation in properties,
+      // making some workaround here by replacing dot's with underscores and adding another
+      // pipeline steps to fix the issue.
+      const underscoredPath = array.includes('.') && dotToUnderscore(array);
+      const arrayGroupProperty = { [underscoredPath || array]: { $push: curPath } };
+      result.push({
+        $group: {
+          _id: '$_id',
+          ...rootGroupProperties,
+          ...arrayGroupProperty
+        }
+      });
+      if (underscoredPath) {
+        result.push(
+          {
+            $addFields: { [array]: '$' + underscoredPath }
+          },
+          {
+            $project: { [underscoredPath]: 0 }
+          }
+        );
+      }
+    });
+
+    return result;
+  }, []);
+
+  return pipeline;
 };
 
 const getResultFilter = (filter, searchFilter) => {
