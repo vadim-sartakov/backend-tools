@@ -99,29 +99,18 @@ const getJoinAndGroupPipeline = pathsMeta => {
 
   const rootGroupProperties = getRootGroupProperties(pathsMeta);
 
-  const pipelineTemplate = [
-    {
-      parentArray: 'rootArray',
-      paths: ['one', 'two'],
-      children: [
-        {
-          parentArray: 'child',
-          paths: ['one', 'two']
-        }
-      ]
-    },
-    {
-      parentArray: undefined,
-      paths: ['one', 'two']
-    }
-  ];
-
   // Grouping by parent arrays property, so references same level deep
   // should be processed by the same step
-  const groupedByParentArrays = pathsToJoin.reduce((accumulator, path) => {
-    const groupItem = accumulator.find(item => item.parentArrays && _.isEqual(item.parentArrays, path.parentArrays)) || { parentArrays: path.parentArrays, paths: [] };
-    return [...accumulator, { ...groupItem, paths: [...groupItem.paths, path] }];
-  }, []);
+  const groupedPaths = pathsToJoin.reduce((accumulator, path, index) => {
+    const key = ( path.parentArrays && path.parentArrays.join('_') ) || 'root';
+    const entry = ( accumulator[key] && Object.assign({}, accumulator[key]) ) || { parentArrays: path.parentArrays, paths: [], index };
+    entry.paths.push(path);
+    return { ...accumulator, [key]: entry };
+  }, {});
+  const groupedByParentArrays = Object.keys(groupedPaths).reduce((accumulator, key) => {
+    const value = groupedPaths[key];
+    return [...accumulator, value];
+  }, []).sort((a, b) => a.index > b.index ? 1 : a.index < b.index ? - 1 : 0 );
 
   const pipeline = groupedByParentArrays.reduce((accumulator, item) => {
     const result = [...accumulator];

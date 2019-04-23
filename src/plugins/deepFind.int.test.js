@@ -38,13 +38,13 @@ describe.only('Mongoose deep find plugin', () => {
       const childSchema = new Schema({ field: String, deepChild });
       const rootSchema = new Schema({
         field: String,
-        //child,
-        embedded: { field: String/*, child*/, arrayOfRefs: [child] },
-        //embeddedSchema,
-        //array: [String],
-        //arrayOfEmbedded: [{ field: String, child }],
-        //arrayOfSchemas: [embeddedSchema],
-        //arrayOfRefs: [child]
+        child,
+        embedded: { field: String, child, arrayOfRefs: [child] },
+        embeddedSchema,
+        array: [String],
+        arrayOfEmbedded: [{ field: String, child }],
+        arrayOfSchemas: [embeddedSchema],
+        arrayOfRefs: [child]
       });
 
       rootSchema.plugin(deepFindPlugin);
@@ -61,6 +61,7 @@ describe.only('Mongoose deep find plugin', () => {
       const rootOne = await new RootModel({
         field: 'test 1',
         child: childOne,
+        childWithDeep: childThree,
         embedded: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
         embeddedSchema: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
         array: ['One', 'Two'],
@@ -71,8 +72,9 @@ describe.only('Mongoose deep find plugin', () => {
       const rootTwo = await new RootModel({
         field: 'test 2',
         child: childOne,
+        childWithDeep: childThree,
         embedded: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
-        embeddedSchema: { field: 'test 2', child: childOne },
+        embeddedSchema: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
         array: ['One', 'Two'],
         arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
         arrayOfSchemas: [{ field: 'test 1', child: childOne, arrayOfRefs: [childTwo, childOne] }, { field: 'test 2', child: childOne, arrayOfRefs: [childTwo, childOne] }],
@@ -80,24 +82,7 @@ describe.only('Mongoose deep find plugin', () => {
       }).save();
 
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
-      //const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 }, maxDepth: true });
-      const rawActualResult = await RootModel.aggregate([
-        /*{ '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'embedded.arrayOfRefs', foreignField: '_id', as: 'embedded.arrayOfRefs' } },
-        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
-        { '$group': { __v: { '$first': '$__v' }, embedded: { '$first': '$embedded' }, field: { '$first': '$field' }, embedded_arrayOfRefs: { '$push': '$embedded.arrayOfRefs' }, _id: '$_id' } },
-        { '$addFields': { 'embedded.arrayOfRefs': '$embedded_arrayOfRefs' } },
-        { '$project': { embedded_arrayOfRefs: 0 } },*/
-        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'embedded.arrayOfRefs', foreignField: '_id', as: 'embedded.arrayOfRefs' } },
-        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'deepchildren', localField: 'embedded.arrayOfRefs.deepChild', foreignField: '_id', as: 'embedded.arrayOfRefs.deepChild' } },
-        { '$unwind': { path: '$embedded.arrayOfRefs.deepChild', preserveNullAndEmptyArrays: true } },
-        { '$group': { __v: { '$first': '$__v' }, embedded: { '$first': '$embedded' }, field: { '$first': '$field' }, embedded_arrayOfRefs: { '$push': '$embedded.arrayOfRefs' }, _id: '$_id' } },
-        { '$addFields': { 'embedded.arrayOfRefs': '$embedded_arrayOfRefs' } },
-        { '$project': { embedded_arrayOfRefs: 0 } },
-        { '$sort': { field: 1 } }
-      ]);
+      const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 }, maxDepth: true });
       const actualResult = JSON.parse(JSON.stringify(rawActualResult));
       console.log(JSON.stringify([rootOne, rootTwo]));
       console.log('===============================================');
