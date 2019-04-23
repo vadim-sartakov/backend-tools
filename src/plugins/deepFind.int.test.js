@@ -20,15 +20,21 @@ describe.only('Mongoose deep find plugin', () => {
   describe('Different schema definitions', () => {
     
     const clearDataAndModels = async () => {
-      await connection.model('DeepChild').deleteMany({});
-      await connection.model('Child').deleteMany({});
-      await connection.model('Root').deleteMany({});
-      delete connection.models.DeepChild;
-      delete connection.models.Child;
-      delete connection.models.Root;
+      if (connection.models.DeepChild) {
+        await connection.model('DeepChild').deleteMany({});
+        delete connection.models.DeepChild;
+      }
+      if (connection.models.Child) {
+        await connection.model('Child').deleteMany({});
+        delete connection.models.Child;
+      }
+      if (connection.models.Root) {
+        await connection.model('Root').deleteMany({});
+        delete connection.models.Root;
+      }
     };
 
-    afterEach(clearDataAndModels);
+    beforeEach(clearDataAndModels);
 
     it('Preserves data structure with complex doc', async () => {
       const deepChild = { type: Schema.Types.ObjectId, ref: 'DeepChild' };
