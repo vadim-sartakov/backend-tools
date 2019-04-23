@@ -60,19 +60,17 @@ describe.only('Mongoose deep find plugin', () => {
 
       const rootOne = await new RootModel({
         field: 'test 1',
-        child: childOne,
-        childWithDeep: childThree,
-        embedded: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo, childThree] },
-        embeddedSchema: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo, childThree] },
+        child: childThree,
+        embedded: { field: 'test 1', child: childThree, arrayOfRefs: [childOne, childTwo, childThree] },
+        embeddedSchema: { field: 'test 1', child: childThree, arrayOfRefs: [childOne, childTwo, childThree] },
         array: ['One', 'Two'],
-        arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
-        arrayOfSchemas: [{ field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] }, { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] }],
-        arrayOfRefs: [childOne, childTwo]
+        arrayOfEmbedded: [{ field: 'test 1', child: childThree }, { field: 'test 2', child: childThree }],
+        arrayOfSchemas: [{ field: 'test 1', child: childThree, arrayOfRefs: [childOne, childTwo, childThree] }, { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] }],
+        arrayOfRefs: [childOne, childTwo, childThree]
       }).save();
       const rootTwo = await new RootModel({
         field: 'test 2',
         child: childOne,
-        childWithDeep: childThree,
         embedded: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
         embeddedSchema: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
         array: ['One', 'Two'],
