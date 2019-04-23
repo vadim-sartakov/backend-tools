@@ -93,7 +93,7 @@ const getRootGroupProperties = pathsMeta => {
 
 const getJoinAndGroupPipeline = pathsMeta => {
   const pathsToJoin = pathsMeta.filter(path => path.property.includes('_id') && ( path.parentRef !== undefined ));
-  if (!pathsToJoin.length) return pipeline;
+  if (!pathsToJoin.length) return [];
 
   const rootGroupProperties = getRootGroupProperties(pathsMeta);
 
