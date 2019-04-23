@@ -1,5 +1,3 @@
-import _ from 'lodash';
-
 const checkIsExclusive = projection => {
   const keys = Object.keys(projection);
   return projection[keys[0]] === 0;
