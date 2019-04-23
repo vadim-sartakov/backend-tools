@@ -32,17 +32,17 @@ describe.only('Mongoose deep find plugin', () => {
 
     it('Preserves data structure with complex doc', async () => {
       const child = { type: Schema.Types.ObjectId, ref: 'Child' };
-      const embeddedSchema = new Schema({ field: String, child, eeeeee: [child] });
+      const embeddedSchema = new Schema({ field: String, child, arrayOfRefs: [child] });
       const childSchema = new Schema({ field: String });
       const rootSchema = new Schema({
         field: String,
-        //child,
-        //embedded: { field: String, child, arrayOfRefs: [child] },
-        //embeddedSchema,
-        //array: [String],
-        //arrayOfEmbedded: [{ field: String, child }],
+        child,
+        embedded: { field: String, child, arrayOfRefs: [child] },
+        embeddedSchema,
+        array: [String],
+        arrayOfEmbedded: [{ field: String, child }],
         arrayOfSchemas: [embeddedSchema],
-        //arrayOfRefs: [child]
+        arrayOfRefs: [child]
       });
 
       rootSchema.plugin(deepFindPlugin);
@@ -55,23 +55,23 @@ describe.only('Mongoose deep find plugin', () => {
 
       const rootOne = await new RootModel({
         field: 'test 1',
-        //child: childOne,
-        //embedded: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
-        //embeddedSchema: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
-        //array: ['One', 'Two'],
-        //arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
-        arrayOfSchemas: [{ field: 'test 1', child: childOne, eeeeee: [childOne] }, { field: 'test 2', child: childOne, eeeeee: [childOne] }],
-        //arrayOfRefs: [childOne, childTwo]
+        child: childOne,
+        embedded: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
+        embeddedSchema: { field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] },
+        array: ['One', 'Two'],
+        arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfSchemas: [{ field: 'test 1', child: childOne, arrayOfRefs: [childOne, childTwo] }, { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] }],
+        arrayOfRefs: [childOne, childTwo]
       }).save();
       const rootTwo = await new RootModel({
         field: 'test 2',
-        //child: childOne,
-        //embedded: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
-        //embeddedSchema: { field: 'test 2', child: childOne },
-        //array: ['One', 'Two'],
-        //arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
-        arrayOfSchemas: [{ field: 'test 1', child: childOne, eeeeee: [childTwo] }, { field: 'test 2', child: childOne, eeeeee: [childTwo] }],
-        //arrayOfRefs: [childOne, childTwo]
+        child: childOne,
+        embedded: { field: 'test 2', child: childOne, arrayOfRefs: [childOne, childTwo] },
+        embeddedSchema: { field: 'test 2', child: childOne },
+        array: ['One', 'Two'],
+        arrayOfEmbedded: [{ field: 'test 1', child: childOne }, { field: 'test 2', child: childOne }],
+        arrayOfSchemas: [{ field: 'test 1', child: childOne, arrayOfRefs: [childTwo, childOne] }, { field: 'test 2', child: childOne, arrayOfRefs: [childTwo, childOne] }],
+        arrayOfRefs: [childOne, childTwo]
       }).save();
 
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
