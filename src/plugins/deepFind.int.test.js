@@ -75,24 +75,7 @@ describe.only('Mongoose deep find plugin', () => {
       }).save();
 
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
-      //const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 } });
-      const rawActualResult = await RootModel.aggregate([
-        { '$unwind': { path: '$arrayOfSchemas', preserveNullAndEmptyArrays: true } },
-        { '$lookup': { from: 'children', localField: 'arrayOfSchemas.child', foreignField: '_id', as: 'arrayOfSchemas.child' } },
-        { '$unwind': { path: '$arrayOfSchemas.child', preserveNullAndEmptyArrays: true } },
-        { '$group': { __v: { '$first': '$__v' }, arrayOfSchemas: { '$push': '$arrayOfSchemas' }, field: { '$first': '$field' }, _id: '$_id' } },
-        { '$unwind': { path: '$arrayOfSchemas', preserveNullAndEmptyArrays: true, includeArrayIndex: 'arrayOfSchemas_index' } },
-        { '$unwind': { path: '$arrayOfSchemas.eeeeee', preserveNullAndEmptyArrays: true, includeArrayIndex: 'arrayOfSchemas_eeeeee_index' } },
-        { '$lookup': { from: 'children', localField: 'arrayOfSchemas.eeeeee', foreignField: '_id', as: 'arrayOfSchemas.eeeeee' } },
-        { '$unwind': { path: '$arrayOfSchemas.eeeeee', preserveNullAndEmptyArrays: true } },
-        { '$group': { arrayOfSchemas_index: { '$first': '$arrayOfSchemas_index' }, arrayOfSchemas_eeeeee_index: { '$first': '$arrayOfSchemas_eeeeee_index' }, __v: { '$first': '$__v' }, arrayOfSchemas: { '$first': '$arrayOfSchemas' }, field: { '$first': '$field' }, arrayOfSchemas_eeeeee: { '$push': '$arrayOfSchemas.eeeeee' }, _id: { _id: '$_id', arrayOfSchemas_eeeeee: '$arrayOfSchemas._id' } } },
-        { '$sort': { 'arrayOfSchemas_index': 1 } },
-        { '$addFields': { 'arrayOfSchemas.eeeeee': '$arrayOfSchemas_eeeeee' } },
-        { '$project': { 'arrayOfSchemas_eeeeee': 0 } },
-        { '$project': { 'arrayOfSchemas_eeeeee_index': 0 } },
-        { '$group': { __v: { '$first': '$__v' }, arrayOfSchemas: { '$push': '$arrayOfSchemas' }, field: { '$first': '$field' }, _id: '$_id._id' } },
-        { '$sort': { field: 1 } }
-      ]);
+      const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 } });
       const actualResult = JSON.parse(JSON.stringify(rawActualResult));
       console.log(JSON.stringify([rootOne, rootTwo]));
       console.log('===============================================');

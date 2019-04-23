@@ -114,7 +114,9 @@ const getJoinAndGroupPipeline = pathsMeta => {
           path: curPath,
           preserveNullAndEmptyArrays: true
       };
-      if (sourceArray.length > 1) $unwind.includeArrayIndex = array + '._index';
+      // Since grouping does not guarantee order, we have to maintain
+      // array indexes to restore order right after grouping
+      if (sourceArray.length > 1) $unwind.includeArrayIndex = 'indexes.' + dotToUnderscore(array);
       result.push({ $unwind });
     });
 
@@ -162,6 +164,8 @@ const getJoinAndGroupPipeline = pathsMeta => {
           // TODO: make some checks to prevent grouping array rows without ids
           [underscoredPath || arrayItem]: '$' + nextArray + '._id'
         };
+        // Indexes property will not be preserved on the last step
+        groupStep.indexes = { $first: '$indexes' };
       } else {
         groupStep._id = '$_id._id';
       }
@@ -169,9 +173,8 @@ const getJoinAndGroupPipeline = pathsMeta => {
       result.push({ $group: groupStep });
 
       if (index < array.length - 1) {
-        const nextArrayIndexProperty = nextArray + '._index';
+        const nextArrayIndexProperty = 'indexes.' + dotToUnderscore(nextArray);
         result.push({ $sort: { [nextArrayIndexProperty]: 1 } });
-        result.push({ $project: { [nextArrayIndexProperty]: 0 } });
       }
 
       if (underscoredPath) {
