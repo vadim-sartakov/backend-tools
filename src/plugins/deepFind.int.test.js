@@ -31,27 +31,32 @@ describe.only('Mongoose deep find plugin', () => {
     afterEach(clearDataAndModels);
 
     it('Preserves data structure with complex doc', async () => {
+      const deepChild = { type: Schema.Types.ObjectId, ref: 'DeepChild' };
       const child = { type: Schema.Types.ObjectId, ref: 'Child' };
       const embeddedSchema = new Schema({ field: String, child, arrayOfRefs: [child] });
-      const childSchema = new Schema({ field: String });
+      const deepChildSchema = new Schema({ field: String });
+      const childSchema = new Schema({ field: String, deepChild });
       const rootSchema = new Schema({
         field: String,
-        child,
-        embedded: { field: String, child, arrayOfRefs: [child] },
-        embeddedSchema,
-        array: [String],
-        arrayOfEmbedded: [{ field: String, child }],
-        arrayOfSchemas: [embeddedSchema],
-        arrayOfRefs: [child]
+        //child,
+        embedded: { field: String/*, child*/, arrayOfRefs: [child] },
+        //embeddedSchema,
+        //array: [String],
+        //arrayOfEmbedded: [{ field: String, child }],
+        //arrayOfSchemas: [embeddedSchema],
+        //arrayOfRefs: [child]
       });
 
       rootSchema.plugin(deepFindPlugin);
-      const DeepChildModel = connection.model('DeepChild', childSchema);
+      const DeepChildModel = connection.model('DeepChild', deepChildSchema);
       const ChildModel = connection.model('Child', childSchema);
       const RootModel = connection.model('Root', rootSchema);
       
+      const deepChildOne = await new DeepChildModel({ field: 'test 1' }).save();
+
       const childOne = await new ChildModel({ field: 'test 1' }).save();
       const childTwo = await new ChildModel({ field: 'test 2' }).save();
+      const childThree = await new ChildModel({ field: 'test 3', deepChild: deepChildOne }).save();
 
       const rootOne = await new RootModel({
         field: 'test 1',
@@ -75,7 +80,24 @@ describe.only('Mongoose deep find plugin', () => {
       }).save();
 
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
-      const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 } });
+      //const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 }, maxDepth: true });
+      const rawActualResult = await RootModel.aggregate([
+        /*{ '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
+        { '$lookup': { from: 'children', localField: 'embedded.arrayOfRefs', foreignField: '_id', as: 'embedded.arrayOfRefs' } },
+        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
+        { '$group': { __v: { '$first': '$__v' }, embedded: { '$first': '$embedded' }, field: { '$first': '$field' }, embedded_arrayOfRefs: { '$push': '$embedded.arrayOfRefs' }, _id: '$_id' } },
+        { '$addFields': { 'embedded.arrayOfRefs': '$embedded_arrayOfRefs' } },
+        { '$project': { embedded_arrayOfRefs: 0 } },*/
+        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
+        { '$lookup': { from: 'children', localField: 'embedded.arrayOfRefs', foreignField: '_id', as: 'embedded.arrayOfRefs' } },
+        { '$unwind': { path: '$embedded.arrayOfRefs', preserveNullAndEmptyArrays: true } },
+        { '$lookup': { from: 'deepchildren', localField: 'embedded.arrayOfRefs.deepChild', foreignField: '_id', as: 'embedded.arrayOfRefs.deepChild' } },
+        { '$unwind': { path: '$embedded.arrayOfRefs.deepChild', preserveNullAndEmptyArrays: true } },
+        { '$group': { __v: { '$first': '$__v' }, embedded: { '$first': '$embedded' }, field: { '$first': '$field' }, embedded_arrayOfRefs: { '$push': '$embedded.arrayOfRefs' }, _id: '$_id' } },
+        { '$addFields': { 'embedded.arrayOfRefs': '$embedded_arrayOfRefs' } },
+        { '$project': { embedded_arrayOfRefs: 0 } },
+        { '$sort': { field: 1 } }
+      ]);
       const actualResult = JSON.parse(JSON.stringify(rawActualResult));
       console.log(JSON.stringify([rootOne, rootTwo]));
       console.log('===============================================');

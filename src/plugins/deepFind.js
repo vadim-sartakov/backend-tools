@@ -99,6 +99,23 @@ const getJoinAndGroupPipeline = pathsMeta => {
 
   const rootGroupProperties = getRootGroupProperties(pathsMeta);
 
+  const pipelineTemplate = [
+    {
+      parentArray: 'rootArray',
+      paths: ['one', 'two'],
+      children: [
+        {
+          parentArray: 'child',
+          paths: ['one', 'two']
+        }
+      ]
+    },
+    {
+      parentArray: undefined,
+      paths: ['one', 'two']
+    }
+  ];
+
   // Grouping by parent arrays property, so references same level deep
   // should be processed by the same step
   const groupedByParentArrays = pathsToJoin.reduce((accumulator, path) => {
