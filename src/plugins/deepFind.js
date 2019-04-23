@@ -108,15 +108,14 @@ const getJoinAndGroupPipeline = pathsMeta => {
 
   const pipeline = groupedByParentArrays.reduce((accumulator, item) => {
     const result = [...accumulator];
-    item.parentArrays && item.parentArrays.forEach(array => {
+    item.parentArrays && item.parentArrays.forEach((array, index, sourceArray) => {
       const curPath = '$' + array;
-      result.push({
-        $unwind: {
+      const $unwind = {
           path: curPath,
-          preserveNullAndEmptyArrays: true,
-          includeArrayIndex: '_index'
-        }
-      });
+          preserveNullAndEmptyArrays: true
+      };
+      if (sourceArray.length > 1) $unwind.includeArrayIndex = array + '._index';
+      result.push({ $unwind });
     });
 
     item.paths.forEach(path => {
@@ -170,8 +169,9 @@ const getJoinAndGroupPipeline = pathsMeta => {
       result.push({ $group: groupStep });
 
       if (index < array.length - 1) {
-        result.push({ $sort: { [nextArray + '._index']: 1 } });
-        result.push({ $project: { [nextArray + '._index']: 0 } });
+        const nextArrayIndexProperty = nextArray + '._index';
+        result.push({ $sort: { [nextArrayIndexProperty]: 1 } });
+        result.push({ $project: { [nextArrayIndexProperty]: 0 } });
       }
 
       if (underscoredPath) {
