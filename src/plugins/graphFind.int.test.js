@@ -123,12 +123,54 @@ describe.only('Mongoose deep find plugin', () => {
 
   describe('Search', () => {
 
-    it('By root field', async () => {
+    const childSchema = new Schema({ field: String, number: String });
+    const rootSchema = new Schema(
+      {
+        field: String,
+        child: childSchema,
+        arrayOfChildren: [childSchema]
+      }, 
+      {
+        searchFields: ['field', 'child.field']
+      }
+    );
 
+    let Root, Child;
+
+    const populateDatabase = async count => {
+      for (let i = 0; i < count; i++) {
+        const child = await new Child({ field: 'Child field ' + i, number: i }).save();
+        await new Root({ field: 'Root field ' + i, child, arrayOfChildren: [child] }).save();
+      }
+    };
+
+    before(async () => {
+      rootSchema.plugin(graphFindPlugin);
+      Child = connection.model('Child', childSchema);
+      Root = connection.model('Root', rootSchema);
+      await populateDatabase(10);
+    });
+
+    after(async () => {
+      await clearData();
+      clearModels();
+    });
+
+    it('By root field', async () => {
+      const result = await Root.graphFind({ search: 'oot Field 5' });
+      expect(result.length).to.equal(1);
+      expect(result[0].field).to.equal('Root field 5');
     });
 
     it('By nested field', async () => {
+      const result = await Root.graphFind({ search: 'ild Field 5' });
+      expect(result.length).to.equal(1);
+      expect(result[0].child.field).to.equal('Child field 5');
+    });
 
+    it('By root and nested field', async () => {
+      const result = await Root.graphFind({ search: 'Field' });
+      expect(result.length).to.equal(10);
     });
 
   });
