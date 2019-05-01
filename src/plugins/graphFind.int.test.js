@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import mongoose, { Schema } from 'mongoose';
-import deepFindPlugin from './deepFind';
+import graphFindPlugin from './graphFind';
 
 mongoose.set('debug', true);
 
@@ -53,7 +53,7 @@ describe.only('Mongoose deep find plugin', () => {
         arrayOfRefs: [child]
       });
 
-      rootSchema.plugin(deepFindPlugin);
+      rootSchema.plugin(graphFindPlugin);
       const DeepChildModel = connection.model('DeepChild', deepChildSchema);
       const ChildModel = connection.model('Child', childSchema);
       const RootModel = connection.model('Root', rootSchema);
@@ -86,7 +86,7 @@ describe.only('Mongoose deep find plugin', () => {
       }).save();
 
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
-      const rawActualResult = await RootModel.deepFind({ sort: { 'field': 1 }, maxDepth: true });
+      const rawActualResult = await RootModel.graphFind({ sort: { 'field': 1 }, maxDepth: true });
       const actualResult = JSON.parse(JSON.stringify(rawActualResult));
       console.log(JSON.stringify([rootOne, rootTwo]));
       console.log('===============================================');

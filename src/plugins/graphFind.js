@@ -213,7 +213,7 @@ const treePathsComparator = (a, b) => {
   else return a.property.localeCompare(b.property);
 };
 
-export function deepFind(options = {}) {
+export function graphFind(options = {}) {
 
   const { skip, limit, projection, filter, sort, search } = options;
   let maxDepth;
@@ -249,12 +249,12 @@ export function deepFind(options = {}) {
 
 }
 
-const deepFindPlugin = schema => {
-  schema.static('deepFind', deepFind);
-  schema.static('deepFindOne', async function(options) {
-    const result = await deepFind({ ...options, limit: 1 });
+const graphFindPlugin = schema => {
+  schema.static('graphFind', graphFind);
+  schema.static('graphFindOne', async function(options) {
+    const result = await graphFind({ ...options, limit: 1 });
     return result.length > 0 ? result[0] : null;
   });
 };
 
-export default deepFindPlugin;
+export default graphFindPlugin;
