@@ -17,24 +17,128 @@ describe.only('Mongoose deep find plugin', () => {
     await connection.close(true);
   });
 
-  describe('Different schema definitions', () => {
-    
-    const clearDataAndModels = async () => {
-      if (connection.models.DeepChild) {
-        await connection.model('DeepChild').deleteMany({});
-        delete connection.models.DeepChild;
-      }
-      if (connection.models.Child) {
-        await connection.model('Child').deleteMany({});
-        delete connection.models.Child;
-      }
-      if (connection.models.Root) {
-        await connection.model('Root').deleteMany({});
-        delete connection.models.Root;
-      }
-    };
+  const clearData = async () => {
+    if (connection.models.DeepChild) {
+      await connection.model('DeepChild').deleteMany({});
+    }
+    if (connection.models.Child) {
+      await connection.model('Child').deleteMany({});
+    }
+    if (connection.models.Root) {
+      await connection.model('Root').deleteMany({});
+    }
+  };
 
-    beforeEach(clearDataAndModels);
+  const clearModels = () => {
+    if (connection.models.DeepChild) {
+      delete connection.models.DeepChild;
+    }
+    if (connection.models.Child) {
+      delete connection.models.Child;
+    }
+    if (connection.models.Root) {
+      delete connection.models.Root;
+    }
+  };
+
+  describe('Projections', () => {
+
+    const childSchema = new Schema({ field: String, number: String });
+    const rootSchema = new Schema({ field: String, child: childSchema });
+
+    let Root, Child;
+
+    const populateDatabase = async count => {
+      for (let i = 0; i < count; i++) {
+        const child = await new Child({ field: 'Child field ' + i, number: i }).save();
+        await new Root({ field: 'Root field ' + i, child }).save();
+      }
+    }; 
+
+    before(async () => {
+      rootSchema.plugin(graphFindPlugin);
+      Child = connection.model('Child', childSchema);
+      Root = connection.model('Root', rootSchema);
+      await populateDatabase(10);
+    });
+
+    after(async () => {
+      await clearData();
+      clearModels();
+    });
+
+    it('No projection specified', async () => {
+      const result = await Root.graphFind({ limit: 100 });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).to.be.ok;
+      expect(result[0].child).to.be.ok;
+      expect(result[0].child.field).to.be.ok;
+      expect(result[0].child.number).to.be.ok;
+    });
+
+    it('Inclusive projection of root property', async () => {
+      const result = await Root.graphFind({ projection: { 'field': 1 } });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).to.be.ok;
+      expect(result[0].child).not.to.be.ok;
+    });
+
+    it('Exclusive projection of root property', async () => {
+      const result = await Root.graphFind({ projection: { 'field': 0 } });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).not.to.be.ok;
+      expect(result[0].child).to.be.ok;
+      expect(result[0].child.field).to.be.ok;
+      expect(result[0].child.number).to.be.ok;
+    });
+
+    it('Inclusive projection of whole nested object', async () => {
+      const result = await Root.graphFind({ projection: { 'child': 1 } });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).not.to.be.ok;
+      expect(result[0].child).to.be.ok;
+      expect(result[0].child.field).to.be.ok;
+      expect(result[0].child.number).to.be.ok;
+    });
+
+    it('Inclusive projection of part of nested object', async () => {
+      const result = await Root.graphFind({ projection: { 'child.field': 1 } });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).not.to.be.ok;
+      expect(result[0].child).to.be.ok;
+      expect(result[0].child.field).to.be.ok;
+      expect(result[0].child.number).not.to.be.ok;
+    });
+
+    it('Exclusive projection of part of nested object', async () => {
+      const result = await Root.graphFind({ projection: { 'child.field': 0 } });
+      expect(result.length).to.equal(10);
+      expect(result[0].field).to.be.ok;
+      expect(result[0].child).to.be.ok;
+      expect(result[0].child.field).not.to.be.ok;
+      expect(result[0].child.number).to.be.ok;
+    });
+
+  });
+
+  describe('Search', () => {
+
+    it('By root field', async () => {
+
+    });
+
+    it('By nested field', async () => {
+
+    });
+
+  });
+
+  describe('Different schema definitions', () => {
+  
+    beforeEach(async () => {
+      await clearData();
+      clearModels();
+    });
 
     it('Preserves data structure with complex doc', async () => {
       const deepChild = { type: Schema.Types.ObjectId, ref: 'DeepChild' };
@@ -88,9 +192,6 @@ describe.only('Mongoose deep find plugin', () => {
       const expectedResult = JSON.parse(JSON.stringify([rootOne, rootTwo]));
       const rawActualResult = await RootModel.graphFind({ sort: { 'field': 1 }, maxDepth: true });
       const actualResult = JSON.parse(JSON.stringify(rawActualResult));
-      console.log(JSON.stringify([rootOne, rootTwo]));
-      console.log('===============================================');
-      console.log(JSON.stringify(rawActualResult));
       expect(actualResult).to.deep.equal(expectedResult);
 
     });
