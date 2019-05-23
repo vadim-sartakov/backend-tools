@@ -28,27 +28,20 @@ export const internalError = () => {
 };
 
 /**
- * Checks current user sotred in "user.local" against security schema.
+ * Checks current user stored in "user.local" against security schema.
  * Resulted filter stored in "res.locals.permissions" parameter
  * @param {Object} schema
  */
-export const security = schema => {
+export const security = (schema, modifier) => {
   const debug = createDebug("middleware:security");
   return (req, res, next) => {
     const { user } = res.locals;
     const permissions = getPermissions(
       user,
       schema,
-      "create",
-      "read",
-      "update",
-      "delete"
+      modifier
     );
-    const { method } = req;
-    if ((method === "POST" && !permissions.create) ||
-        (method === "GET" && !permissions.read) ||
-        (method === "PUT" && !permissions.update) ||
-        (method === "DELETE" && !permissions.delete)) {
+    if (!permissions[modifier]) {
       res.status(403);
       res.json({ message: "Access is denied" });
       debug("Access denied for %s to %s", req.ip, req.originalUrl);
@@ -60,9 +53,6 @@ export const security = schema => {
 };
 
 export const validator = constraints => (req, res, next) => {
-  const { method } = req;
-  if (method !== "POST" && method !== "PUT") return next();
-
   const errors = validate(req.body, constraints);
   if (errors) {
     res.status(400);

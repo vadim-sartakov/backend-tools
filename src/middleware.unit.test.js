@@ -27,7 +27,7 @@ describe("Middleware", () => {
 
     it("Granted read", () => {
       const schema = { "USER": { read: true } };
-      const middleware = security(schema);
+      const middleware = security(schema, "read");
       middleware({}, res, next);
       expect(res.locals.permissions).to.be.ok;
       expect(next).to.have.been.called;

@@ -26,7 +26,7 @@ class StubModel {
   }
 }
 
-describe("Crud router", () => {
+describe.only("Crud router", () => {
 
   const getBulkResult = entryCount => {
     const result = [];
@@ -38,14 +38,14 @@ describe("Crud router", () => {
 
   const initialize = (modelArgs, routerOptions, user) => {
     const model = new StubModel(modelArgs);
-    const router = new CrudRouter(model, routerOptions);
+    const crudRouter = new CrudRouter(model, routerOptions);
     const app = express();
     app.use(bodyParser.json());
     user && app.use((req, res, next) => {
       res.locals.user = user;
       next();
     });
-    app.use(router);
+    app.use(crudRouter.router);
     return { model, app };
   };
 

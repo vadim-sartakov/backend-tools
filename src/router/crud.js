@@ -16,22 +16,29 @@ const defaultOptions = {
   deleteOne: {}
 };
 
-class CrudRouter extends Router {
+class CrudRouter {
   
   constructor(crudModel, options) {
-    super();
-    options = _.merge({ ...defaultOptions }, options);
-    const { securitySchema, validationSchema } = options;
-    securitySchema && this.use( security(securitySchema) );  
-    validationSchema && this.use( validator(validationSchema) );
+    this.crudModel = crudModel;
+    this.options = _.merge({ ...defaultOptions }, options);
+    this.router = new Router();
 
-    this.rootRouter = this.route("/");
-    !options.getAll.disable && this.rootRouter.get( getAll(crudModel, options) );
-    !options.addOne.disable && this.rootRouter.post( addOne(crudModel, options) );
-    this.idRouter = this.route("/:id");
-    !options.getOne.disable && this.idRouter.get( getOne(crudModel, options) );
-    !options.updateOne.disable && this.idRouter.put( updateOne(crudModel, options) );
-    !options.deleteOne.disable && this.idRouter.delete( deleteOne(crudModel, options) );
+    this.rootRouter = this.router.route("/");
+    !this.options.getAll.disable && this.rootRouter.get(this.createChain({ middleware: getAll, securityModifier: "read" }));
+    !this.options.addOne.disable && this.rootRouter.post(this.createChain({ middleware: addOne, securityModifier: "create" }));
+
+    this.idRouter = this.router.route("/:id");
+    !this.options.getOne.disable && this.idRouter.get(this.createChain({ middleware: getOne, securityModifier: "read" }));
+    !this.options.updateOne.disable && this.idRouter.put(this.createChain({ middleware: updateOne, securityModifier: "update" }));
+    !this.options.deleteOne.disable && this.idRouter.delete(this.createChain({ middleware: deleteOne, securityModifier: "delete" }));
+  }
+
+  createChain ({ middleware, securityModifier }) {
+    const chain = [];
+    this.options.securitySchema && chain.push(security(this.options.securitySchema, securityModifier));
+    this.options.validationSchema && chain.push(validator(this.options.validationSchema));
+    chain.push(middleware(this.crudModel, this.options));
+    return chain;
   }
 
 }

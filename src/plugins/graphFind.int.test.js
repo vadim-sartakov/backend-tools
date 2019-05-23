@@ -4,7 +4,7 @@ import graphFindPlugin from './graphFind';
 
 mongoose.set('debug', true);
 
-describe.only('Mongoose deep find plugin', () => {
+describe('Mongoose deep find plugin', () => {
 
   let connection;
 
