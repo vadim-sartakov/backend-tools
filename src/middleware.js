@@ -32,16 +32,17 @@ export const internalError = () => {
  * Resulted filter stored in "res.locals.permissions" parameter
  * @param {Object} schema
  */
-export const security = (schema, modifier) => {
+export const security = (schema, ...modifiers) => {
   const debug = createDebug("middleware:security");
   return (req, res, next) => {
     const { user } = res.locals;
     const permissions = getPermissions(
       user,
       schema,
-      modifier
+      ...modifiers
     );
-    if (!permissions[modifier]) {
+    const denied = modifiers.some(modifier => !permissions[modifier]);
+    if (denied) {
       res.status(403);
       res.json({ message: "Access is denied" });
       debug("Access denied for %s to %s", req.ip, req.originalUrl);

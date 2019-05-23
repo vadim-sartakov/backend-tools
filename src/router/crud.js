@@ -24,18 +24,18 @@ class CrudRouter {
     this.router = new Router();
 
     this.rootRouter = this.router.route("/");
-    !this.options.getAll.disable && this.rootRouter.get(this.createChain({ middleware: getAll, securityModifier: "read" }));
-    !this.options.addOne.disable && this.rootRouter.post(this.createChain({ middleware: addOne, securityModifier: "create" }));
+    !this.options.getAll.disable && this.rootRouter.get(this.createChain(getAll, "read"));
+    !this.options.addOne.disable && this.rootRouter.post(this.createChain(addOne, "create"));
 
     this.idRouter = this.router.route("/:id");
-    !this.options.getOne.disable && this.idRouter.get(this.createChain({ middleware: getOne, securityModifier: "read" }));
-    !this.options.updateOne.disable && this.idRouter.put(this.createChain({ middleware: updateOne, securityModifier: "update" }));
-    !this.options.deleteOne.disable && this.idRouter.delete(this.createChain({ middleware: deleteOne, securityModifier: "delete" }));
+    !this.options.getOne.disable && this.idRouter.get(this.createChain(getOne, "read"));
+    !this.options.updateOne.disable && this.idRouter.put(this.createChain(updateOne, "read", "update"));
+    !this.options.deleteOne.disable && this.idRouter.delete(this.createChain(deleteOne, "read", "delete"));
   }
 
-  createChain ({ middleware, securityModifier }) {
+  createChain (middleware, ...securityModifiers) {
     const chain = [];
-    this.options.securitySchema && chain.push(security(this.options.securitySchema, securityModifier));
+    this.options.securitySchema && chain.push(security(this.options.securitySchema, ...securityModifiers));
     this.options.validationSchema && chain.push(validator(this.options.validationSchema));
     chain.push(middleware(this.crudModel, this.options));
     return chain;
@@ -43,23 +43,41 @@ class CrudRouter {
 
 }
 
+const getResultFilter = (queryFilter, permissionFilter) => {
+  if (!queryFilter && !permissionFilter) return;
+  const filterArray = [];
+  if (permissionFilter) filterArray.push(permissionFilter);
+  if (queryFilter) filterArray.push(queryFilter);
+  return filterArray.length === 1 ? filterArray[0] : { $and: filterArray };
+};
+
 const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
-  const { defaultPageSize } = options.getAll;
-  const { permissions } = res.locals;
+  const { defaultPageSize, defaultProjection } = options.getAll;
+  const permissions = res.locals.permissions || {};
 
-  let { page, size, filter, sort, search } = req.query;
+  let { page, size, filter: queryFilter, sort, search } = req.query;
 
   // 'supertest' passes objects here, but real http request will have strings
-  if (typeof (filter) === "string") filter = JSON.parse(filter);
-  if (typeof (sort) === "string") sort = JSON.parse(sort);
+  if (filter && typeof (filter) === "string") queryFilter = JSON.parse(queryFilter);
+  if (sort && typeof (sort) === "string") sort = JSON.parse(sort);
   
   // Converting to number by multiplying by 1
   page = (page && page * 1) || 0;
   size = (size && size * 1) || defaultPageSize;
 
-  const result = await Model.getAll({ page, size, filter, sort, search }, permissions);
-  let totalCount = await Model.count(filter, undefined);
+  const queryOptions = { page, size };
+  
+  const filter = getResultFilter(queryFilter, permissions.filter);
+  const projection = defaultProjection || permissions.projection;
+
+  if (filter) queryOptions.filter = filter;
+  if (projection) queryOptions.projection = projection;
+  if (sort) queryOptions.sort = sort;
+  if (search) queryOptions.search = search;
+
+  const result = await Model.getAll(queryOptions);
+  let totalCount = await Model.count(filter);
 
   const lastPage = Math.max(Math.ceil(totalCount / size) - 1, 0);
   const prev = Math.max(page - 1, 0);

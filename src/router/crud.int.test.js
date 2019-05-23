@@ -54,8 +54,8 @@ describe.only("Crud router", () => {
     it("Get empty page", async () => {
       const { model, app } = initialize({ getAllResult: [], countResult: 0 });
       const res = await request(app).get("/").expect(200, []);
-      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(undefined, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20 });
+      expect(model.count).to.have.been.calledWith(undefined);
       expect(res.get("Link")).to.match(new RegExp(expectedLinks({ first: 0, last: 0, size: 20 })));
       expect(res.get("X-Total-Count")).to.equal("0");
     });
@@ -63,8 +63,8 @@ describe.only("Crud router", () => {
     it("Get default page", async () => {
       const { model, app } = initialize({ getAllResult: getBulkResult(20), countResult: 50 });
       const res = await request(app).get("/").expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter: undefined, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(undefined, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20 });
+      expect(model.count).to.have.been.calledWith(undefined);
       expect(res.get("Link")).to.match(new RegExp(expectedLinks({ first: 0, next: 1, last: 2, size: 20 })));
       expect(res.get("X-Total-Count")).to.equal("50");
       expect(res.body.length).to.equal(20);
@@ -73,8 +73,8 @@ describe.only("Crud router", () => {
     it("Get user page 0 with size 5", async () => {
       const { model, app } = initialize({ getAllResult: getBulkResult(5), countResult: 42 });
       const res = await request(app).get("/").query({ page: 0, size: 5 }).expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 5, filter: undefined, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(undefined, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 5 });
+      expect(model.count).to.have.been.calledWith(undefined);
       expect(res.get("Link")).to.match(new RegExp(expectedLinks({ first: 0, next: 1, last: 8, size: 5 })));
       expect(res.get("X-Total-Count")).to.equal("42");
       expect(res.body.length).to.equal(5);
@@ -83,8 +83,8 @@ describe.only("Crud router", () => {
     it("Get user page 3 with size 5", async () => {
       const { model, app } = initialize({ getAllResult: getBulkResult(5), countResult: 42 });
       const res = await request(app).get("/").query({ page: 3, size: 5 }).expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 3, size: 5, filter: undefined, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(undefined, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 3, size: 5 });
+      expect(model.count).to.have.been.calledWith(undefined);
       expect(res.get("Link")).to.match(new RegExp(expectedLinks({ first: 0, prev: 2, next: 4, last: 8, size: 5 })));
       expect(res.get("X-Total-Count")).to.equal("42");
       expect(res.body.length).to.equal(5);
@@ -93,8 +93,8 @@ describe.only("Crud router", () => {
     it("Get user last page with size 5", async () => {
       const { model, app } = initialize({ getAllResult: getBulkResult(2), countResult: 42 });
       const res = await request(app).get("/").query(qs.stringify({ page: 8, size: 5 })).expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 8, size: 5, filter: undefined, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(undefined, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 8, size: 5 });
+      expect(model.count).to.have.been.calledWith(undefined);
       expect(res.get("Link")).to.match(new RegExp(expectedLinks({ first: 0, prev: 7, last: 8, size: 5 })));
       expect(res.get("X-Total-Count")).to.equal("42");
       expect(res.body.length).to.equal(2);
@@ -106,8 +106,8 @@ describe.only("Crud router", () => {
       const res = await request(app).get("/")
         .query(qs.stringify({ filter }))
         .expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(filter, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 0, size: 20, filter });
+      expect(model.count).to.have.been.calledWith(filter);
       expect(res.get("X-Total-Count")).to.equal("1");
       expect(res.body.length).to.equal(1);
     });
@@ -118,8 +118,8 @@ describe.only("Crud router", () => {
       const res = await request(app).get("/")
         .query(qs.stringify({ filter, page: 1, size: 5 }))
         .expect(200);
-      expect(model.getAll).to.have.been.calledWith({ page: 1, size: 5, filter, sort: undefined, search: undefined }, undefined);
-      expect(model.count).to.have.been.calledWith(filter, undefined);
+      expect(model.getAll).to.have.been.calledWith({ page: 1, size: 5, filter });
+      expect(model.count).to.have.been.calledWith(filter);
       expect(res.get("X-Total-Count")).to.equal("50");
       expect(res.body.length).to.equal(1);
     });
@@ -235,7 +235,7 @@ describe.only("Crud router", () => {
     });
 
     it("Allowed update with validation fail", async () => {
-      const securitySchema = { "USER": { update: true } };
+      const securitySchema = { "USER": { read: true, update: true } };
       const validationSchema = { firstName: () => "Error" };
       const { app } = initialize({ updateOneResult: { firstName: "Steve" } }, { securitySchema, validationSchema }, { roles: ["USER"] });
       await request(app).put("/1").send({ firstName: "Bill" }).expect(400);
