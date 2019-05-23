@@ -2,10 +2,12 @@ import { Router } from "express";
 import querystring from "querystring";
 import _ from "lodash";
 import LinkHeader from "http-link-header";
+import { filterObject } from "common-tools";
 import { getCurrentUrl, asyncMiddleware } from "../utils";
 import { security, validator } from "../middleware";
 
 const defaultOptions = {
+  idProperty: '_id',
   returnValue: false,
   getAll: {
     defaultPageSize: 20
@@ -14,6 +16,13 @@ const defaultOptions = {
   getOne: {},
   updateOne: {},
   deleteOne: {}
+};
+
+const defaultPermissions = {
+  create: {},
+  read: {},
+  update: {},
+  delete: {}
 };
 
 class CrudRouter {
@@ -25,7 +34,7 @@ class CrudRouter {
 
     this.rootRouter = this.router.route("/");
     !this.options.getAll.disable && this.rootRouter.get(this.createChain(getAll, "read"));
-    !this.options.addOne.disable && this.rootRouter.post(this.createChain(addOne, "create"));
+    !this.options.addOne.disable && this.rootRouter.post(this.createChain(addOne, "read", "create"));
 
     this.idRouter = this.router.route("/:id");
     !this.options.getOne.disable && this.idRouter.get(this.createChain(getOne, "read"));
@@ -43,18 +52,16 @@ class CrudRouter {
 
 }
 
-const getResultFilter = (queryFilter, permissionFilter) => {
-  if (!queryFilter && !permissionFilter) return;
-  const filterArray = [];
-  if (permissionFilter) filterArray.push(permissionFilter);
-  if (queryFilter) filterArray.push(queryFilter);
-  return filterArray.length === 1 ? filterArray[0] : { $and: filterArray };
+const mergeFilters = (...filters) => {
+  const resultFilters = filters.filter(item => Boolean(item));
+  if (!resultFilters.length) return;
+  return resultFilters.length === 1 ? resultFilters[0] : { $and: resultFilters };
 };
 
 const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
   const { defaultPageSize, defaultProjection } = options.getAll;
-  const permissions = res.locals.permissions || {};
+  const permissions = _.merge(defaultPermissions, res.locals.permissions);
 
   let { page, size, filter: queryFilter, sort, search } = req.query;
 
@@ -68,8 +75,8 @@ const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
   const queryOptions = { page, size };
   
-  const filter = getResultFilter(queryFilter, permissions.filter);
-  const projection = defaultProjection || permissions.projection;
+  const filter = mergeFilters(queryFilter, permissions.read.filter);
+  const projection = defaultProjection || permissions.read.projection;
 
   if (filter) queryOptions.filter = filter;
   if (projection) queryOptions.projection = projection;
@@ -99,52 +106,79 @@ const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
 const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 
 const addOne = (Model, options) => asyncMiddleware(async (req, res) => {
+
   const { returnValue } = options;
-  const { permissions } = res.locals;
-  let instance = await Model.addOne(req.body, permissions);
-  const id = instance._id || instance.id;
+  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+
+  let payload = _.cloneDeep(req.body);
+  if (permissions.create.projection) payload = filterObject(permissions.create.projection);
+
+  let instance = await Model.addOne(payload);
+  const id = instance[options.idProperty];
   res.status(201);
   res.location(getLocation(req, id));
+
   if (returnValue) {
-    instance = await Model.getOne({ id }, permissions);
+    instance = await secureGetOne(Model, options, id, permissions);
     res.json(instance);
   } else {
     res.end();
   }
+
 });
 
-const getOne = Model => asyncMiddleware(async (req, res, next) => {
-  const { permissions } = res.locals;
-  let instance = await Model.getOne({ id: req.params.id }, permissions);
+const getOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
+  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  let instance = await secureGetOne(Model, options, req.params.id, permissions);
   instance ? res.json(instance) : next();
 });
 
+const secureGetOne = async (Model, options, id, permissions) => {
+  const { defaultProjection } = options.getOne;
+  const projection = defaultProjection || permissions.read.projection;
+  return Model.getOne(id, projection);
+};
+
 const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
+
   const { returnValue } = options;
-  const { permissions } = res.locals;
-  const result = await Model.updateOne({ id: req.params.id }, req.body, permissions);
+  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  let payload = _.cloneDeep(req.body);
+
+  if (permissions.update.projection) payload = filterObject(permissions.update.projection);
+  const filter = mergeFilters({ [options.idProperty]: req.params.id }, permissions.read.filter);
+
+  const result = await Model.updateOne(filter, payload);
   if (!result) return next();
+
   if (returnValue) {
-    const instance = await Model.getOne({ id: req.params.id });
+    const instance = await secureGetOne(Model, options, req.params.id, permissions);
     res.json(instance);
   } else {
     res.end();
   }
+
 });
 
 const deleteOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
+
   const { returnValue } = options;
-  const { permissions } = res.locals;
+  const permissions = _.merge(defaultPermissions, res.locals.permissions);
   let valueToDelete;
-  if (returnValue) valueToDelete = await Model.getOne({ id: req.params.id }, permissions);
-  const result = await Model.deleteOne({ id: req.params.id }, permissions);
+  if (returnValue) valueToDelete = await secureGetOne(Model, options, req.params.id, permissions);
+
+  const filter = mergeFilters({ [options.idProperty]: req.params.id }, permissions.read.filter);
+
+  const result = await Model.deleteOne(filter);
   if (!result) return next();
+
   if (returnValue) {
     res.json(valueToDelete);
   } else {
     res.status(204);
     res.end();
   }
+
 });
 
 export default CrudRouter;
