@@ -244,7 +244,9 @@ describe('Mongoose deep find plugin', () => {
     const testSchema = new Schema({ field: String });
     testSchema.plugin(graphFindPlugin);
     const TestModel = connection.model('TestModel', testSchema);
-    await TestModel.graphFindOne();
+    await new TestModel({ field: "test" }).save();
+    const result = await TestModel.graphFindOne({ filter: { field: "test" } });
+    expect(result).to.be.ok;
   });
 
 });
