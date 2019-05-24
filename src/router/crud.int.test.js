@@ -124,6 +124,50 @@ describe.only("Crud router", () => {
       expect(res.body.length).to.equal(1);
     });
 
+    it("Default projection", async () => {
+      const { model, app } = initialize({ getAllResult: getBulkResult(1), countResult: 50 }, { getAll: { defaultProjection: "field" } });
+      await request(app).get("/")
+        .query(qs.stringify({ page: 1, size: 5 }))
+        .expect(200);
+      expect(model.getAll.firstCall.args[0]).to.deep.equal({ page: 1, size: 5, projection: "field" });
+    });
+
+    it("Default projection and permission projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            projection: "field two"
+          }
+        }
+      };
+      const { model, app } = initialize({ getAllResult: getBulkResult(1), countResult: 50 }, { securitySchema, getAll: { defaultProjection: "field one" } }, { roles: ["USER"] });
+      await request(app).get("/")
+        .query(qs.stringify({ page: 1, size: 5 }))
+        .expect(200);
+      expect(model.getAll.firstCall.args[0]).to.deep.equal({ page: 1, size: 5, projection: "field two" });
+    });
+
+    it("Query filter with permission filter and projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            filter: { id: "1" },
+            projection: "field"
+          }
+        }
+      };
+      const { model, app } = initialize({ getAllResult: getBulkResult(1), countResult: 50 }, { securitySchema }, { roles: ["USER"] });
+      const filter = { email: "mail1@mail.com" };
+      const res = await request(app).get("/")
+        .query(qs.stringify({ filter, page: 1, size: 5 }))
+        .expect(200);
+      const expectedFilter = { $and: [securitySchema.USER.read.filter, filter] };
+      expect(model.getAll.firstCall.args[0]).to.deep.equal({ page: 1, size: 5, filter: expectedFilter, projection: securitySchema.USER.read.projection });
+      expect(model.count.firstCall.args[0]).to.deep.equal(expectedFilter);
+      expect(res.get("X-Total-Count")).to.equal("50");
+      expect(res.body.length).to.equal(1);
+    });
+
   });
 
   describe("Add one", () => {

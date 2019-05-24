@@ -29,7 +29,7 @@ class CrudRouter {
   
   constructor(crudModel, options) {
     this.crudModel = crudModel;
-    this.options = _.merge({ ...defaultOptions }, options);
+    this.options = _.merge({}, defaultOptions, options);
     this.router = new Router();
 
     this.rootRouter = this.router.route("/");
@@ -61,7 +61,7 @@ const mergeFilters = (...filters) => {
 const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
 
   const { defaultPageSize, defaultProjection } = options.getAll;
-  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  const permissions = _.merge({}, defaultPermissions, res.locals.permissions);
 
   let { page, size, filter: queryFilter, sort, search } = req.query;
 
@@ -74,9 +74,9 @@ const getAll = (Model, options) => asyncMiddleware(async (req, res) => {
   size = (size && size * 1) || defaultPageSize;
 
   const queryOptions = { page, size };
-  
-  const filter = mergeFilters(queryFilter, permissions.read.filter);
-  const projection = defaultProjection || permissions.read.projection;
+
+  const filter = mergeFilters(permissions.read.filter, queryFilter);
+  const projection = permissions.read.projection || defaultProjection;
 
   if (filter) queryOptions.filter = filter;
   if (projection) queryOptions.projection = projection;
@@ -108,7 +108,7 @@ const getLocation = (req, id) => `${getCurrentUrl(req)}/${id}`;
 const addOne = (Model, options) => asyncMiddleware(async (req, res) => {
 
   const { returnValue } = options;
-  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  const permissions = _.merge({}, defaultPermissions, res.locals.permissions);
 
   let payload = _.cloneDeep(req.body);
   if (permissions.create.projection) payload = filterObject(payload, permissions.create.projection);
@@ -128,14 +128,14 @@ const addOne = (Model, options) => asyncMiddleware(async (req, res) => {
 });
 
 const getOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
-  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  const permissions = _.merge({}, defaultPermissions, res.locals.permissions);
   let instance = await secureGetOne(Model, options, req.params.id, permissions);
   instance ? res.json(instance) : next();
 });
 
 const secureGetOne = async (Model, options, id, permissions) => {
   const { defaultProjection } = options.getOne;
-  const projection = defaultProjection || permissions.read.projection;
+  const projection = permissions.read.projection || defaultProjection;
   const filter = mergeFilters({ [options.idProperty]: id }, permissions.read.filter);
   return Model.getOne(filter, projection);
 };
@@ -143,7 +143,7 @@ const secureGetOne = async (Model, options, id, permissions) => {
 const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
 
   const { returnValue } = options;
-  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  const permissions = _.merge({}, defaultPermissions, res.locals.permissions);
   let payload = _.cloneDeep(req.body);
 
   if (permissions.update.projection) {
@@ -167,7 +167,7 @@ const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => 
 const deleteOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
 
   const { returnValue } = options;
-  const permissions = _.merge(defaultPermissions, res.locals.permissions);
+  const permissions = _.merge({}, defaultPermissions, res.locals.permissions);
   let valueToDelete;
   if (returnValue) valueToDelete = await secureGetOne(Model, options, req.params.id, permissions);
 
