@@ -280,11 +280,25 @@ describe.only("Crud router", () => {
       expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance);
     });
 
-    it("Update user with return value", async () => {
-      const instance = { firstName: "Steve" };
-      const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } }, { returnValue: true });
-      await request(app).put("/0").send(instance).expect(200, { ...instance, updated: true });
-      expect(model.updateOne).to.have.been.calledWith({ id: "0" }, instance);
+    it("Update user with return value and projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            projection: "firstName updated"
+          },
+          update: {
+            projection: "firstName"
+          }
+        }
+      };
+      const instance = { firstName: "Steve", number: 1 };
+      const { model, app } = initialize({ updateOneResult: instance, getOneResult: { ...instance, updated: true } }, { returnValue: true, securitySchema }, { roles: ["USER"] });
+      // Not allowing to alter number here
+      await request(app).put("/0").send({ firstName: "Bill", number: 2 }).expect(200, { ...instance, updated: true });
+      expect(model.updateOne).to.have.been.calledWith({ id: "0" }, { firstName: "Bill", number: 1 });
+      expect(model.getOne).to.have.been.calledTwice;
+      expect(model.getOne.firstCall).to.have.been.calledWith({ id: "0" }, "firstName updated");
+      expect(model.getOne.secondCall).to.have.been.calledWith({ id: "0" }, "firstName updated");
     });
 
   });
@@ -304,11 +318,20 @@ describe.only("Crud router", () => {
       expect(model.deleteOne).to.have.been.calledWith({ id: "0" });
     });
 
-    it("Delete user with return value", async () => {
-      const instance = { firstName: "Steve" };
-      const { model, app } = initialize({ deleteOneResult: instance, getOneResult: instance }, { returnValue: true });
+    it("Delete user with return value and projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            projection: "firstName"
+          },
+          delete: true
+        }
+      };
+      const instance = { firstName: "Steve", number: 1 };
+      const { model, app } = initialize({ deleteOneResult: instance, getOneResult: instance }, { returnValue: true, securitySchema }, { roles: ["USER"] });
       await request(app).delete("/0").expect(200, instance);
       expect(model.deleteOne).to.have.been.calledWith({ id: "0" });
+      expect(model.getOne).to.have.been.calledWith({ id: "0" }, "firstName");
     });
 
   });

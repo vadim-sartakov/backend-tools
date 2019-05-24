@@ -147,7 +147,7 @@ const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => 
   let payload = _.cloneDeep(req.body);
 
   if (permissions.update.projection) {
-    const originInstance = await Model.getOne(req.params.id);
+    const originInstance = await secureGetOne(Model, options, req.params.id, permissions);
     payload = filterObject(payload, permissions.update.projection, originInstance);
   }
   const filter = mergeFilters({ [options.idProperty]: req.params.id }, permissions.read.filter);
