@@ -180,20 +180,32 @@ describe.only("Crud router", () => {
 
     it("Add new user without return value", async () => {
       const instance = { id: "0" };
-      const { model, app } = initialize({ addOneResult: instance, getOneResult: { ...instance, created: true } });
+      const { model, app } = initialize({ addOneResult: instance });
       const res = await request(app).post("/").send(instance).expect(201, {});
       const id = getIdFromLocation(res.headers.location);
       expect(id).to.equal(instance.id);
       expect(model.addOne).to.have.been.calledWith(instance);
     });
 
-    it("Add new user with return value", async () => {
-      const instance = { id: "0" };
-      const { model, app } = initialize({ addOneResult: instance, getOneResult: { ...instance, created: true } }, { returnValue: true });
-      const res = await request(app).post("/").send(instance).expect(201, { ...instance, created: true });
+    it("Add new user with return value and projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            projection: "number created"
+          },
+          create: {
+            projection: "number created"
+          }
+        }
+      };
+      const instance = { id: "0", number: 1 };
+      const createdInstance = { number: 1, created: true };
+      const { model, app } = initialize({ addOneResult: instance, getOneResult: createdInstance }, { returnValue: true, securitySchema }, { roles: ["USER"] });
+      const res = await request(app).post("/").send(instance).expect(201, createdInstance);
       const id = getIdFromLocation(res.headers.location);
       expect(id).to.equal(instance.id);
-      expect(model.addOne).to.have.been.calledWith(instance);
+      expect(model.addOne).to.have.been.calledWith({ number: 1 });
+      expect(model.getOne).to.have.been.calledWith({ id }, "number created");
     });
 
   });
@@ -211,6 +223,43 @@ describe.only("Crud router", () => {
       const { model, app } = initialize({ getOneResult: instance });
       await request(app).get("/0").expect(200, instance);
       expect(model.getOne).to.have.been.calledWith({ id: "0" }, undefined);
+    });
+
+    it("Default projection", async () => {
+      const instance = { firstName: "Steve" };
+      const { model, app } = initialize({ getOneResult: instance }, { getOne: { defaultProjection: "field one" } });
+      await request(app).get("/0").expect(200, instance);
+      expect(model.getOne).to.be.calledWith({ id: "0" }, "field one");
+    });
+
+    it("Default and permission projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            projection: "field two"
+          }
+        }
+      };
+      const instance = { firstName: "Steve" };
+      const { model, app } = initialize({ getOneResult: instance }, { securitySchema, getOne: { defaultProjection: "field one" } }, { roles: ["USER"] });
+      await request(app).get("/0").expect(200, instance);
+      expect(model.getOne).to.be.calledWith({ id: "0" }, "field two");
+    });
+
+    it("Get on user with permission filter and projection", async () => {
+      const securitySchema = {
+        USER: {
+          read: {
+            filter: { number: "1" },
+            projection: "field"
+          }
+        }
+      };
+      const instance = { firstName: "Steve" };
+      const { model, app } = initialize({ getOneResult: instance }, { securitySchema }, { roles: ["USER"] });
+      await request(app).get("/0").expect(200, instance);
+      expect(model.getOne.firstCall.args[0]).to.deep.equal({ $and: [{ id: "0" }, { number: "1" }] });
+      expect(model.getOne.firstCall.args[1]).to.equal("field");
     });
 
   });
