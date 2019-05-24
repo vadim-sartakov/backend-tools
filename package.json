@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "unit-test": "mocha src/**/*unit.test.js --inspect --require babel-core/register --require babel-polyfill",
-    "int-test": "createdbjs sequelize & mocha src/**/*int.test.js --inspect --watch --require babel-core/register --require babel-polyfill --timeout 10000",
+    "int-test": "mocha src/**/*int.test.js --inspect --require babel-core/register --require babel-polyfill --timeout 10000",
     "test": "npm run unit-test && npm run int-test",
     "coverage": "nyc --reporter=lcov --reporter=text npm test",
     "clean": "rimraf lib/",
@@ -35,12 +35,8 @@
     "mongoose": "^5.5.5",
     "npm-run-all": "^4.1.5",
     "nyc": "^14.0.0",
-    "pg": "^7.10.0",
-    "pg-hstore": "^2.3.2",
-    "pgtools": "^0.3.0",
     "qs": "^6.7.0",
     "rimraf": "^2.6.3",
-    "sequelize": "^5.8.1",
     "sinon": "^7.3.2",
     "sinon-chai": "^3.3.0",
     "supertest": "^4.0.2"
