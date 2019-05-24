@@ -1,5 +1,5 @@
 # Backend tools
-Set of useful middlewares, plugins and tools to build backend applications with Node.js. All implementations use Express and mongoose internally.
+Set of useful middlewares, plugins and tools to build backend applications with Node.js.
 
 ## Basic utils
 
@@ -83,6 +83,38 @@ request(app).get("/").expect(500, { message: "Failure" })
 ### Graph find mongoose plugin
 Allows to query related Model instances utilizing mongodb pipelines. Relying to mongoose populatable references definition types, it uses lookup to join instances instead of separate queries. It makes possible to filter documents based on joined instances values.
 
+Plugin adds `graphFind(options)` and `gprahFindOne(options)` static methods to model.
+
+Supports the following options:
+- skip
+- limit
+- projection
+- filter
+- sort
+- maxDepth - defaults to 1. `true` will load whole tree.
+
+Plugin relies on projection to determine whether the related instance should be joined or not.
+
+#### Initializing
+```javascript
+const childSchema = new Schema({ field: String }, options);
+const exampleSchema = new Schema({
+    field: String,
+    child: { type: Schema.Types.ObjectId, ref: "Child" } // Same definition as for populate
+});
+
+exampleSchema.plugin(graphFindPlugin);
+
+const ChildModel = mongoose.model("Child", childSchema);
+const ExampleModel = mongoose.model("Example", exampleSchema);
+
+// graphFind and gprahFindOne are now static methods of ExampleModel
+```
+
+Options are typical mongoose schema options, it could also include:
+- searchFields - fields which be used in full-text search, e.g. `['field', 'child.field']`
+- maxDepth - maximum graph loading depth
+
 ### Crud router
 Creates CRUD Express `Route` object which is ready to bind to your app.
 It binds crud actions to related HTTP methods and paths:
@@ -145,5 +177,7 @@ defaultOptions = {
 `filter` parameter can be passed with plain filter object. To encode parameter value it would be more convinient to use `querystring` library.
 
 `sort` parameter also could be specified. Similarly to `filter` it will be passed to database. Encoding is also preferable with `querystring`
+
+`search` is passing down to crud model assuming the model knows how to handle the full-text search query.
 
 Example query is valid (should be url-encoded): `/users?page=1&size=20&filter={"id":"1"}&sort={"order":"1"}`
