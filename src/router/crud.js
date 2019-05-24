@@ -42,10 +42,12 @@ class CrudRouter {
     !this.options.deleteOne.disable && this.idRouter.delete(this.createChain(deleteOne, "read", "delete"));
   }
 
-  createChain (middleware, ...securityModifiers) {
+  createChain(middleware, ...securityModifiers) {
     const chain = [];
     this.options.securitySchema && chain.push(security(this.options.securitySchema, ...securityModifiers));
-    this.options.validationSchema && chain.push(validator(this.options.validationSchema));
+    this.options.validationSchema && 
+        securityModifiers.some(modifier => modifier === "create" || modifier === "update") &&
+        chain.push(validator(this.options.validationSchema));
     chain.push(middleware(this.crudModel, this.options));
     return chain;
   }
