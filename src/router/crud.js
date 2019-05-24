@@ -111,7 +111,7 @@ const addOne = (Model, options) => asyncMiddleware(async (req, res) => {
   const permissions = _.merge(defaultPermissions, res.locals.permissions);
 
   let payload = _.cloneDeep(req.body);
-  if (permissions.create.projection) payload = filterObject(permissions.create.projection);
+  if (permissions.create.projection) payload = filterObject(payload, permissions.create.projection);
 
   let instance = await Model.addOne(payload);
   const id = instance[options.idProperty];
@@ -136,7 +136,8 @@ const getOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
 const secureGetOne = async (Model, options, id, permissions) => {
   const { defaultProjection } = options.getOne;
   const projection = defaultProjection || permissions.read.projection;
-  return Model.getOne(id, projection);
+  const filter = mergeFilters({ [options.idProperty]: id }, permissions.read.filter);
+  return Model.getOne(filter, projection);
 };
 
 const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => {
@@ -145,7 +146,10 @@ const updateOne = (Model, options) => asyncMiddleware(async (req, res, next) => 
   const permissions = _.merge(defaultPermissions, res.locals.permissions);
   let payload = _.cloneDeep(req.body);
 
-  if (permissions.update.projection) payload = filterObject(permissions.update.projection);
+  if (permissions.update.projection) {
+    const originInstance = await Model.getOne(req.params.id);
+    payload = filterObject(payload, permissions.update.projection, originInstance);
+  }
   const filter = mergeFilters({ [options.idProperty]: req.params.id }, permissions.read.filter);
 
   const result = await Model.updateOne(filter, payload);

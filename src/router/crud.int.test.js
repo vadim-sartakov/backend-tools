@@ -159,14 +159,14 @@ describe.only("Crud router", () => {
     it("Get missing user", async () => {
       const { model, app } = initialize({ getOneResult: null });
       await request(app).get("/0").expect(404);
-      expect(model.getOne).to.have.been.calledWith("0", undefined);
+      expect(model.getOne).to.have.been.calledWith({ id: "0" }, undefined);
     });
 
     it("Get one user", async () => {
       const instance = { firstName: "Steve" };
       const { model, app } = initialize({ getOneResult: instance });
       await request(app).get("/0").expect(200, instance);
-      expect(model.getOne).to.have.been.calledWith("0", undefined);
+      expect(model.getOne).to.have.been.calledWith({ id: "0" }, undefined);
     });
 
   });

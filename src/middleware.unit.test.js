@@ -33,33 +33,12 @@ describe("Middleware", () => {
       expect(next).to.have.been.called;
     });
 
-    describe("Denied", () => {
-
-      const schema = {};
-      const middleware = security(schema);
-
-      const checkIfAccessIsDenied = (middleware, res, method) => {
-        middleware({ method }, res, next);
-        expect(res.status).to.have.been.calledWith(403);
-        expect(res.json).to.have.been.calledWith({ message: "Access is denied" });
-      };
-
-      it("Denied create", () => {
-        checkIfAccessIsDenied(middleware, res, "POST");
-      });
-
-      it("Denied read", () => {
-        checkIfAccessIsDenied(middleware, res, "GET");
-      });
-
-      it("Denied update", () => {
-        checkIfAccessIsDenied(middleware, res, "PUT");
-      });
-
-      it("Denied delete", () => {
-        checkIfAccessIsDenied(middleware, res, "DELETE");
-      });
-
+    it("Denied read", () => {
+      const schema = { "USER": { update: true } };
+      const middleware = security(schema, "read");
+      middleware({}, res, next);
+      expect(res.status).to.have.been.calledWith(403);
+      expect(res.json).to.have.been.calledWith({ message: "Access is denied" });
     });
 
   });
