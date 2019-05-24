@@ -53,13 +53,17 @@ export const security = (schema, ...modifiers) => {
   };
 };
 
-export const validator = constraints => (req, res, next) => {
-  const errors = validate(req.body, constraints);
-  if (errors) {
-    res.status(400);
-    return res.json({ message: "Validation failed", errors });
+export const validator = constraints => {
+  const debug = createDebug("middleware:validator");
+  return (req, res, next) => {
+    const errors = validate(req.body, constraints);
+    if (errors) {
+      debug("Validation failed. Url: %s; payload: %o; errors: %o", req.originalUrl, req.body, errors);
+      res.status(400);
+      return res.json({ message: "Validation failed", errors });
+    }
+    next();
   }
-  next();
 };
 
 export const unauthorized = () => {
