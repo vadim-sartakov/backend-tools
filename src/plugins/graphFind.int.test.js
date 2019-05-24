@@ -240,4 +240,11 @@ describe('Mongoose deep find plugin', () => {
 
   });
 
+  it('Graph find one', async () => {
+    const testSchema = new Schema({ field: String });
+    testSchema.plugin(graphFindPlugin);
+    const TestModel = connection.model('TestModel', testSchema);
+    await TestModel.graphFindOne();
+  });
+
 });

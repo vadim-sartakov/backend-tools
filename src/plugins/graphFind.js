@@ -249,12 +249,14 @@ export function graphFind(options = {}) {
 
 }
 
+async function graphFindOne(options) {
+  const result = await graphFind.call(this, { ...options, limit: 1 });
+  return result.length > 0 ? result[0] : null;
+}
+
 const graphFindPlugin = schema => {
   schema.static('graphFind', graphFind);
-  schema.static('graphFindOne', async function(options) {
-    const result = await graphFind({ ...options, limit: 1 });
-    return result.length > 0 ? result[0] : null;
-  });
+  schema.static('graphFindOne', graphFindOne);
 };
 
 export default graphFindPlugin;
