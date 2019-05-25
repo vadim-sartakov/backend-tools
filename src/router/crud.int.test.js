@@ -358,7 +358,7 @@ describe("Crud router", () => {
     });
 
     it("No triggered validation on get", async () => {
-      const validationSchema = { firstName: () => undefined };
+      const validationSchema = { firstName: () => "Error" };
       const { app } = initialize({ getOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
       await request(app).get("/1").send({ firstName: "Bill*" }).expect(200);
     });
