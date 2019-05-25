@@ -177,7 +177,7 @@ describe('Mongoose deep find plugin', () => {
 
   describe('Different schema definitions', () => {
   
-    beforeEach(async () => {
+    afterEach(async () => {
       await clearData();
       clearModels();
     });
@@ -240,13 +240,40 @@ describe('Mongoose deep find plugin', () => {
 
   });
 
-  it('Graph find one', async () => {
-    const testSchema = new Schema({ field: String });
-    testSchema.plugin(graphFindPlugin);
-    const TestModel = connection.model('TestModel', testSchema);
-    await new TestModel({ field: "test" }).save();
-    const result = await TestModel.graphFindOne({ filter: { field: "test" } });
-    expect(result).to.be.ok;
+  describe('Graph find one', () => {
+
+    afterEach(async () => {
+      await clearData();
+      clearModels();
+    });
+
+    it('String filter', async () => {
+      const rootSchema = new Schema({ field: String });
+      rootSchema.plugin(graphFindPlugin);
+      const TestModel = connection.model('Root', rootSchema);
+      await new TestModel({ field: "test" }).save();
+      const result = await TestModel.graphFindOne({ filter: { field: "test" } });
+      expect(result).to.be.ok;
+    });
+
+    it.only('Filter by ids', async () => {
+      const childSchema = new Schema({ field: String });
+      const rootSchema = new Schema({ field: String, child: { type: Schema.Types.ObjectId, ref: 'Child' } });
+      rootSchema.plugin(graphFindPlugin);
+      const ChildModel = connection.model('Child', childSchema);
+      const TestModel = connection.model('Root', rootSchema);
+      const childInstance = await new ChildModel({ field: "test" }).save();
+      const rootInstance = await new TestModel({ field: "test", child: childInstance }).save();
+      let result = await TestModel.graphFindOne({ filter: { _id: rootInstance.id } });
+      expect(result).to.be.ok;
+
+      result = await TestModel.graphFindOne({ filter: { "child": childInstance.id } });
+      expect(result).to.be.ok;
+
+      result = await TestModel.graphFindOne({ filter: { "child._id": childInstance.id } });
+      expect(result).to.be.ok;
+    });
+
   });
 
 });

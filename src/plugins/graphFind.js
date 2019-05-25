@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 const checkIsExclusive = projection => {
   const keys = Object.keys(projection);
   return projection[keys[0]] === 0;
@@ -213,9 +215,42 @@ const treePathsComparator = (a, b) => {
   else return a.property.localeCompare(b.property);
 };
 
+const stringIdsToObjectIds = filterValue => {
+  const filterValueType = typeof filterValue;
+  if (filterValueType === 'string') {
+    return new mongoose.Types.ObjectId(filterValue);
+  } else if (filterValue !== null && filterValueType === 'object') {
+    if (Array.isArray(filterValue)) {
+      return filterValue.map(value => new mongoose.Types.ObjectId(value));
+    } else {
+      return Object.entries(filterValue).reduce((accumulator, [key, value]) => {
+        return { ...accumulator, [key]: stringIdsToObjectIds(value) };
+      }, {});
+    }
+  }
+};
+
+const pathIsId = (pathsMeta, path) => {
+  return path.includes('_id') || pathsMeta.some(pathMeta => pathMeta.type === 'ref');
+};
+
+const convertFilterIds = (pathsMeta, filter) => {
+  if (!filter) return;
+  return Object.entries(filter).reduce((accumulator, [key, value]) => {
+    if (pathIsId(pathsMeta, key)) {
+      const convertedValue = stringIdsToObjectIds(value);
+      const nextKey = ;
+      return { ...accumulator, [key]: convertedValue };
+    } else {
+      return { ...accumulator, [key]: value };
+    }
+  }, {});
+};
+
 export function graphFind(options = {}) {
 
-  const { skip, limit, projection, filter, sort, search } = options;
+  const { skip, limit, projection, sort, search } = options;
+  
   let maxDepth;
   if (options.maxDepth || options.maxDepth === 0) maxDepth = options.maxDepth;
   else if (this.schema.options.maxDepth || this.schema.options.maxDepth === 0) maxDepth = this.schema.options.maxDepth;
@@ -230,6 +265,11 @@ export function graphFind(options = {}) {
     const newPath = { property, type, ...context };
     return [...accumulator, newPath];
   }, [], { maxDepth, projection }).sort(treePathsComparator);
+
+  console.log(pathsMeta);
+
+  let { filter } = options;
+  filter = convertFilterIds(pathsMeta, filter);
 
   const pipeline = [];
 

@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "unit-test": "mocha src/**/*unit.test.js --inspect --require babel-core/register --require babel-polyfill",
-    "int-test": "mocha src/**/*int.test.js --inspect --require babel-core/register --require babel-polyfill --timeout 10000",
+    "int-test": "mocha src/**/*int.test.js --inspect --watch --require babel-core/register --require babel-polyfill --timeout 10000",
     "test": "npm run unit-test && npm run int-test",
     "coverage": "nyc --reporter=lcov --reporter=text npm test",
     "clean": "rimraf lib/",
