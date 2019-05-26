@@ -230,17 +230,14 @@ const stringIdsToObjectIds = filterValue => {
   }
 };
 
-const pathIsId = (pathsMeta, path) => {
-  return path.includes('_id') || pathsMeta.some(pathMeta => pathMeta.type === 'ref');
-};
-
 const convertFilterIds = (pathsMeta, filter) => {
   if (!filter) return;
   return Object.entries(filter).reduce((accumulator, [key, value]) => {
-    if (pathIsId(pathsMeta, key)) {
+    const pathIsRef = pathsMeta.some(pathMeta => pathMeta.property === key && pathMeta.type === 'ref');
+    if (key.includes('_id') || pathIsRef) {
       const convertedValue = stringIdsToObjectIds(value);
-      const nextKey = ;
-      return { ...accumulator, [key]: convertedValue };
+      const nextKey = pathIsRef ? key + '._id' : key;
+      return { ...accumulator, [nextKey]: convertedValue };
     } else {
       return { ...accumulator, [key]: value };
     }

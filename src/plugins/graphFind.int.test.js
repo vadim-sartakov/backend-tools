@@ -256,15 +256,16 @@ describe('Mongoose deep find plugin', () => {
       expect(result).to.be.ok;
     });
 
-    it.only('Filter by ids', async () => {
+    it('Replaces string ids in filters with ObjectId', async () => {
       const childSchema = new Schema({ field: String });
       const rootSchema = new Schema({ field: String, child: { type: Schema.Types.ObjectId, ref: 'Child' } });
       rootSchema.plugin(graphFindPlugin);
       const ChildModel = connection.model('Child', childSchema);
       const TestModel = connection.model('Root', rootSchema);
       const childInstance = await new ChildModel({ field: "test" }).save();
-      const rootInstance = await new TestModel({ field: "test", child: childInstance }).save();
-      let result = await TestModel.graphFindOne({ filter: { _id: rootInstance.id } });
+      const firstRootInstance = await new TestModel({ field: "test", child: childInstance }).save();
+      const secondRootInstance = await new TestModel({ field: "test", child: childInstance }).save();
+      let result = await TestModel.graphFindOne({ filter: { _id: firstRootInstance.id } });
       expect(result).to.be.ok;
 
       result = await TestModel.graphFindOne({ filter: { "child": childInstance.id } });
@@ -272,6 +273,13 @@ describe('Mongoose deep find plugin', () => {
 
       result = await TestModel.graphFindOne({ filter: { "child._id": childInstance.id } });
       expect(result).to.be.ok;
+
+      result = await TestModel.graphFindOne({ filter: { _id: { $in: [firstRootInstance.id] } } });
+      expect(result).to.be.ok;
+
+      result = await TestModel.graphFindOne({ filter: { _id: { $not: { $in: [secondRootInstance.id] } } } });
+      expect(result).to.be.ok;
+      expect(result._id).to.deep.eq(firstRootInstance._id);
     });
 
   });
