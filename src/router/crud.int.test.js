@@ -363,10 +363,22 @@ describe("Crud router", () => {
       await request(app).get("/1").send({ firstName: "Bill*" }).expect(200);
     });
 
+    it("No triggered validation on delete", async () => {
+      const validationSchema = { firstName: () => "Error" };
+      const { app } = initialize({ deleteOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
+      await request(app).delete("/1").expect(204);
+    });
+
     it("Triggered validation on post", async () => {
       const validationSchema = { firstName: () => "Error" };
       const { app } = initialize({ addOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
       await request(app).post("/").send({ firstName: "Bill" }).expect(400);
+    });
+
+    it("Triggered validation on put", async () => {
+      const validationSchema = { firstName: () => "Error" };
+      const { app } = initialize({ updateOneResult: { firstName: "Steve" } }, { validationSchema }, { roles: ["USER"] });
+      await request(app).put("/1").send({ firstName: "Bill" }).expect(400);
     });
 
   });
