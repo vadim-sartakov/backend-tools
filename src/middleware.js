@@ -2,6 +2,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import createDebug from "debug";
+import { asyncMiddleware } from "./utils";
 import { validate, getPermissions } from "common-tools";
 
 export const commonMiddlewares = [
@@ -55,15 +56,15 @@ export const security = (schema, ...modifiers) => {
 
 export const validator = constraints => {
   const debug = createDebug("middleware:validator");
-  return (req, res, next) => {
-    const errors = validate(req.body, constraints);
+  return asyncMiddleware(async (req, res, next) => {
+    const errors = await validate(req.body, constraints);
     if (errors) {
       debug("Validation failed. Url: %s; payload: %o; errors: %o", req.originalUrl, req.body, errors);
       res.status(400);
       return res.json({ message: "Validation failed", errors });
     }
     next();
-  }
+  })
 };
 
 export const unauthorized = () => {

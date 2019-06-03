@@ -47,23 +47,34 @@ describe("Middleware", () => {
 
     const validationErrorPart = { message: "Validation failed" };
 
-    it("Success", () => {
+    it("Success", async () => {
       const constraints = { field: () => undefined };
       const next = fake();
       const middleware = validator(constraints);
       const res = new StubResponse({});
-      middleware({ method: "POST", body: { field: "Bill" } }, res, next);
+      await middleware({ method: "POST", body: { field: "Bill" } }, res, next);
       expect(res.status).to.not.have.been.called;
       expect(res.json).to.not.have.been.called;
       expect(next).to.have.been.called;
     });
 
-    it("Fail", () => {
+    it("Fail", async () => {
       const constraints = { field: () => "Error" };
       const next = fake();
       const middleware = validator(constraints);
       const res = new StubResponse({});
-      middleware({ method: "POST", body: {} }, res, next);
+      await middleware({ method: "POST", body: {} }, res, next);
+      expect(res.status).to.have.been.calledWith(400);
+      expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: { "field": "Error" } });
+      expect(next).to.not.have.been.called;
+    });
+
+    it("Async", async () => {
+      const constraints = { field: async () => "Error" };
+      const next = fake();
+      const middleware = validator(constraints);
+      const res = new StubResponse({});
+      await middleware({ method: "POST", body: {} }, res, next);
       expect(res.status).to.have.been.calledWith(400);
       expect(res.json).to.have.been.calledWith({ ...validationErrorPart, errors: { "field": "Error" } });
       expect(next).to.not.have.been.called;
