@@ -263,8 +263,6 @@ export function graphFind(options = {}) {
     return [...accumulator, newPath];
   }, [], { maxDepth, projection }).sort(treePathsComparator);
 
-  console.log(pathsMeta);
-
   let { filter } = options;
   filter = convertFilterIds(pathsMeta, filter);
 
