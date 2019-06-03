@@ -217,6 +217,7 @@ const treePathsComparator = (a, b) => {
 
 const stringIdsToObjectIds = filterValue => {
   const filterValueType = typeof filterValue;
+  if (filterValue instanceof mongoose.Types.ObjectId) return filterValue;
   if (filterValueType === 'string') {
     return new mongoose.Types.ObjectId(filterValue);
   } else if (filterValue !== null && filterValueType === 'object') {

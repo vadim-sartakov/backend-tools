@@ -265,7 +265,13 @@ describe('Mongoose deep find plugin', () => {
       const childInstance = await new ChildModel({ field: "test" }).save();
       const firstRootInstance = await new TestModel({ field: "test", child: childInstance }).save();
       const secondRootInstance = await new TestModel({ field: "test", child: childInstance }).save();
-      let result = await TestModel.graphFindOne({ filter: { _id: firstRootInstance.id } });
+
+      // If it's already object id
+      let result = await TestModel.graphFindOne({ filter: { _id: new mongoose.Types.ObjectId(firstRootInstance.id) } });
+      expect(result).to.be.ok;
+
+      // If it's stringified object id
+      result = await TestModel.graphFindOne({ filter: { _id: firstRootInstance.id } });
       expect(result).to.be.ok;
 
       result = await TestModel.graphFindOne({ filter: { "child": childInstance.id } });
