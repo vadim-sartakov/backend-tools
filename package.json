@@ -23,7 +23,7 @@
     "express": "^4.16.4",
     "helmet": "^3.16.0",
     "http-link-header": "^0.8.0",
-    "lodash": "^4.17.13"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
