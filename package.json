@@ -20,7 +20,7 @@
     "common-tools": "git+https://github.com/vadim-sartakov/common-tools.git#master",
     "cookie-parser": "^1.4.3",
     "debug": "^3.2.6",
-    "express": "^4.16.4",
+    "express": "^4.17.3",
     "helmet": "^3.16.0",
     "http-link-header": "^0.8.0",
     "lodash": "^4.17.13"
